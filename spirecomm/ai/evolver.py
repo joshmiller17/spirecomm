@@ -7,10 +7,44 @@ import spirecomm.spire.card
 from spirecomm.spire.screen import RestOption
 from spirecomm.communication.action import *
 from spirecomm.ai.priorities import *
-import py_trees.common
+import py_trees
 
 AI_DELAY = 0 # if we want to slow things down
+ASCENSION = 0
+STATE = None
+AGENT = None
 
+class EBT(py_trees.behaviour.Behaviour):
+	def __init(self, name):
+		super(EBT, self).__init__(name)
+		
+	def setup(self):
+		#AGENT.queue.append("  %s [EBT::setup()]" % self.name)
+		pass
+		
+	def initialise(self):
+		#AGENT.queue.append("  %s [EBT::initialise()]" % self.name)
+		pass
+		
+	def update(self):
+		AGENT.queue.append("  %s [EBT::update()]" % self.name)
+		ready = True
+		decision = True
+		if not ready:
+			return py_trees.common.Status.RUNNING
+		elif decision:
+			return py_trees.common.Status.SUCCESS
+		else:
+			return py_trees.common.Status.FAILURE
+			
+	def terminate(self, new_status):
+		AGENT.queue.append("  %s [EBT::terminate().terminate()][%s->%s]" % (self.name, self.status, new_status))
+		
+	def create_tree(self):
+		root = py_trees.composites.Selector("Root Selector")
+		return root
+
+	
 
 class EvolvingAgent:
 
@@ -20,6 +54,12 @@ class EvolvingAgent:
 		self.chosen_class = chosen_class
 		self.change_class(chosen_class)
 		self.queue.append("Loaded evolver")
+		AGENT = self
+		
+		py_trees.logging.level = py_trees.logging.Level.DEBUG
+		ebt = EBT()
+		ebt.setup()
+		ebt_root = ebt.create_tree()
 		
 		# SIMPLE TRAITS
 		self.errors = 0
@@ -32,20 +72,24 @@ class EvolvingAgent:
 	def change_class(self, new_class):
 		self.chosen_class = new_class
 		if self.chosen_class == PlayerClass.THE_SILENT:
-			self.priorities = SilentPriority() # Simple trait
+			self.priorities = SilentPriority() # Simple FIXME
 		elif self.chosen_class == PlayerClass.IRONCLAD:
-			self.priorities = IroncladPriority()  # Simple trait
+			self.priorities = IroncladPriority()  # Simple FIXME
 		elif self.chosen_class == PlayerClass.DEFECT:
-			self.priorities = DefectPowerPriority()  # Simple trait
+			self.priorities = DefectPowerPriority()  # Simple FIXME
 		else:
-			self.priorities = random.choice(list(PlayerClass))  # Simple trait
+			self.priorities = random.choice(list(PlayerClass))  # Simple FIXME
 
 	def handle_error(self, error):
 		raise Exception(error)
 
 	def get_next_action_in_game(self, game_state):
 		self.game = game_state
+		STATE = self.game
 		time.sleep(AI_DELAY)
+		#ebt.tick_once()
+		
+		#SIMPLE LOGIC
 		if self.game.choice_available:
 			return self.handle_screen()
 		if self.game.proceed_available:
@@ -62,7 +106,10 @@ class EvolvingAgent:
 			return CancelAction()
 
 	def get_next_action_out_of_game(self):
-		return StartGameAction(self.chosen_class)
+		return StartGameAction(self.chosen_class, ascension_level=ASCENSION)
+		
+		
+# ---------------------------------------------
 
 	def is_monster_attacking(self):
 		for monster in self.game.monsters:
