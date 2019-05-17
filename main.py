@@ -67,7 +67,7 @@ class GUI(tk.Frame):
 		else:
 			self.txt.config(state="disabled")
 			self.read()
-		
+	
 def shutdown():
 	global tk_root
 	tk_root.destroy()
@@ -82,9 +82,9 @@ def run_gui():
 	tk_root.grid_columnconfigure(0, weight=1)
 	app = GUI(master=tk_root)
 	agent_thread = Thread(target=run_agent)
-	#agent_thread.start()
+	agent_thread.start()
 	app.mainloop()
-		
+	
 def run_agent():
 	agent = EvolvingAgent(queue=MSG_QUEUE, chosen_class=PlayerClass.IRONCLAD) # Start with just training on one class
 	#agent = SimpleAgent(chosen_class=PlayerClass.THE_SILENT)
@@ -94,10 +94,11 @@ def run_agent():
 	coordinator.register_state_change_callback(agent.get_next_action_in_game)
 	coordinator.register_out_of_game_callback(agent.get_next_action_out_of_game)
 
+	result = coordinator.play_one_game(PlayerClass.IRONCLAD)
 	# Play games forever, cycling through the various classes
-	for chosen_class in itertools.cycle(PlayerClass):
+#	for chosen_class in itertools.cycle(PlayerClass):
 		#agent.change_class(chosen_class) # Start with just training on one class
-		result = coordinator.play_one_game(chosen_class)
+#		result = coordinator.play_one_game(chosen_class)
 
 	
 

@@ -3,11 +3,13 @@ import queue
 import threading
 import json
 import collections
+import time
 
 from spirecomm.spire.game import Game
 from spirecomm.spire.screen import ScreenType
 from spirecomm.communication.action import Action, StartGameAction
 
+TIMEOUT = 3
 
 def read_stdin(input_queue):
 	"""Read lines from stdin and write them to a queue
@@ -34,9 +36,16 @@ def write_stdout(output_queue):
 	:type output_queue: queue.Queue
 	:return: None
 	"""
+	last_msg = ""
+	last_sent = time.time()
 	while True:
 		output = output_queue.get()
-		print(output, end='\n', flush=True)
+		if output != "":
+			print(output, end='\n', flush=True)
+			last_msg = output
+			last_sent = time.time()
+		elif time.time() - last_sent > TIMEOUT: # try again
+			output_queue.put(last_msg)
 
 
 class Coordinator:
