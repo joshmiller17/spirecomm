@@ -22,8 +22,11 @@ import tkinter as tk
 # from kivy.clock import Clock
 # from kivy.core.window import Window
 
-MSG_QUEUE = []
+MSG_QUEUE = ["Init."]
 MAX_HISTORY = 12
+last_read = time.time()
+TIMEOUT = 10
+tk_root = None
 
 class GUI(tk.Frame):
 
@@ -36,34 +39,48 @@ class GUI(tk.Frame):
 
 	def create_widgets(self):
 		self.txt = tk.Text(self.master,borderwidth=3, relief="sunken")
-		self.txt.config(font=("consolas",12), wrap='word',state=DISABLED)
+		self.txt.config(font=("consolas",12), wrap='word', state="disabled")
 		self.txt.grid(row=0,column=0,sticky="nsew",padx=2,pady=2)
 		self.scroll = tk.Scrollbar(self.master, command=self.txt.yview)
 		self.scroll.grid(row=0, column=1, sticky="nwes")
 		self.txt['yscrollcommand'] = self.scroll.set
 
-	def read(self):
-		global MSG_QUEUE
+	def read(self, kill=False):
+		time.sleep(1)
+		if kill:
+			time.sleep(2)
+			self.master.destroy()
+			exit(0)
+		global MSG_QUEUE, last_read
 		MSG_QUEUE = MSG_QUEUE[-MAX_HISTORY:]
-		print("MSG_QUEUE: ")
-		print(MSG_QUEUE)
-		new_msg = ""
+		self.txt.config(state="normal")
+		if len(MSG_QUEUE):
+			last_read = time.time()
+		else:
+			self.txt.insert("end","Pong.\n")
 		while len(MSG_QUEUE):
-			self.txt.insert(END, MSG_QUEUE.pop())
-			self.txt.insert(END, '\n')
-		time.sleep(0.5)
-		self.read()
+			self.txt.insert("end", MSG_QUEUE.pop() + "\n")
+		if time.time() - last_read > TIMEOUT:
+			self.txt.insert("end", "Timing out. Goodbye.\n")
+			self.txt.config(state="disabled")
+			self.read(kill=True)
+		else:
+			self.txt.config(state="disabled")
+			self.read()
 		
+def shutdown():
+	global tk_root
+	tk_root.destroy()
+	exit(1)
 		
 def run_gui():
-	root = tk.Tk()
-	root.protocol("WM_DELETE_WINDOW", root.quit)
-	frame = tk.Frame(root, width=600, height=400)
-	frame.pack(fill="both", expand=True)
-	frame.grid_propagate(False)
-	frame.grid_rowconfigure(0, weight=1)
-	frame.grid_columnconfigure(0, weight=1)
-	app = GUI(master=frame)
+	global tk_root
+	tk_root = tk.Tk()
+	tk_root.title("AI Debug")
+	tk_root.protocol("WM_DELETE_WINDOW", shutdown)
+	tk_root.grid_rowconfigure(0, weight=1)
+	tk_root.grid_columnconfigure(0, weight=1)
+	app = GUI(master=tk_root)
 	agent_thread = Thread(target=run_agent)
 	#agent_thread.start()
 	app.mainloop()

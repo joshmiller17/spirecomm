@@ -88,6 +88,7 @@ class EvolvingAgent:
 		STATE = self.game
 		time.sleep(AI_DELAY)
 		#ebt.tick_once()
+		self.queue.append(self.game)
 		
 		#SIMPLE LOGIC
 		if self.game.choice_available:
