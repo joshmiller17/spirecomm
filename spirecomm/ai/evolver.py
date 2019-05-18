@@ -11,56 +11,22 @@ import py_trees
 
 AI_DELAY = 0 # if we want to slow things down
 ASCENSION = 0
-STATE = None
-AGENT = None
 
-class EBT(py_trees.behaviour.Behaviour):
-	def __init(self, name):
-		super(EBT, self).__init__(name)
-		
-	def setup(self):
-		#AGENT.queue.append("  %s [EBT::setup()]" % self.name)
-		pass
-		
-	def initialise(self):
-		#AGENT.queue.append("  %s [EBT::initialise()]" % self.name)
-		pass
-		
-	def update(self):
-		AGENT.queue.append("  %s [EBT::update()]" % self.name)
-		ready = True
-		decision = True
-		if not ready:
-			return py_trees.common.Status.RUNNING
-		elif decision:
-			return py_trees.common.Status.SUCCESS
-		else:
-			return py_trees.common.Status.FAILURE
-			
-	def terminate(self, new_status):
-		AGENT.queue.append("  %s [EBT::terminate().terminate()][%s->%s]" % (self.name, self.status, new_status))
-		
-	def create_tree(self):
-		root = py_trees.composites.Selector("Root Selector")
-		return root
-
-	
 
 class EvolvingAgent:
 
-	def __init__(self, queue=None, chosen_class=PlayerClass.THE_SILENT):
+	def __init__(self, coordinator, chosen_class=PlayerClass.THE_SILENT):
 		self.game = Game()
-		self.queue = queue; #example: self.queue.append("text to show")
 		self.chosen_class = chosen_class
 		self.change_class(chosen_class)
-		self.queue.append("Loaded evolver")
-		AGENT = self
+		self.coordinator = coordinator
+		self.coordinator.send_debug("Agent init.")
 		
 		py_trees.logging.level = py_trees.logging.Level.DEBUG
 		ebt = EBT()
 		ebt.setup()
 		ebt_root = ebt.create_tree()
-		
+				
 		# SIMPLE TRAITS
 		self.errors = 0
 		self.choose_good_card = False
@@ -87,9 +53,8 @@ class EvolvingAgent:
 		self.game = game_state
 		STATE = self.game
 		time.sleep(AI_DELAY)
-		#ebt.tick_once()
-		self.queue.append(self.game)
-		
+		self.coordinator.send_debug("Action play.")
+				
 		#SIMPLE LOGIC
 		if self.game.choice_available:
 			return self.handle_screen()
@@ -143,7 +108,6 @@ class EvolvingAgent:
 		return len(available_monsters) > 1
 
 	def get_play_card_action(self):
-		self.queue.append("Played a card") # TODO remove
 		playable_cards = [card for card in self.game.hand if card.is_playable]
 		zero_cost_cards = [card for card in playable_cards if card.cost == 0]
 		zero_cost_attacks = [card for card in zero_cost_cards if card.type == spirecomm.spire.card.CardType.ATTACK]

@@ -9,6 +9,11 @@ from spirecomm.spire.game import Game
 from spirecomm.spire.screen import ScreenType
 from spirecomm.communication.action import Action, StartGameAction
 
+import tkinter as tk
+
+MSG_QUEUE = ["Init."]
+MAX_HISTORY = 12
+last_read = time.time()
 TIMEOUT = 3
 
 def read_stdin(input_queue):
@@ -44,8 +49,64 @@ def write_stdout(output_queue):
 			print(output, end='\n', flush=True)
 			last_msg = output
 			last_sent = time.time()
+			MSG_QUEUE.append(last_msg)
 		elif time.time() - last_sent > TIMEOUT: # try again
 			output_queue.put(last_msg)
+			
+class GUI(tk.Frame):
+
+	def __init__(self, master=None):
+		super().__init__(master)
+		self.master = master
+		self.create_widgets()
+		read_thread = Thread(target=self.read)
+		read_thread.start()
+
+	def create_widgets(self):
+		self.txt = tk.Text(self.master,borderwidth=3, relief="sunken")
+		self.txt.config(font=("consolas",12), wrap='word', state="disabled")
+		self.txt.grid(row=0,column=0,sticky="nsew",padx=2,pady=2)
+		self.scroll = tk.Scrollbar(self.master, command=self.txt.yview)
+		self.scroll.grid(row=0, column=1, sticky="nwes")
+		self.txt['yscrollcommand'] = self.scroll.set
+		self.pause = Button(self.master, text="Pause", command=pause)
+		self.resume = Button(self.master, text="Resume", command=resume)
+		self.pause.grid(row=0,column=2,sticky="n")
+		self.resume.grid(row=0,column=3,sticky="ne")
+		
+	# TODO
+	def pause():
+		MSG_QUEUE.append("Paused")
+		self.pause['state'] = 'disabled'
+		self.resume['state'] = 'normal'
+	
+	# TODO re-send last action
+	def resume():
+		MSG_QUEUE.append("Resumed")
+		self.pause['state'] = 'normal'
+		self.resume['state'] = 'disabled'
+
+	def read(self, kill=False):
+		time.sleep(1)
+		MSG_QUEUE = MSG_QUEUE[-MAX_HISTORY:]
+		self.txt.config(state="normal")
+		if len(MSG_QUEUE):
+			last_read = time.time()
+		else:
+			self.txt.insert("end","Pong.\n")
+		while len(MSG_QUEUE):
+			self.txt.insert("end", MSG_QUEUE.pop() + "\n")
+		self.txt.config(state="disabled")
+		self.read()
+	
+	
+def run_gui(output_queue, tk_root):
+	tk_root.title("AI Debug")
+	tk_root.protocol("WM_DELETE_WINDOW", tk_root.destroy())
+	tk_root.grid_rowconfigure(0, weight=1)
+	tk_root.grid_columnconfigure(0, weight=1)
+	app = GUI(master=tk_root)
+	app.mainloop()
 
 
 class Coordinator:
@@ -54,12 +115,16 @@ class Coordinator:
 	def __init__(self):
 		self.input_queue = queue.Queue()
 		self.output_queue = queue.Queue()
+		self.tk_root = tk.Tk()
 		self.input_thread = threading.Thread(target=read_stdin, args=(self.input_queue,))
 		self.output_thread = threading.Thread(target=write_stdout, args=(self.output_queue,))
+		self.gui_thread = threading.Thread(target=run_gui, args=(self.output_queue, self.tk_root))
 		self.input_thread.daemon = True
 		self.input_thread.start()
 		self.output_thread.daemon = True
 		self.output_thread.start()
+		self.gui_thread.daemon = True
+		self.gui_thread.start()
 		self.action_queue = collections.deque()
 		self.state_change_callback = None
 		self.out_of_game_callback = None
@@ -77,6 +142,9 @@ class Coordinator:
 		:return: None
 		"""
 		self.send_message("ready")
+		
+	def send_debug(self, message):
+		MSG_QUEUE.append(message)
 
 	def send_message(self, message):
 		"""Send a command to Communication Mod and start waiting for a response
