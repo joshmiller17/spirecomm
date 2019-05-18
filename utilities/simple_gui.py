@@ -17,6 +17,7 @@ os.environ["KIVY_NO_CONSOLELOG"] = "1"
 from kivy.app import App
 from kivy.uix.textinput import TextInput
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.scrollview import ScrollView
 from kivy.uix.button import Button
 from kivy.clock import Clock
 from kivy.core.window import Window
@@ -29,6 +30,8 @@ class Base(BoxLayout):
 		self.coordinator = coordinator
 		self.agent = agent
 		self.log = f
+		self.last_comm = ""
+		self.paused = False
 		print("Base: Init", file=self.log, flush=True)
 
 		self.input_text = TextInput(size_hint=(1, 10))
@@ -46,11 +49,11 @@ class Base(BoxLayout):
 		self.button.bind(on_press=self.send_output)
 		self.add_widget(self.button)
 		
-		self.pause = Button(text='Pause (Not implemented)', size_hint=(1, 1))
+		self.pause = Button(text='Pause', size_hint=(1, 1))
 		self.pause.bind(on_press=self.do_pause)
 		self.add_widget(self.pause)
 		
-		self.resume = Button(text='Resume (Not implemented)', size_hint=(1, 1))
+		self.resume = Button(text='Resume', size_hint=(1, 1))
 		self.resume.bind(on_press=self.do_resume)
 		self.add_widget(self.resume)
 
@@ -60,27 +63,32 @@ class Base(BoxLayout):
 		Window.bind(on_key_up=self.key_callback)
 
 	def do_communication(self, dt):
+		if self.paused: # FIXME at some point, reconfigure pause to just halt everything maybe?
+			return
 		new_msg = self.agent.get_next_msg()
 		if new_msg != "":
 			self.input_text.text += self.agent.get_next_msg() + "\n"
+		comm_msg = self.coordinator.view_last_msg()
+		if comm_msg != self.last_comm:
+			self.input_text.text += comm_msg + "\n"
+			self.last_comm = comm_msg
 		#message = self.coordinator.get_next_raw_message()
 		#if message is not None:
 		#	self.input_text.text = message + '\n' + self.agent.get_next_msg()
 		#self.coordinator.execute_next_action_if_ready()
 
-	# TODO
 	def do_pause(self, instance=None):
-		pass
+		self.paused = True
 	
-	# TODO
 	def do_resume(self, instance=None):
-		pass
+		self.paused = False
 		
 	def send_output(self, instance=None, text=None):
 		if text is None:
 			text = self.output_text.text
 		text = text.strip()
-		print(text, end='\n', flush=True)
+		if not self.handle_debug_cmds(text):
+			print(text, end='\n', flush=True)
 		self.history_lines.append(text)
 		self.history_text.text = "\n".join(self.history_lines)
 		self.output_text.text = ""
@@ -88,6 +96,24 @@ class Base(BoxLayout):
 	def key_callback(self, window, keycode, *args):
 		if keycode == 13:
 			self.send_output()
+			
+	# Returns True if message was a debug command to execute,
+	# False if we should print out for CommMod
+	def handle_debug_cmds(self, msg):
+	
+		if msg == "threadcheck":
+			for thread in threading.enumerate():
+				print(thread, file=self.log, flush=True)
+				print(thread.isAlive(), file=self.log, flush=True)
+			
+			return True
+			
+		if msg == "resend":
+			self.agent.get_next_action_in_game(self.coordinator.view_last_msg())
+			return True
+			
+			
+		return False
 
 
 class CommunicationApp(App):

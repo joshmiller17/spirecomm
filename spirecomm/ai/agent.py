@@ -40,6 +40,10 @@ class SimpleAgent:
 			return self.cmd_queue.pop()
 		except:
 			return "STATE"
+			
+	def decide(self, action):
+		self.debug_queue.append(action)
+		return action
 		
 	def change_class(self, new_class):
 		self.chosen_class = new_class
@@ -65,19 +69,22 @@ class SimpleAgent:
 				
 		#SIMPLE LOGIC
 		if self.game.choice_available:
-			return self.handle_screen()
+			return self.decide(self.handle_screen())
 		if self.game.proceed_available:
-			return ProceedAction()
+			return self.decide(ProceedAction())
 		if self.game.play_available:
 			if self.game.room_type == "MonsterRoomBoss" and len(self.game.get_real_potions()) > 0:
 				potion_action = self.use_next_potion()
 				if potion_action is not None:
-					return potion_action
-			return self.get_play_card_action()
+					return self.decide(potion_action)
+			return self.decide(self.get_play_card_action())
 		if self.game.end_available:
-			return EndTurnAction()
+			return self.decide(EndTurnAction())
 		if self.game.cancel_available:
-			return CancelAction()
+			return self.decide(CancelAction())
+
+		self.debug_queue.append("I DON'T KNOW WHAT TO DO AHHHHH")
+		return Action() # "state"
 
 	def get_next_action_out_of_game(self):
 		self.debug_queue.append("starting game")

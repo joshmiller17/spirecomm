@@ -61,6 +61,7 @@ class Coordinator:
 		self.in_game = False
 		self.last_game_state = None
 		self.last_error = None
+		self.last_msg = ""
 		self.logfile = open("ai_comm.log","w")
 		print("Communicator: Init ", file=self.logfile, flush=True)
 
@@ -144,6 +145,9 @@ class Coordinator:
 		"""
 		print("Communicator: register_out_of_game_callback", file=self.logfile, flush=True)
 		self.out_of_game_callback = new_callback
+		
+	def view_last_msg(self):
+		return self.last_msg
 
 	def get_next_raw_message(self, block=False):
 		"""Get the next message from Communication Mod as a string
@@ -154,7 +158,8 @@ class Coordinator:
 		:rtype: str
 		"""
 		if block or not self.input_queue.empty():
-			return self.input_queue.get()
+			self.last_msg = self.input_queue.get()
+			return self.last_msg
 
 	def receive_game_state_update(self, block=False, perform_callbacks=True):
 		"""Using the next message from Communication Mod, update the stored game state
