@@ -65,7 +65,7 @@ class Base(BoxLayout):
 	def do_communication(self, dt):
 		if self.paused: # FIXME at some point, reconfigure pause to just halt everything maybe?
 			return
-		new_msg = self.agent.get_next_msg()
+		new_msg = str(self.agent.get_next_msg())
 		if new_msg != "":
 			self.input_text.text += self.agent.get_next_msg() + "\n"
 		comm_msg = self.coordinator.view_last_msg()
@@ -111,8 +111,7 @@ class Base(BoxLayout):
 			return True
 			
 		if msg == "resend":
-			self.coordinator.re_execute_last_action()
-			self.coordinator.receive_game_state_update()
+			self.coordinator.receive_game_state_update(repeat=True)
 			return True
 			
 		if msg == "clear":

@@ -57,15 +57,14 @@ class SimpleAgent:
 			self.priorities = random.choice(list(PlayerClass))  # Simple FIXME
 
 	def handle_error(self, error):
-		self.debug_queue.append("error")
-		self.debug_queue.append(error)
-		raise Exception(error)
+		self.debug_queue.append("ERROR: " + str(error))
+		print(self.get_next_action_in_game(self.game))
+		#raise Exception(error)
 
 	def get_next_action_in_game(self, game_state):
 		self.game = game_state
 		STATE = self.game
 		time.sleep(AI_DELAY)
-		self.debug_queue.append("action")
 				
 		#SIMPLE LOGIC
 		err = False

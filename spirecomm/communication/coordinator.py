@@ -113,7 +113,7 @@ class Coordinator:
 		action.execute(self)
 		
 	def re_execute_last_action(self):
-		self.actions_played_queue.put(action)
+		self.actions_played_queue.put(self.last_action)
 		self.last_action.execute(self)
 
 	def execute_next_action_if_ready(self):
@@ -172,8 +172,9 @@ class Coordinator:
 		if block or not self.input_queue.empty():
 			self.last_msg = self.input_queue.get()
 			return self.last_msg
+			
 
-	def receive_game_state_update(self, block=False, perform_callbacks=True):
+	def receive_game_state_update(self, block=False, perform_callbacks=True, repeat=False):
 		"""Using the next message from Communication Mod, update the stored game state
 
 		:param block: set to True to wait for the next message
@@ -182,7 +183,12 @@ class Coordinator:
 		:type perform_callbacks: bool
 		:return: whether a message was received
 		"""
-		message = self.get_next_raw_message(block)
+		message = ""
+		if repeat:
+			message = self.last_msg
+		else:
+			message = self.get_next_raw_message(block)
+		
 		if message is not None:
 			communication_state = json.loads(message)
 			self.last_error = communication_state.get("error", None)
