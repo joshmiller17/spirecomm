@@ -72,6 +72,9 @@ class Base(BoxLayout):
 		if comm_msg != self.last_comm:
 			self.input_text.text += comm_msg + "\n"
 			self.last_comm = comm_msg
+		action_msg = self.coordinator.get_action_played()
+		if action_msg is not None:
+			self.input_text.text += str(action_msg) + "\n"
 		#message = self.coordinator.get_next_raw_message()
 		#if message is not None:
 		#	self.input_text.text = message + '\n' + self.agent.get_next_msg()
@@ -105,13 +108,16 @@ class Base(BoxLayout):
 			for thread in threading.enumerate():
 				print(thread, file=self.log, flush=True)
 				print(thread.isAlive(), file=self.log, flush=True)
-			
 			return True
 			
 		if msg == "resend":
-			self.agent.get_next_action_in_game(self.coordinator.view_last_msg())
+			self.coordinator.re_execute_last_action()
+			self.coordinator.receive_game_state_update()
 			return True
 			
+		if msg == "clear":
+			self.input_text.text = ""
+			return True
 			
 		return False
 
@@ -137,6 +143,7 @@ def run_agent(f, communication_coordinator):
 		#agent.change_class(chosen_class)
 		print("Agent: new game", file=f, flush=True)
 		result = communication_coordinator.play_one_game(PlayerClass.IRONCLAD)
+		print("Agent: game ended in {}" "victory" if result else "defeat", file=f, flush=True)
 		#result = coordinator.play_one_game(chosen_class)
 
 def launch_gui():

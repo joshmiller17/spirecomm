@@ -46,6 +46,7 @@ class Coordinator:
 	def __init__(self):
 		self.input_queue = queue.Queue()
 		self.output_queue = queue.Queue()
+		self.actions_played_queue = queue.Queue()
 		self.input_thread = threading.Thread(target=read_stdin, args=(self.input_queue,))
 		self.output_thread = threading.Thread(target=write_stdout, args=(self.output_queue,))
 		self.input_thread.daemon = True
@@ -62,6 +63,7 @@ class Coordinator:
 		self.last_game_state = None
 		self.last_error = None
 		self.last_msg = ""
+		self.last_action = None
 		self.logfile = open("ai_comm.log","w")
 		print("Communicator: Init ", file=self.logfile, flush=True)
 
@@ -106,7 +108,13 @@ class Coordinator:
 		:return: None
 		"""
 		action = self.action_queue.popleft()
+		self.last_action = action
+		self.actions_played_queue.put(action)
 		action.execute(self)
+		
+	def re_execute_last_action(self):
+		self.actions_played_queue.put(action)
+		self.last_action.execute(self)
 
 	def execute_next_action_if_ready(self):
 		"""Immediately execute the next action in the action queue, if ready to do so
@@ -148,6 +156,10 @@ class Coordinator:
 		
 	def view_last_msg(self):
 		return self.last_msg
+		
+	def get_action_played(self):
+		if not self.actions_played_queue.empty():
+			return self.actions_played_queue.get()
 
 	def get_next_raw_message(self, block=False):
 		"""Get the next message from Communication Mod as a string
