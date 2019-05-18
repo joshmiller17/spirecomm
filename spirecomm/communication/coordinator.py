@@ -18,7 +18,7 @@ def read_stdin(input_queue):
 	"""
 	while True:
 		stdin_input = ""
-		#print("Communicator: read_stdin", file=self.logfile)
+		#print("Communicator: read_stdin", file=self.logfile, flush=True)
 		while True:
 			input_char = sys.stdin.read(1)
 			if input_char == '\n':
@@ -44,7 +44,6 @@ class Coordinator:
 	"""An object to coordinate communication with Slay the Spire"""
 
 	def __init__(self):
-		print("test")
 		self.input_queue = queue.Queue()
 		self.output_queue = queue.Queue()
 		self.input_thread = threading.Thread(target=read_stdin, args=(self.input_queue,))
@@ -62,8 +61,8 @@ class Coordinator:
 		self.in_game = False
 		self.last_game_state = None
 		self.last_error = None
-		self.logfile = open("ai_comm.log","a")
-		print("Communicator: Init ", file=self.logfile)
+		self.logfile = open("ai_comm.log","w")
+		print("Communicator: Init ", file=self.logfile, flush=True)
 
 	def signal_ready(self):
 		"""Indicate to Communication Mod that setup is complete
@@ -71,7 +70,7 @@ class Coordinator:
 		Must be used once, before any other commands can be sent.
 		:return: None
 		"""
-		print("Communicator: signal_ready", file=self.logfile)
+		print("Communicator: signal_ready", file=self.logfile, flush=True)
 		self.send_message("ready")
 
 	def send_message(self, message):
@@ -81,7 +80,6 @@ class Coordinator:
 		:type message: str
 		:return: None
 		"""
-		print("Communicator: send_message", file=self.logfile)
 		self.output_queue.put(message)
 		self.game_is_ready = False
 
@@ -92,7 +90,6 @@ class Coordinator:
 		:type action: Action
 		:return: None
 		"""
-		print("Communicator: add_action_to_queue", file=self.logfile)
 		self.action_queue.append(action)
 
 	def clear_actions(self):
@@ -100,7 +97,6 @@ class Coordinator:
 
 		:return: None
 		"""
-		print("Communicator: clear_actions", file=self.logfile)
 		self.action_queue.clear()
 
 	def execute_next_action(self):
@@ -108,7 +104,6 @@ class Coordinator:
 
 		:return: None
 		"""
-		print("Communicator: execute_next_action", file=self.logfile)
 		action = self.action_queue.popleft()
 		action.execute(self)
 
@@ -117,7 +112,6 @@ class Coordinator:
 
 		:return: None
 		"""
-		print("Communicator: execute_next_action_if_ready", file=self.logfile)
 		if len(self.action_queue) > 0 and self.action_queue[0].can_be_executed(self):
 			self.execute_next_action()
 
@@ -128,7 +122,7 @@ class Coordinator:
 		:type new_callback: function(game_state: Game) -> Action
 		:return: None
 		"""
-		print("Communicator: register_state_change_callback", file=self.logfile)
+		print("Communicator: register_state_change_callback", file=self.logfile, flush=True)
 		self.state_change_callback = new_callback
 
 	def register_command_error_callback(self, new_callback):
@@ -138,7 +132,7 @@ class Coordinator:
 		:type new_callback: function(error: str) -> Action
 		:return: None
 		"""
-		print("Communicator: register_command_error_callback", file=self.logfile)
+		print("Communicator: register_command_error_callback", file=self.logfile, flush=True)
 		self.error_callback = new_callback
 
 	def register_out_of_game_callback(self, new_callback):
@@ -148,7 +142,7 @@ class Coordinator:
 		:type new_callback: function() -> Action
 		:return: None
 		"""
-		print("Communicator: register_out_of_game_callback", file=self.logfile)
+		print("Communicator: register_out_of_game_callback", file=self.logfile, flush=True)
 		self.out_of_game_callback = new_callback
 
 	def get_next_raw_message(self, block=False):
@@ -159,7 +153,6 @@ class Coordinator:
 		:return: the message from Communication Mod
 		:rtype: str
 		"""
-		print("Communicator: get_next_raw_message", file=self.logfile)
 		if block or not self.input_queue.empty():
 			return self.input_queue.get()
 
@@ -172,7 +165,6 @@ class Coordinator:
 		:type perform_callbacks: bool
 		:return: whether a message was received
 		"""
-		print("Communicator: receive_game_state_update", file=self.logfile)
 		message = self.get_next_raw_message(block)
 		if message is not None:
 			communication_state = json.loads(message)
@@ -204,8 +196,8 @@ class Coordinator:
 
 		:return: None
 		"""
+		print("Communicator: run", file=self.logfile, flush=True)
 		while True:
-			print("Communicator: run", file=self.logfile)
 			self.execute_next_action_if_ready()
 			self.receive_game_state_update(perform_callbacks=True)
 
@@ -221,7 +213,7 @@ class Coordinator:
 		:return: True if the game was a victory, else False
 		:rtype: bool
 		"""
-		print("Communicator: play_one_game", file=self.logfile)
+		print("Communicator: play_one_game", file=self.logfile, flush=True)
 		self.clear_actions()
 		while not self.game_is_ready:
 			self.receive_game_state_update(block=True, perform_callbacks=False)

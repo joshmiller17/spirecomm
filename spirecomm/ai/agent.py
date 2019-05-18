@@ -8,7 +8,7 @@ from spirecomm.spire.screen import RestOption
 from spirecomm.communication.action import *
 from spirecomm.ai.priorities import *
 
-AI_DELAY = 0 # if we want to slow things down
+AI_DELAY = 1 # if we want to slow things down
 ASCENSION = 0
 
 class SimpleAgent:

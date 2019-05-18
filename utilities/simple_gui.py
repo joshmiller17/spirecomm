@@ -5,6 +5,7 @@ import datetime
 import sys
 import time
 import traceback
+import threading
 
 import spirecomm.communication.coordinator as coord
 from spirecomm.ai.agent import SimpleAgent
@@ -23,10 +24,12 @@ from kivy.core.window import Window
 
 class Base(BoxLayout):
 
-	def __init__(self, coordinator, agent):
+	def __init__(self, coordinator, agent, f):
 		super().__init__(orientation='vertical')
 		self.coordinator = coordinator
 		self.agent = agent
+		self.log = f
+		print("Base: Init", file=self.log, flush=True)
 
 		self.input_text = TextInput(size_hint=(1, 10))
 		self.input_text.text = ""
@@ -42,6 +45,14 @@ class Base(BoxLayout):
 		self.button = Button(text='Send', size_hint=(1, 1))
 		self.button.bind(on_press=self.send_output)
 		self.add_widget(self.button)
+		
+		self.pause = Button(text='Pause (Not implemented)', size_hint=(1, 1))
+		self.pause.bind(on_press=self.do_pause)
+		self.add_widget(self.pause)
+		
+		self.resume = Button(text='Resume (Not implemented)', size_hint=(1, 1))
+		self.resume.bind(on_press=self.do_resume)
+		self.add_widget(self.resume)
 
 		self.max_history_lines = 5
 		self.history_lines = collections.deque(maxlen=self.max_history_lines)
@@ -49,11 +60,22 @@ class Base(BoxLayout):
 		Window.bind(on_key_up=self.key_callback)
 
 	def do_communication(self, dt):
-		message = self.coordinator.get_next_raw_message()
-		if message is not None:
-			self.input_text.text = message + '\n' + self.agent.get_next_msg()
-		self.coordinator.execute_next_action_if_ready()
+		new_msg = self.agent.get_next_msg()
+		if new_msg != "":
+			self.input_text.text += self.agent.get_next_msg() + "\n"
+		#message = self.coordinator.get_next_raw_message()
+		#if message is not None:
+		#	self.input_text.text = message + '\n' + self.agent.get_next_msg()
+		#self.coordinator.execute_next_action_if_ready()
 
+	# TODO
+	def do_pause(self, instance=None):
+		pass
+	
+	# TODO
+	def do_resume(self, instance=None):
+		pass
+		
 	def send_output(self, instance=None, text=None):
 		if text is None:
 			text = self.output_text.text
@@ -70,43 +92,52 @@ class Base(BoxLayout):
 
 class CommunicationApp(App):
 
-	def __init__(self, coordinator, agent):
+	def __init__(self, coordinator, agent, f):
 		super().__init__()
 		self.coordinator = coordinator
 		self.agent = agent
-		
+		self.log = f
+		print("Kivy: Init", file=self.log, flush=True)
 
 	def build(self):
-		base = Base(self.coordinator, self.agent)
+		base = Base(self.coordinator, self.agent, self.log)
 		Clock.schedule_interval(base.do_communication, 1.0 / 60.0)
 		return base
 
+		
+def run_agent(f, communication_coordinator):
+	#Play games forever, cycling through the various classes
+	for chosen_class in itertools.cycle(PlayerClass):
+		#agent.change_class(chosen_class)
+		print("Agent: new game", file=f, flush=True)
+		result = communication_coordinator.play_one_game(PlayerClass.IRONCLAD)
+		#result = coordinator.play_one_game(chosen_class)
 
 def launch_gui():
-	f=open("ai.log","a")
-	print("GUI: Init " + str(time.time()), file=f)
+	f=open("ai.log","w")
+	print("GUI: Init " + str(time.time()), file=f, flush=True)
 	agent = SimpleAgent(f)
-	print("GUI: Register agent", file=f)
+	print("GUI: Register agent", file=f, flush=True)
 	communication_coordinator = coord.Coordinator()
-	print("GUI: Register coordinator", file=f)
+	print("GUI: Register coordinator", file=f, flush=True)
 	communication_coordinator.signal_ready()
-	print("GUI: Ready", file=f)
+	print("GUI: Ready", file=f, flush=True)
 	communication_coordinator.register_command_error_callback(agent.handle_error)
 	communication_coordinator.register_state_change_callback(agent.get_next_action_in_game)
 	communication_coordinator.register_out_of_game_callback(agent.get_next_action_out_of_game)
-	print("GUI: Registered coordinator actions", file=f)
-	CommunicationApp(communication_coordinator, agent).run()
-	print("GUI: Running", file=f)
-
-	Play games forever, cycling through the various classes
-	for chosen_class in itertools.cycle(PlayerClass):
-		#agent.change_class(chosen_class)
-		result = coordinator.play_one_game(PlayerClass.IRONCLAD)
-		#result = coordinator.play_one_game(chosen_class)
+	print("GUI: Registered coordinator actions", file=f, flush=True)
+	agent_thread = threading.Thread(target=run_agent, args=(f,communication_coordinator))
+	agent_thread.daemon = True
+	print("Agent: Init", file=f, flush=True)
+	agent_thread.start()
+	print("Agent: Starting", file=f, flush=True)
+	print("GUI: Starting mainloop", file=f, flush=True)
+	CommunicationApp(communication_coordinator, agent, f).run()
+	
 
 if __name__ == "__main__":	
 	lf = open("err.log", "w")
 	try:
 		launch_gui()
 	except Exception as e:
-		print(traceback.format_exc())
+		print(traceback.format_exc(), file=lf, flush=True)
