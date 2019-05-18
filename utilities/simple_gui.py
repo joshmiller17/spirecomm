@@ -3,6 +3,8 @@ import collections
 import itertools
 import datetime
 import sys
+import time
+import traceback
 
 import spirecomm.communication.coordinator as coord
 from spirecomm.ai.agent import SimpleAgent
@@ -81,18 +83,30 @@ class CommunicationApp(App):
 
 
 def launch_gui():
-	agent = SimpleAgent()
+	f=open("ai.log","a")
+	print("GUI: Init " + str(time.time()), file=f)
+	agent = SimpleAgent(f)
+	print("GUI: Register agent", file=f)
 	communication_coordinator = coord.Coordinator()
+	print("GUI: Register coordinator", file=f)
 	communication_coordinator.signal_ready()
+	print("GUI: Ready", file=f)
 	communication_coordinator.register_command_error_callback(agent.handle_error)
 	communication_coordinator.register_state_change_callback(agent.get_next_action_in_game)
 	communication_coordinator.register_out_of_game_callback(agent.get_next_action_out_of_game)
+	print("GUI: Registered coordinator actions", file=f)
 	CommunicationApp(communication_coordinator, agent).run()
-	
-	# Play games forever, cycling through the various classes
-	#for chosen_class in itertools.cycle(PlayerClass):
-	#	agent.change_class(chosen_class)
-	#	result = coordinator.play_one_game(chosen_class)
+	print("GUI: Running", file=f)
+
+	Play games forever, cycling through the various classes
+	for chosen_class in itertools.cycle(PlayerClass):
+		#agent.change_class(chosen_class)
+		result = coordinator.play_one_game(PlayerClass.IRONCLAD)
+		#result = coordinator.play_one_game(chosen_class)
 
 if __name__ == "__main__":	
-	launch_gui()
+	lf = open("err.log", "w")
+	try:
+		launch_gui()
+	except Exception as e:
+		print(traceback.format_exc())

@@ -13,12 +13,13 @@ ASCENSION = 0
 
 class SimpleAgent:
 
-	def __init__(self, chosen_class=PlayerClass.IRONCLAD):
+	def __init__(self, logfile, chosen_class=PlayerClass.IRONCLAD):
 		self.game = Game()
 		self.chosen_class = chosen_class
 		self.change_class(chosen_class)
 		self.debug_queue = ["Init."]
 		self.cmd_queue = []
+		self.log = logfile
 				
 		# SIMPLE TRAITS
 		self.errors = 0
