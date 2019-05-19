@@ -2,6 +2,8 @@ import math
 
 class Priority:
 
+	CARD_VALUES = []
+
     CARD_PRIORITY_LIST = []
 
     PLAY_PRIORITY_LIST = []
@@ -453,9 +455,12 @@ class SilentPriority(Priority):
         "White Beast Statue",
         "Calling Bell",
     ]
-
+	
 
 class IroncladPriority(Priority):
+
+	CARD_VALUES = { # Dmg, Mit, Scaling Dmg, Scaling Mit, AoE, Draw, Utility, Undefined, Undefined, Undefined, Undefined, Undefined
+	}
 
     CARD_PRIORITY_LIST = [
         "Apotheosis",

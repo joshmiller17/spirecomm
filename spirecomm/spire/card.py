@@ -38,6 +38,8 @@ class Card:
 		self.value["scaling damage"] = None
 		self.value["scaling mitigation"] = None
 		self.value["aoe"] = None
+		self.value["draw"] = None
+		self.value["utility"] = None
 
     @classmethod
     def from_json(cls, json_object):
