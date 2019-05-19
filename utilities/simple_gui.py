@@ -67,14 +67,19 @@ class Base(BoxLayout):
 			return
 		new_msg = str(self.agent.get_next_msg())
 		if new_msg != "":
-			self.input_text.text += self.agent.get_next_msg() + "\n"
-		comm_msg = self.coordinator.view_last_msg()
-		if comm_msg != self.last_comm:
-			self.input_text.text += comm_msg + "\n"
-			self.last_comm = comm_msg
+			self.input_text.text += new_msg + "\n"
+			
+		# We no longer care to print out the raw state of the game
+		#comm_msg = self.coordinator.view_last_msg()
+		#if comm_msg != self.last_comm:
+		#	self.input_text.text += comm_msg + "\n"
+		#	self.last_comm = comm_msg
+		
 		action_msg = self.coordinator.get_action_played()
 		if action_msg is not None:
-			self.input_text.text += str(action_msg) + "\n"
+			self.input_text.text += "> " + str(action_msg) + "\n"
+			
+		# Original Input GUI
 		#message = self.coordinator.get_next_raw_message()
 		#if message is not None:
 		#	self.input_text.text = message + '\n' + self.agent.get_next_msg()
@@ -85,6 +90,7 @@ class Base(BoxLayout):
 	
 	def do_resume(self, instance=None):
 		self.paused = False
+		self.reconnect()
 		
 	def send_output(self, instance=None, text=None):
 		if text is None:
@@ -111,7 +117,7 @@ class Base(BoxLayout):
 			return True
 			
 		if msg == "resend":
-			self.coordinator.receive_game_state_update(repeat=True)
+			self.reconnect()
 			return True
 			
 		if msg == "clear":
@@ -119,6 +125,10 @@ class Base(BoxLayout):
 			return True
 			
 		return False
+		
+	def reconnect(self):
+		self.input_text.text += "Attempting to reconnect..." + "\n"
+		self.coordinator.state_change_callback(self.agent.game)
 
 
 class CommunicationApp(App):

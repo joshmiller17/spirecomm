@@ -84,7 +84,7 @@ class Monster(Character):
         self.monster_id = monster_id
         self.intent = intent
         self.half_dead = half_dead
-        self.is_gone = is_gone
+        self.is_gone = is_gone # dead or out of combat
         self.move_id = move_id
         self.move_base_damage = move_base_damage
         self.move_adjusted_damage = move_adjusted_damage

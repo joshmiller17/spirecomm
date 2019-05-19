@@ -1,5 +1,7 @@
+from __future__ import division
 import time
 import random
+import collections
 
 from spirecomm.spire.game import Game
 from spirecomm.spire.character import Intent, PlayerClass
@@ -8,7 +10,7 @@ from spirecomm.spire.screen import RestOption
 from spirecomm.communication.action import *
 from spirecomm.ai.priorities import *
 
-AI_DELAY = 1 # if we want to slow things down
+AI_DELAY = 0.5 # if we want to slow things down
 ASCENSION = 0
 
 class SimpleAgent:
@@ -20,12 +22,11 @@ class SimpleAgent:
 		self.debug_queue = ["Init."]
 		self.cmd_queue = []
 		self.log = logfile
+		self.skipping_card = False
 				
 		# SIMPLE TRAITS
 		self.errors = 0
 		self.choose_good_card = False
-		self.skipped_cards = False
-		self.visited_shop = False
 		self.map_route = []
 		self.priorities = Priority()
 		
@@ -35,6 +36,9 @@ class SimpleAgent:
 		except:
 			return ""
 			
+	def think(self, msg):
+		self.debug_queue.append(msg)
+			
 	def get_next_cmd(self):
 		try:
 			return self.cmd_queue.pop()
@@ -42,7 +46,7 @@ class SimpleAgent:
 			return "STATE"
 			
 	def decide(self, action):
-		self.debug_queue.append(action)
+		#self.debug_queue.append(action)
 		return action
 		
 	def change_class(self, new_class):
@@ -68,22 +72,19 @@ class SimpleAgent:
 				
 		#SIMPLE LOGIC
 		err = False
+		self.compute_smart_state()
 		try:
-			if self.game.choice_available:
-				return self.decide(self.handle_screen())
-			if self.game.proceed_available:
-				return self.decide(ProceedAction())
-			if self.game.play_available:
-				if self.game.room_type == "MonsterRoomBoss" and len(self.game.get_real_potions()) > 0:
-					potion_action = self.use_next_potion()
-					if potion_action is not None:
-						return self.decide(potion_action)
-				return self.decide(self.get_play_card_action())
-			if self.game.end_available:
-				return self.decide(EndTurnAction())
-			if self.game.cancel_available:
-				return self.decide(CancelAction())
-			self.debug_queue.append("I DON'T KNOW WHAT TO DO AHHHHH")
+			while(True):
+				if self.game.choice_available:
+					return self.decide(self.handle_screen())
+				if self.game.proceed_available:
+					return self.decide(ProceedAction())
+				if self.game.play_available or self.game.end_available:
+					return self.handle_combat()
+				if self.game.cancel_available:
+					return self.decide(CancelAction())
+				self.debug_queue.append("Did you pause? I don't know what to do! I'll just wait a sec...")
+				time.sleep(5)
 			err = True
 		except Exception as e:
 			err = True
@@ -95,8 +96,44 @@ class SimpleAgent:
 		self.debug_queue.append("starting game")
 		return StartGameAction(self.chosen_class, ascension_level=ASCENSION)
 		
+	def compute_smart_state(self):
+		pass
+		#g = self.game
+		#hp_percent = (g.current_hp * 100.0) / g.max_hp
+		#self.think("I'm at {0:.0f}% HP".format(hp_percent))
+		
+		for monster in self.game.monsters:
+			if monster.half_dead:
+				self.think("{} ({}) is half-dead!".format(monster.name, monster.monster_index))
+			#if monster.is_gone:
+			#	self.think("{} ({}) is gone!".format(monster.name, monster.monster_index))
+			if monster.intent.is_attack():
+				if monster.move_adjusted_damage is not None:
+					self.think("{} ({}) is hitting me for {}x{} damage".format(monster.name, monster.monster_index, monster.move_adjusted_damage, monster.move_hits))
+				else: 
+					self.think("{} ({}) is hitting me for {} damage".format(monster.name, monster.monster_index, monster.incoming_damage))
+		
+		# FIXME map_route isn't actually nodes, but a set of X coords
+		#upcoming_rooms = collections.defaultdict(int)
+		#self.generate_map_route()
+		#for node in self.map_route:
+		#	upcoming_rooms[node.symbol] += 1
+		#self.think("My chosen map route has these rooms:")
+		#for key,value in upcoming_rooms.items():
+		#	self.think("{}.{}".format(key,value))	
+		
+		
 		
 # ---------------------------------------------
+
+	def handle_combat(self):
+		if self.game.room_type == "MonsterRoomBoss" and len(self.game.get_real_potions()) > 0:
+			potion_action = self.use_next_potion()
+			if potion_action is not None:
+				return self.decide(potion_action)
+		if self.game.play_available:
+			return self.decide(self.get_play_card_action())
+		return self.decide(EndTurnAction())
 
 	def is_monster_attacking(self):
 		for monster in self.game.monsters:
@@ -174,51 +211,71 @@ class SimpleAgent:
 				else:
 					return PotionAction(True, potion=potion)
 
+	# TODO
+	def handle_event(self):
+		#if self.game.screen.event_id in ["Vampires", "Masked Bandits", "Knowing Skull", "Ghosts", "Liars Game", "Golden Idol", "Drug Dealer", "The Library"]:
+		#		return ChooseAction(len(self.game.screen.options) - 1)
+		return ChooseAction(0)
+		
+	# TODO
+	def handle_chest(self):
+		return OpenChestAction()
+		
+	# TODO
+	def handle_shop(self):
+		return ProceedAction()
+		#return ChooseShopkeeperAction()
+		
+	# TODO
+	def handle_shop_screen(self):
+		if self.game.screen.purge_available and self.game.gold >= self.game.screen.purge_cost:
+			return ChooseAction(name="purge")
+		for card in self.game.screen.cards:
+			if self.game.gold >= card.price and not self.priorities.should_skip(card):
+				return BuyCardAction(card)
+		for relic in self.game.screen.relics:
+			if self.game.gold >= relic.price:
+				return BuyRelicAction(relic)
+		return CancelAction()
+		
+		
+	# TODO
+	def handle_rewards(self):
+		for reward_item in self.game.screen.rewards:
+			if reward_item.reward_type == RewardType.POTION and self.game.are_potions_full():
+				continue
+			elif reward_item.reward_type == RewardType.CARD and self.skipping_card:
+				continue
+			else:
+				return CombatRewardAction(reward_item)
+		return ProceedAction()
+		
+	# TODO
+	def handle_boss_reward(self):
+		relics = self.game.screen.relics
+		best_boss_relic = self.priorities.get_best_boss_relic(relics)
+		return BossRewardAction(best_boss_relic)
+		
+		
 	def handle_screen(self):
 		if self.game.screen_type == ScreenType.EVENT:
-			if self.game.screen.event_id in ["Vampires", "Masked Bandits", "Knowing Skull", "Ghosts", "Liars Game", "Golden Idol", "Drug Dealer", "The Library"]:
-				return ChooseAction(len(self.game.screen.options) - 1)
-			else:
-				return ChooseAction(0)
+			return self.handle_event()
 		elif self.game.screen_type == ScreenType.CHEST:
-			return OpenChestAction()
+			return self.handle_chest()
 		elif self.game.screen_type == ScreenType.SHOP_ROOM:
-			if not self.visited_shop:
-				self.visited_shop = True
-				return ChooseShopkeeperAction()
-			else:
-				self.visited_shop = False
-				return ProceedAction()
+			return self.handle_shop()
 		elif self.game.screen_type == ScreenType.REST:
 			return self.choose_rest_option()
 		elif self.game.screen_type == ScreenType.CARD_REWARD:
 			return self.choose_card_reward()
 		elif self.game.screen_type == ScreenType.COMBAT_REWARD:
-			for reward_item in self.game.screen.rewards:
-				if reward_item.reward_type == RewardType.POTION and self.game.are_potions_full():
-					continue
-				elif reward_item.reward_type == RewardType.CARD and self.skipped_cards:
-					continue
-				else:
-					return CombatRewardAction(reward_item)
-			self.skipped_cards = False
-			return ProceedAction()
+			return self.handle_rewards()
 		elif self.game.screen_type == ScreenType.MAP:
 			return self.make_map_choice()
 		elif self.game.screen_type == ScreenType.BOSS_REWARD:
-			relics = self.game.screen.relics
-			best_boss_relic = self.priorities.get_best_boss_relic(relics)
-			return BossRewardAction(best_boss_relic)
+			return self.handle_boss_reward()
 		elif self.game.screen_type == ScreenType.SHOP_SCREEN:
-			if self.game.screen.purge_available and self.game.gold >= self.game.screen.purge_cost:
-				return ChooseAction(name="purge")
-			for card in self.game.screen.cards:
-				if self.game.gold >= card.price and not self.priorities.should_skip(card):
-					return BuyCardAction(card)
-			for relic in self.game.screen.relics:
-				if self.game.gold >= relic.price:
-					return BuyRelicAction(relic)
-			return CancelAction()
+			return self.handle_shop_screen();
 		elif self.game.screen_type == ScreenType.GRID:
 			if not self.game.choice_available:
 				return ProceedAction()
@@ -276,7 +333,7 @@ class SimpleAgent:
 		elif self.game.screen.can_bowl:
 			return CardRewardAction(bowl=True)
 		else:
-			self.skipped_cards = True
+			self.skipping_card = True
 			return CancelAction()
 
 	def generate_map_route(self):

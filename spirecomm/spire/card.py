@@ -32,6 +32,12 @@ class Card:
         self.price = price
         self.is_playable = is_playable
         self.exhausts = exhausts
+		self.value = {}
+		self.value["damage"] = None
+		self.value["mitigation"] = None
+		self.value["scaling damage"] = None
+		self.value["scaling mitigation"] = None
+		self.value["aoe"] = None
 
     @classmethod
     def from_json(cls, json_object):
