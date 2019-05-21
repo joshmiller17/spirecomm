@@ -10,6 +10,8 @@ from spirecomm.spire.screen import RestOption
 from spirecomm.communication.action import *
 from spirecomm.ai.priorities import *
 
+import py_trees
+
 AI_DELAY = 0.5 # if we want to slow things down
 ASCENSION = 0
 
@@ -23,12 +25,30 @@ class SimpleAgent:
 		self.cmd_queue = []
 		self.log = logfile
 		self.skipping_card = False
+		self.root = py_trees.composites.Selector("Selector")
+		self.init_behavior_tree(self.root)
+		self.behavior_tree = py_trees.trees.BehaviorTree(self.root)
+		# call behavior_tree.tick() or .tick_once() for one tick, I think
+
 				
 		# SIMPLE TRAITS
 		self.errors = 0
 		self.choose_good_card = False
 		self.map_route = []
+		self.upcoming_rooms = []
 		self.priorities = Priority()
+		
+	def init_behavior_tree(self, root):
+		# Template stuff FIXME
+		high = py_trees.behaviours.Success(name="High Priority")
+		med = py_trees.behaviours.Success(name="Med Priority")
+		low = py_trees.behaviours.Success(name="Low Priority")
+		root.add_children([high,med,low])
+		
+	# For this to get plugged in, need to set pre_tick_handler = this func at some point
+	# Can also set a post tick handler
+	def pre_tick_handler(self.behavior_tree):
+		pass
 		
 	def get_next_msg(self):
 		try:
@@ -335,7 +355,12 @@ class SimpleAgent:
 		else:
 			self.skipping_card = True
 			return CancelAction()
+			
+	# TODO generate_map_route, then get the actual symbols in order that we'll encounter them
+	def get_informative_path(self):
+		pass
 
+	# TODO How many possible paths are there? Should I just iterate through all possibilities and pick the one that best fits a set of heuristics?
 	def generate_map_route(self):
 		node_rewards = self.priorities.MAP_NODE_PRIORITIES.get(self.game.act)
 		best_rewards = {0: {node.x: node_rewards[node.symbol] for node in self.game.map.nodes[0].values()}}
@@ -354,10 +379,13 @@ class SimpleAgent:
 						best_rewards[y+1][child.x] = test_child_reward
 						best_parents[y+1][child.x] = node.x
 		best_path = [0] * (map_height + 1)
+		best_rooms = [0] * (map_height + 1)
 		best_path[map_height] = max(best_rewards[map_height].keys(), key=lambda x: best_rewards[map_height][x])
 		for y in range(map_height, 0, -1):
 			best_path[y - 1] = best_parents[y][best_path[y]]
+			#best_rooms[y - 1] =  # TODO get symbol of best_path[y-1]
 		self.map_route = best_path
+		self.upcoming_rooms = best_rooms
 
 	def make_map_choice(self):
 		if len(self.game.screen.next_nodes) > 0 and self.game.screen.next_nodes[0].y == 0:
