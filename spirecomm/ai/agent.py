@@ -26,9 +26,10 @@ class SimpleAgent:
 		self.log = logfile
 		self.skipping_card = False
 		self.root = py_trees.composites.Selector("Selector")
-		self.init_behavior_tree(self.root)
-		self.behavior_tree = py_trees.trees.BehaviorTree(self.root)
-		# call behavior_tree.tick() or .tick_once() for one tick, I think
+		self.init_behaviour_tree(self.root) # Warning: uses British spelling
+		self.behaviour_tree = py_trees.trees.BehaviourTree(self.root)
+		# call behaviour_tree.tick() for one tick, I think
+		# can use behaviour.tick_once() to tick a specific behaviour
 
 				
 		# SIMPLE TRAITS
@@ -38,7 +39,7 @@ class SimpleAgent:
 		self.upcoming_rooms = []
 		self.priorities = Priority()
 		
-	def init_behavior_tree(self, root):
+	def init_behaviour_tree(self, root):
 		# Template stuff FIXME
 		high = py_trees.behaviours.Success(name="High Priority")
 		med = py_trees.behaviours.Success(name="Med Priority")
@@ -47,7 +48,7 @@ class SimpleAgent:
 		
 	# For this to get plugged in, need to set pre_tick_handler = this func at some point
 	# Can also set a post tick handler
-	def pre_tick_handler(self.behavior_tree):
+	def pre_tick_handler(self.behaviour_tree):
 		pass
 		
 	def get_next_msg(self):
