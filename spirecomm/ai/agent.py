@@ -48,8 +48,8 @@ class SimpleAgent:
 		
 	# For this to get plugged in, need to set pre_tick_handler = this func at some point
 	# Can also set a post tick handler
-	def pre_tick_handler(self.behaviour_tree):
-		pass
+	#def pre_tick_handler(self.behaviour_tree):
+	#	pass
 		
 	def get_next_msg(self):
 		try:
