@@ -12,7 +12,7 @@ from spirecomm.ai.priorities import *
 
 import py_trees
 
-AI_DELAY = 0.5 # if we want to slow things down
+AI_DELAY = 0.0 # if we want to slow things down
 ASCENSION = 0
 
 class SimpleAgent:
@@ -87,9 +87,11 @@ class SimpleAgent:
 		#raise Exception(error)
 
 	def get_next_action_in_game(self, game_state):
+		#time.sleep(AI_DELAY)
 		self.game = game_state
 		STATE = self.game
-		time.sleep(AI_DELAY)
+		#print("Not sleeping!?", file=self.logfile, flush=True)
+		
 				
 		#SIMPLE LOGIC
 		err = False
@@ -105,7 +107,7 @@ class SimpleAgent:
 				if self.game.cancel_available:
 					return self.decide(CancelAction())
 				self.debug_queue.append("Did you pause? I don't know what to do! I'll just wait a sec...")
-				time.sleep(5)
+				#time.sleep(3) # TEST
 			err = True
 		except Exception as e:
 			err = True

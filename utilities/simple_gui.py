@@ -10,7 +10,6 @@ import threading
 import spirecomm.communication.coordinator as coord
 from spirecomm.ai.agent import SimpleAgent
 from spirecomm.spire.character import PlayerClass
-from spirecomm.ai.agent import SimpleAgent
 
 os.environ["KIVY_NO_CONSOLELOG"] = "1"
 
@@ -21,7 +20,6 @@ from kivy.uix.scrollview import ScrollView
 from kivy.uix.button import Button
 from kivy.clock import Clock
 from kivy.core.window import Window
-
 
 class Base(BoxLayout):
 
@@ -142,11 +140,34 @@ class CommunicationApp(App):
 
 	def build(self):
 		base = Base(self.coordinator, self.agent, self.log)
-		Clock.schedule_interval(base.do_communication, 1.0 / 60.0)
+		Clock.schedule_interval(base.do_communication, 1.0 / 120.0)
 		return base
 
 		
 def run_agent(f, communication_coordinator):
+	# TEST
+	print("Agent: preparing profiler test", file=f, flush=True)
+	try:
+		import io, cProfile, pstats
+		pr = cProfile.Profile()
+		pr.enable()
+		s = io.StringIO()
+		print("Agent: init profiler test", file=f, flush=True)
+	except Exception as e:
+		print("Error", file=f, flush=True)
+		print(e, file=f, flush=True)
+	
+	result = communication_coordinator.play_one_game(PlayerClass.IRONCLAD)
+	
+	print("Agent: finishing profiler test", file=f, flush=True)
+	pr.disable()
+	sortby = 'cumulative'
+	ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+	ps.print_stats()
+	print(s.getvalue(), file=f, flush=True)
+	
+	return # END TEST
+
 	#Play games forever, cycling through the various classes
 	for chosen_class in itertools.cycle(PlayerClass):
 		#agent.change_class(chosen_class)
