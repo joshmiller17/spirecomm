@@ -7,6 +7,8 @@ import time
 import traceback
 import threading
 
+#import spirecomm
+#print(spirecomm.__file__)
 import spirecomm.communication.coordinator as coord
 from spirecomm.ai.agent import SimpleAgent
 from spirecomm.spire.character import PlayerClass

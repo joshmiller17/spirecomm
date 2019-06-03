@@ -12,7 +12,7 @@ from spirecomm.ai.priorities import *
 
 import py_trees
 
-AI_DELAY = 0.0 # if we want to slow things down
+#AI_DELAY = 0.2 # if we want to slow things down
 ASCENSION = 0
 
 class SimpleAgent:
@@ -30,7 +30,6 @@ class SimpleAgent:
 		self.behaviour_tree = py_trees.trees.BehaviourTree(self.root)
 		# call behaviour_tree.tick() for one tick, I think
 		# can use behaviour.tick_once() to tick a specific behaviour
-
 				
 		# SIMPLE TRAITS
 		self.errors = 0
@@ -38,6 +37,10 @@ class SimpleAgent:
 		self.map_route = []
 		self.upcoming_rooms = []
 		self.priorities = Priority()
+		
+	def llog(self, msg):
+		print(msg, file=self.log, flush=True)
+		self.debug_queue.append(msg)
 		
 	def init_behaviour_tree(self, root):
 		# Template stuff FIXME
@@ -83,15 +86,13 @@ class SimpleAgent:
 
 	def handle_error(self, error):
 		self.debug_queue.append("ERROR: " + str(error))
-		print(self.get_next_action_in_game(self.game))
+		print(self.get_next_action_in_game(self.game), file=self.log, flush=True)
 		#raise Exception(error)
 
 	def get_next_action_in_game(self, game_state):
 		#time.sleep(AI_DELAY)
 		self.game = game_state
 		STATE = self.game
-		#print("Not sleeping!?", file=self.logfile, flush=True)
-		
 				
 		#SIMPLE LOGIC
 		err = False
