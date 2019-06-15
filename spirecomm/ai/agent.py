@@ -12,8 +12,93 @@ from spirecomm.ai.priorities import *
 
 import py_trees
 
-#AI_DELAY = 0.2 # if we want to slow things down
+AI_DELAY = 1.5 # seconds delay per action, useful for actually seeing what's going on
 ASCENSION = 0
+
+class TestBehaviour(py_trees.behaviour.Behaviour):
+	def __init__(self, name):
+		"""
+		Minimal one-time initialisation. A good rule of thumb is
+		to only include the initialisation relevant for being able
+		to insert this behaviour in a tree for offline rendering to
+		dot graphs.
+
+		Other one-time initialisation requirements should be met via
+		the setup() method.
+		"""
+		super(Foo, self).__init__(name)
+
+	def setup(self):
+		"""
+		When is this called?
+		  This function should be either manually called by your program
+		  to setup this behaviour alone, or more commonly, via
+		  :meth:`~py_trees.behaviour.Behaviour.setup_with_descendants`
+		  or :meth:`~py_trees.trees.BehaviourTree.setup`, both of which
+		  will iterate over this behaviour, it's children (it's children's
+		  children ...) calling :meth:`~py_trees.behaviour.Behaviour.setup`
+		  on each in turn.
+
+		  If you have vital initialisation necessary to the success
+		  execution of your behaviour, put a guard in your
+		  :meth:`~py_trees.behaviour.Behaviour.initialise` method
+		  to protect against entry without having been setup.
+
+		What to do here?
+		  Delayed one-time initialisation that would otherwise interfere
+		  with offline rendering of this behaviour in a tree to dot graph
+		  or validation of the behaviour's configuration.
+
+		  Good examples include:
+
+		  - Hardware or driver initialisation
+		  - Middleware initialisation (e.g. ROS pubs/subs/services)
+		  - A parallel checking for a valid policy configuration after
+			children have been added or removed
+		"""
+		pass
+
+	def initialise(self):
+		"""
+		When is this called?
+		  The first time your behaviour is ticked and anytime the
+		  status is not RUNNING thereafter.
+
+		What to do here?
+		  Any initialisation you need before putting your behaviour
+		  to work.
+		"""
+		pass
+
+	def update(self):
+		"""
+		When is this called?
+		  Every time your behaviour is ticked.
+
+		What to do here?
+		  - Triggering, checking, monitoring. Anything...but do not block!
+		  - Set a feedback message
+		  - return a py_trees.common.Status.[RUNNING, SUCCESS, FAILURE]
+		"""
+		ready_to_make_a_decision = random.choice([True, False])
+		decision = random.choice([True, False])
+		if not ready_to_make_a_decision:
+			return py_trees.common.Status.RUNNING
+		elif decision:
+			self.feedback_message = "We are not bar!"
+			return py_trees.common.Status.SUCCESS
+		else:
+			self.feedback_message = "Uh oh"
+			return py_trees.common.Status.FAILURE
+
+	def terminate(self, new_status):
+		"""
+		When is this called?
+		   Whenever your behaviour switches to a non-running state.
+			- SUCCESS || FAILURE : your behaviour's work cycle has finished
+			- INVALID : a higher priority branch has interrupted, or shutting down
+		"""
+		pass
 
 class SimpleAgent:
 
@@ -21,16 +106,16 @@ class SimpleAgent:
 		self.game = Game()
 		self.chosen_class = chosen_class
 		self.change_class(chosen_class)
-		self.debug_queue = ["Init."]
+		self.debug_queue = ["Initting AI.", "Delay timer set to " + str(AI_DELAY)]
 		self.cmd_queue = []
-		self.log = logfile
+		self.logfile = logfile
 		self.skipping_card = False
 		self.root = py_trees.composites.Selector("Selector")
 		self.init_behaviour_tree(self.root) # Warning: uses British spelling
 		self.behaviour_tree = py_trees.trees.BehaviourTree(self.root)
 		# call behaviour_tree.tick() for one tick, I think
 		# can use behaviour.tick_once() to tick a specific behaviour
-				
+		
 		# SIMPLE TRAITS
 		self.errors = 0
 		self.choose_good_card = False
@@ -38,16 +123,15 @@ class SimpleAgent:
 		self.upcoming_rooms = []
 		self.priorities = Priority()
 		
-	def llog(self, msg):
-		print(msg, file=self.log, flush=True)
+	def log(self, msg):
+		print(msg, file=self.logfile, flush=True)
 		self.debug_queue.append(msg)
 		
 	def init_behaviour_tree(self, root):
 		# Template stuff FIXME
-		high = py_trees.behaviours.Success(name="High Priority")
-		med = py_trees.behaviours.Success(name="Med Priority")
-		low = py_trees.behaviours.Success(name="Low Priority")
-		root.add_children([high,med,low])
+		test_leaf = py_trees.behaviours.Success(name="High Priority")
+		root.add_children([test_leaf])
+		self.log("behavior tree initted")
 		
 	# For this to get plugged in, need to set pre_tick_handler = this func at some point
 	# Can also set a post tick handler
@@ -70,7 +154,7 @@ class SimpleAgent:
 			return "STATE"
 			
 	def decide(self, action):
-		#self.debug_queue.append(action)
+		#self.log(action)
 		return action
 		
 	def change_class(self, new_class):
@@ -85,15 +169,12 @@ class SimpleAgent:
 			self.priorities = random.choice(list(PlayerClass))  # Simple FIXME
 
 	def handle_error(self, error):
-		self.debug_queue.append("ERROR: " + str(error))
-		print(self.get_next_action_in_game(self.game), file=self.log, flush=True)
+		self.log("ERROR: " + str(error))
+		print(self.get_next_action_in_game(self.game), file=self.logfile, flush=True)
 		#raise Exception(error)
-
-	def get_next_action_in_game(self, game_state):
-		#time.sleep(AI_DELAY)
-		self.game = game_state
-		STATE = self.game
-				
+		
+	def default_logic(self, game_state):
+		self.log("default logic called")
 		#SIMPLE LOGIC
 		err = False
 		self.compute_smart_state()
@@ -107,7 +188,7 @@ class SimpleAgent:
 					return self.handle_combat()
 				if self.game.cancel_available:
 					return self.decide(CancelAction())
-				self.debug_queue.append("Did you pause? I don't know what to do! I'll just wait a sec...")
+				self.think("Did you pause? I don't know what to do! I'll just wait a sec...")
 				#time.sleep(3) # TEST
 			err = True
 		except Exception as e:
@@ -116,8 +197,24 @@ class SimpleAgent:
 		if err:
 			return Action() # "state"
 
+	def get_next_action_in_game(self, game_state):
+		time.sleep(AI_DELAY)
+		self.game = game_state
+		STATE = self.game
+		self.log("get next action called")
+		
+		try:
+			self.cmd_queue.append(self.default_logic(game_state))
+		except Exception as e:
+			self.log("agent encountered error")
+			self.log(str(e))
+			print(traceback.format_exc(), file=self.logfile, flush=True)
+		
+		return self.cmd_queue.pop()
+		
+
 	def get_next_action_out_of_game(self):
-		self.debug_queue.append("starting game")
+		self.log("starting game")
 		return StartGameAction(self.chosen_class, ascension_level=ASCENSION)
 		
 	def compute_smart_state(self):
