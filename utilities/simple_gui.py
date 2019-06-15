@@ -16,6 +16,7 @@ from spirecomm.spire.character import PlayerClass
 os.environ["KIVY_NO_CONSOLELOG"] = "1"
 
 from kivy.app import App
+from kivy.lang import Builder
 from kivy.uix.textinput import TextInput
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.scrollview import ScrollView
@@ -36,6 +37,8 @@ class Base(BoxLayout):
 
 		self.input_text = TextInput(size_hint=(1, 10))
 		self.input_text.text = ""
+		self.input_text.foreground_color = (0, 0, 0, 1)
+		self.input_text.background_color = (1, 1, 1, 1)
 		self.input_text.readonly = True
 		self.add_widget(self.input_text)
 
