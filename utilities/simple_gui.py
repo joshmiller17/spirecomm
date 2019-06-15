@@ -131,7 +131,7 @@ class Base(BoxLayout):
 		
 	def reconnect(self):
 		self.input_text.text += "Attempting to reconnect..." + "\n"
-		self.coordinator.state_change_callback(self.agent.game)
+		self.coordinator.unpause_agent()
 
 
 class CommunicationApp(App):
@@ -195,6 +195,7 @@ def launch_gui():
 	communication_coordinator.register_out_of_game_callback(agent.get_next_action_out_of_game)
 	print("GUI: Registered coordinator actions", file=f, flush=True)
 	agent_thread = threading.Thread(target=run_agent, args=(f,communication_coordinator))
+	print("Agent thread is " + str(agent_thread), file=f, flush=True)
 	agent_thread.daemon = True
 	print("Agent: Init", file=f, flush=True)
 	agent_thread.start()

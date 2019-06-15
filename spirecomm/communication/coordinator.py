@@ -3,6 +3,7 @@ import queue
 import threading
 import json
 import collections
+import time
 
 from spirecomm.spire.game import Game
 from spirecomm.spire.screen import ScreenType
@@ -183,6 +184,7 @@ class Coordinator:
 		:type perform_callbacks: bool
 		:return: whether a message was received
 		"""
+		
 		message = ""
 		if repeat:
 			message = self.last_msg
@@ -213,6 +215,14 @@ class Coordinator:
 					self.add_action_to_queue(new_action)
 			return True
 		return False
+		
+	def unpause_agent(self):
+		print("Communicator: game update " + str(time.time()), file=self.logfile, flush=True)
+		print("Communicator's game state:", file=self.logfile, flush=True)
+		print(str(self.last_game_state), file=self.logfile, flush=True)
+		self.last_game_state = Game.from_json(communication_state.get("game_state"), communication_state.get("available_commands"))
+		self.receive_game_state_update()
+		
 
 	def run(self):
 		"""Start executing actions forever

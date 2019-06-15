@@ -12,11 +12,11 @@ from spirecomm.ai.priorities import *
 
 import py_trees
 
-AI_DELAY = 1.5 # seconds delay per action, useful for actually seeing what's going on
+AI_DELAY = 0.5 # seconds delay per action, useful for actually seeing what's going on
 ASCENSION = 0
 
 class TestBehaviour(py_trees.behaviour.Behaviour):
-	def __init__(self, name):
+	def __init__(self, name, agent):
 		"""
 		Minimal one-time initialisation. A good rule of thumb is
 		to only include the initialisation relevant for being able
@@ -26,7 +26,11 @@ class TestBehaviour(py_trees.behaviour.Behaviour):
 		Other one-time initialisation requirements should be met via
 		the setup() method.
 		"""
-		super(Foo, self).__init__(name)
+		super(TestBehaviour, self).__init__(name)
+		self.agent = agent
+		
+	def log(self, msg):
+		self.agent.log(msg)
 
 	def setup(self):
 		"""
@@ -80,16 +84,9 @@ class TestBehaviour(py_trees.behaviour.Behaviour):
 		  - Set a feedback message
 		  - return a py_trees.common.Status.[RUNNING, SUCCESS, FAILURE]
 		"""
-		ready_to_make_a_decision = random.choice([True, False])
-		decision = random.choice([True, False])
-		if not ready_to_make_a_decision:
-			return py_trees.common.Status.RUNNING
-		elif decision:
-			self.feedback_message = "We are not bar!"
-			return py_trees.common.Status.SUCCESS
-		else:
-			self.feedback_message = "Uh oh"
-			return py_trees.common.Status.FAILURE
+		self.log("test leaf tick")
+		self.agent.cmd_queue.append(self.agent.default_logic(self.agent.game))
+		return py_trees.common.Status.SUCCESS
 
 	def terminate(self, new_status):
 		"""
@@ -99,6 +96,7 @@ class TestBehaviour(py_trees.behaviour.Behaviour):
 			- INVALID : a higher priority branch has interrupted, or shutting down
 		"""
 		pass
+		
 
 class SimpleAgent:
 
@@ -110,10 +108,10 @@ class SimpleAgent:
 		self.cmd_queue = []
 		self.logfile = logfile
 		self.skipping_card = False
-		self.root = py_trees.composites.Selector("Selector")
+		self.root = py_trees.composites.Selector("Root")
 		self.init_behaviour_tree(self.root) # Warning: uses British spelling
 		self.behaviour_tree = py_trees.trees.BehaviourTree(self.root)
-		# call behaviour_tree.tick() for one tick, I think
+		# call behaviour_tree.tick() for one tick
 		# can use behaviour.tick_once() to tick a specific behaviour
 		
 		# SIMPLE TRAITS
@@ -124,14 +122,14 @@ class SimpleAgent:
 		self.priorities = Priority()
 		
 	def log(self, msg):
-		print(msg, file=self.logfile, flush=True)
+		print(str(time.time()) + ": " + msg, file=self.logfile, flush=True)
 		self.debug_queue.append(msg)
 		
 	def init_behaviour_tree(self, root):
 		# Template stuff FIXME
-		test_leaf = py_trees.behaviours.Success(name="High Priority")
+		test_leaf = TestBehaviour(name="Test", agent=self)
 		root.add_children([test_leaf])
-		self.log("behavior tree initted")
+		self.log("behaviour tree initted")
 		
 	# For this to get plugged in, need to set pre_tick_handler = this func at some point
 	# Can also set a post tick handler
@@ -154,7 +152,7 @@ class SimpleAgent:
 			return "STATE"
 			
 	def decide(self, action):
-		#self.log(action)
+		self.log(str(action))
 		return action
 		
 	def change_class(self, new_class):
@@ -174,43 +172,37 @@ class SimpleAgent:
 		#raise Exception(error)
 		
 	def default_logic(self, game_state):
-		self.log("default logic called")
-		#SIMPLE LOGIC
-		err = False
-		self.compute_smart_state()
-		try:
-			while(True):
-				if self.game.choice_available:
-					return self.decide(self.handle_screen())
-				if self.game.proceed_available:
-					return self.decide(ProceedAction())
-				if self.game.play_available or self.game.end_available:
-					return self.handle_combat()
-				if self.game.cancel_available:
-					return self.decide(CancelAction())
-				self.think("Did you pause? I don't know what to do! I'll just wait a sec...")
-				#time.sleep(3) # TEST
-			err = True
-		except Exception as e:
-			err = True
-			
-		if err:
-			return Action() # "state"
+	
+		self.log("The game state is " + str(self.game))
+		if self.game.choice_available:
+			return self.decide(self.handle_screen())
+		if self.game.proceed_available:
+			return self.decide(ProceedAction())
+		if self.game.play_available or self.game.end_available:
+			return self.handle_combat()
+		if self.game.cancel_available:
+			return self.decide(CancelAction())
+		self.log("Did you pause? I don't know what to do! I'll just wait a sec...")
+		time.sleep(3)
+		return "STATE"
 
 	def get_next_action_in_game(self, game_state):
 		time.sleep(AI_DELAY)
 		self.game = game_state
 		STATE = self.game
-		self.log("get next action called")
 		
 		try:
-			self.cmd_queue.append(self.default_logic(game_state))
+			self.log("starting tick")
+			self.compute_smart_state()
+			self.behaviour_tree.tick() # should add an action to the self.cmd_queue
+			self.log("finished tick")
 		except Exception as e:
 			self.log("agent encountered error")
 			self.log(str(e))
+			self.log(traceback.format_exc())
 			print(traceback.format_exc(), file=self.logfile, flush=True)
 		
-		return self.cmd_queue.pop()
+		return self.get_next_cmd()
 		
 
 	def get_next_action_out_of_game(self):
