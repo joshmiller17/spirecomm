@@ -52,11 +52,11 @@ class Base(BoxLayout):
 		self.button.bind(on_press=self.send_output)
 		self.add_widget(self.button)
 		
-		self.pause = Button(text='Pause', size_hint=(1, 1))
+		self.pause = Button(text='Pause - NOT IMPLEMENTED', size_hint=(1, 1))
 		self.pause.bind(on_press=self.do_pause)
 		self.add_widget(self.pause)
 		
-		self.resume = Button(text='Resume', size_hint=(1, 1))
+		self.resume = Button(text='Resume - NOT IMPLEMENTED', size_hint=(1, 1))
 		self.resume.bind(on_press=self.do_resume)
 		self.add_widget(self.resume)
 
