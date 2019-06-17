@@ -16,6 +16,7 @@ from spirecomm.spire.character import PlayerClass
 os.environ["KIVY_NO_CONSOLELOG"] = "1"
 
 from kivy.app import App
+from kivy.lang import Builder
 from kivy.uix.textinput import TextInput
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.scrollview import ScrollView
@@ -31,11 +32,12 @@ class Base(BoxLayout):
 		self.agent = agent
 		self.log = f
 		self.last_comm = ""
-		self.paused = False
 		print("Base: Init", file=self.log, flush=True)
 
 		self.input_text = TextInput(size_hint=(1, 10))
 		self.input_text.text = ""
+		self.input_text.foreground_color = (0, 0, 0, 1)
+		self.input_text.background_color = (1, 1, 1, 1)
 		self.input_text.readonly = True
 		self.add_widget(self.input_text)
 
@@ -63,8 +65,6 @@ class Base(BoxLayout):
 		Window.bind(on_key_up=self.key_callback)
 
 	def do_communication(self, dt):
-		if self.paused: # FIXME at some point, reconfigure pause to just halt everything maybe?
-			return
 		new_msg = str(self.agent.get_next_msg())
 		if new_msg != "":
 			self.input_text.text += new_msg + "\n"
@@ -86,11 +86,11 @@ class Base(BoxLayout):
 		#self.coordinator.execute_next_action_if_ready()
 
 	def do_pause(self, instance=None):
-		self.paused = True
+		self.agent.pause()
 	
 	def do_resume(self, instance=None):
-		self.paused = False
-		self.reconnect()
+		self.agent.resume()
+		#self.reconnect()
 		
 	def send_output(self, instance=None, text=None):
 		if text is None:
@@ -128,7 +128,7 @@ class Base(BoxLayout):
 		
 	def reconnect(self):
 		self.input_text.text += "Attempting to reconnect..." + "\n"
-		self.coordinator.state_change_callback(self.agent.game)
+		#self.coordinator.unpause_agent()
 
 
 class CommunicationApp(App):
@@ -150,25 +150,26 @@ def run_agent(f, communication_coordinator):
 	# TEST
 	print("Agent: preparing profiler test", file=f, flush=True)
 	try:
-		import io, cProfile, pstats
-		pr = cProfile.Profile()
-		pr.enable()
-		s = io.StringIO()
-		print("Agent: init profiler test", file=f, flush=True)
+		# import io, cProfile, pstats
+		# pr = cProfile.Profile()
+		# pr.enable()
+		# s = io.StringIO()
+		# print("Agent: init profiler test", file=f, flush=True)
+
+		result = communication_coordinator.play_one_game(PlayerClass.IRONCLAD)
+		print("Agent: first game ended in {}" "victory" if result else "defeat", file=f, flush=True)
+		# print("Agent: finishing profiler test", file=f, flush=True)
+		# pr.disable()
+		# sortby = 'cumulative'
+		# ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+		# ps.print_stats()
+		# print(s.getvalue(), file=f, flush=True)
+	
 	except Exception as e:
-		print("Error", file=f, flush=True)
+		print("Agent thread encountered error:", file=f, flush=True)
 		print(e, file=f, flush=True)
 	
-	result = communication_coordinator.play_one_game(PlayerClass.IRONCLAD)
-	
-	print("Agent: finishing profiler test", file=f, flush=True)
-	pr.disable()
-	sortby = 'cumulative'
-	ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-	ps.print_stats()
-	print(s.getvalue(), file=f, flush=True)
-	
-	return # END TEST
+	# return # END TEST
 
 	#Play games forever, cycling through the various classes
 	for chosen_class in itertools.cycle(PlayerClass):
@@ -192,6 +193,7 @@ def launch_gui():
 	communication_coordinator.register_out_of_game_callback(agent.get_next_action_out_of_game)
 	print("GUI: Registered coordinator actions", file=f, flush=True)
 	agent_thread = threading.Thread(target=run_agent, args=(f,communication_coordinator))
+	print("Agent thread is " + str(agent_thread), file=f, flush=True)
 	agent_thread.daemon = True
 	print("Agent: Init", file=f, flush=True)
 	agent_thread.start()
