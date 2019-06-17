@@ -13,7 +13,7 @@ from spirecomm.ai.priorities import *
 
 import py_trees
 
-AI_DELAY = 0.5 # seconds delay per action, useful for actually seeing what's going on
+AI_DELAY = 0.1 # seconds delay per action, useful for actually seeing what's going on
 ASCENSION = 0
 		
 
@@ -22,10 +22,11 @@ class SimpleAgent:
 	def __init__(self, logfile, chosen_class=PlayerClass.IRONCLAD):
 		self.chosen_class = chosen_class
 		self.change_class(chosen_class)
-		self.debug_queue = ["Initting AI.", "Delay timer set to " + str(AI_DELAY)]
+		self.debug_queue = ["AI Initialized.", "Delay timer set to " + str(AI_DELAY)]
 		self.cmd_queue = []
 		self.logfile = logfile
 		self.skipping_card = False
+		self.paused = False
 		self.root = py_trees.composites.Selector("Root Context Selector")
 		self.init_behaviour_tree(self.root) # Warning: uses British spelling
 		self.behaviour_tree = py_trees.trees.BehaviourTree(self.root)
@@ -40,6 +41,14 @@ class SimpleAgent:
 		self.map_route = []
 		self.upcoming_rooms = []
 		self.priorities = Priority()
+		
+	def pause(self):
+		self.paused = True
+		self.log("Paused")
+		
+	def resume(self):
+		self.paused = False
+		self.log("Resuming")
 		
 	def log(self, msg):
 		print(str(time.time()) + ": " + msg, file=self.logfile, flush=True)
@@ -73,7 +82,7 @@ class SimpleAgent:
 			# return self.decide(CancelAction())
 		
 		root.add_children([choiceContext, proceedContext, combatContext, cancelContext])
-		self.log("behaviour tree initted")
+		self.log("Behaviour Tree initialized.")
 		self.log(py_trees.display.ascii_tree(root))
 		
 	# For this to get plugged in, need to set pre_tick_handler = this func at some point
@@ -94,7 +103,7 @@ class SimpleAgent:
 		try:
 			return self.cmd_queue.pop()
 		except:
-			return "STATE"
+			return Action()
 			
 	def decide(self, action):
 		self.log(str(action))
@@ -111,10 +120,26 @@ class SimpleAgent:
 		else:
 			self.priorities = random.choice(list(PlayerClass))  # Simple FIXME
 
+	# This error handler is called whenever CommMod throws an error
+	# For example, if we open pause menu, the last action we send will be Invalid
+	# Coordinator still needs an action input, so this function needs to return a valid action
 	def handle_error(self, error):
-		self.log("ERROR: " + str(error))
-		print(self.get_next_action_in_game(self.blackboard.game), file=self.logfile, flush=True)
-		raise Exception(error)
+		self.log("Error: " + str(error))
+		if "Invalid command" in str(error):
+			# Assume this just means we're paused
+			self.log("Invalid command error")
+			self.log("zzz")
+			time.sleep(1)
+			return Action()
+		elif "Selected card requires an enemy target" in str(error):
+			# I think this is related to unpausing, we accidentally input an un-initialized play
+			# For now, just try again
+			self.log("Selected card requires target error")
+			self.log("zzz")
+			time.sleep(1)
+			return Action()
+		else:
+			raise Exception(error)
 		
 	def default_logic(self, game_state):
 	
@@ -126,22 +151,23 @@ class SimpleAgent:
 			return self.handle_combat()
 		if self.blackboard.game.cancel_available:
 			return self.decide(CancelAction())
-		self.log("ERROR: Pause logic not implemented. I crash once the game has been paused because once it's unpaused I think my available choices are an empty list. I don't know why, blame the Coordinator.")
-		time.sleep(3)
-		return "STATE"
+		self.log("Error: no choices available. Game paused?")
+		time.sleep(1)
+		return Action()
 
 	def get_next_action_in_game(self, game_state):
 		time.sleep(AI_DELAY)
+		while (self.paused):
+			time.sleep(1)
+			self.log("zzz")
 		self.blackboard.game = game_state
 		
 		try:
-			self.log("starting tick")
 			self.compute_smart_state()
-			self.log("The game state is " + str(self.blackboard.game))
+			self.log(str(self.blackboard.game))
 			self.behaviour_tree.tick() # should add an action to the self.cmd_queue
-			self.log("finished tick")
 		except Exception as e:
-			self.log("agent encountered error")
+			self.log("Agent encountered error")
 			self.log(str(e))
 			self.log(traceback.format_exc())
 			print(traceback.format_exc(), file=self.logfile, flush=True)
@@ -150,7 +176,7 @@ class SimpleAgent:
 		
 
 	def get_next_action_out_of_game(self):
-		self.log("starting game")
+		self.log("Starting new game")
 		return StartGameAction(self.chosen_class, ascension_level=ASCENSION)
 		
 	def compute_smart_state(self):

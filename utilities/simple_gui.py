@@ -32,7 +32,6 @@ class Base(BoxLayout):
 		self.agent = agent
 		self.log = f
 		self.last_comm = ""
-		self.paused = False
 		print("Base: Init", file=self.log, flush=True)
 
 		self.input_text = TextInput(size_hint=(1, 10))
@@ -52,11 +51,11 @@ class Base(BoxLayout):
 		self.button.bind(on_press=self.send_output)
 		self.add_widget(self.button)
 		
-		self.pause = Button(text='Pause - NOT IMPLEMENTED', size_hint=(1, 1))
+		self.pause = Button(text='Pause', size_hint=(1, 1))
 		self.pause.bind(on_press=self.do_pause)
 		self.add_widget(self.pause)
 		
-		self.resume = Button(text='Resume - NOT IMPLEMENTED', size_hint=(1, 1))
+		self.resume = Button(text='Resume', size_hint=(1, 1))
 		self.resume.bind(on_press=self.do_resume)
 		self.add_widget(self.resume)
 
@@ -66,8 +65,6 @@ class Base(BoxLayout):
 		Window.bind(on_key_up=self.key_callback)
 
 	def do_communication(self, dt):
-		if self.paused: # FIXME at some point, reconfigure pause to just halt everything maybe?
-			return
 		new_msg = str(self.agent.get_next_msg())
 		if new_msg != "":
 			self.input_text.text += new_msg + "\n"
@@ -89,11 +86,11 @@ class Base(BoxLayout):
 		#self.coordinator.execute_next_action_if_ready()
 
 	def do_pause(self, instance=None):
-		self.paused = True
+		self.agent.pause()
 	
 	def do_resume(self, instance=None):
-		self.paused = False
-		self.reconnect()
+		self.agent.resume()
+		#self.reconnect()
 		
 	def send_output(self, instance=None, text=None):
 		if text is None:
@@ -131,7 +128,7 @@ class Base(BoxLayout):
 		
 	def reconnect(self):
 		self.input_text.text += "Attempting to reconnect..." + "\n"
-		self.coordinator.unpause_agent()
+		#self.coordinator.unpause_agent()
 
 
 class CommunicationApp(App):
@@ -153,25 +150,26 @@ def run_agent(f, communication_coordinator):
 	# TEST
 	print("Agent: preparing profiler test", file=f, flush=True)
 	try:
-		import io, cProfile, pstats
-		pr = cProfile.Profile()
-		pr.enable()
-		s = io.StringIO()
-		print("Agent: init profiler test", file=f, flush=True)
+		# import io, cProfile, pstats
+		# pr = cProfile.Profile()
+		# pr.enable()
+		# s = io.StringIO()
+		# print("Agent: init profiler test", file=f, flush=True)
+
+		result = communication_coordinator.play_one_game(PlayerClass.IRONCLAD)
+		print("Agent: first game ended in {}" "victory" if result else "defeat", file=f, flush=True)
+		# print("Agent: finishing profiler test", file=f, flush=True)
+		# pr.disable()
+		# sortby = 'cumulative'
+		# ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+		# ps.print_stats()
+		# print(s.getvalue(), file=f, flush=True)
+	
 	except Exception as e:
-		print("Error", file=f, flush=True)
+		print("Agent thread encountered error:", file=f, flush=True)
 		print(e, file=f, flush=True)
 	
-	result = communication_coordinator.play_one_game(PlayerClass.IRONCLAD)
-	
-	print("Agent: finishing profiler test", file=f, flush=True)
-	pr.disable()
-	sortby = 'cumulative'
-	ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-	ps.print_stats()
-	print(s.getvalue(), file=f, flush=True)
-	
-	return # END TEST
+	# return # END TEST
 
 	#Play games forever, cycling through the various classes
 	for chosen_class in itertools.cycle(PlayerClass):

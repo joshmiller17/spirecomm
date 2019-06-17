@@ -63,6 +63,10 @@ class Game:
 		self.proceed_available = False
 		self.cancel_available = False
 		
+	# for some reason, pausing the game invalidates the state
+	def is_valid(self):
+		return self.end_available or self.potion_available or self.play_available or self.proceed_available or self.cancel_available
+		
 	def __str__(self):
 		string = "\n---- Game State ----\n"
 		string += "HP: " + str(self.current_hp) + "/" + str(self.max_hp) + "\n"

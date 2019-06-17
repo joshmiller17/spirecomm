@@ -199,6 +199,8 @@ class Coordinator:
 				self.in_game = communication_state.get("in_game")
 				if self.in_game:
 					self.last_game_state = Game.from_json(communication_state.get("game_state"), communication_state.get("available_commands"))
+			else:
+				print("Communicator detected error", file=self.logfile, flush=True)
 			if perform_callbacks:
 				if self.last_error is not None:
 					self.action_queue.clear()
@@ -206,6 +208,7 @@ class Coordinator:
 					self.add_action_to_queue(new_action)
 				elif self.in_game:
 					if len(self.action_queue) == 0 and perform_callbacks:
+						#print(str(self.last_game_state), file=self.logfile, flush=True)
 						new_action = self.state_change_callback(self.last_game_state)
 						self.add_action_to_queue(new_action)
 				elif self.stop_after_run:
