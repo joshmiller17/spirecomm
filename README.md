@@ -20,6 +20,6 @@ This work is built on top of ForgottenArbiter's [spirecomm](https://github.com/F
 3. Find the CommunicationMod config file in %LOCALAPPDATA%\ModTheSpire\CommunicationMod\config.properties and edit the command to command=python C\:\\ _...path\\to..._ \\spirecomm\\utilities\\simple_gui.py Note the double backslashes in the path!
 4. Run `python setup.py install` from the root directory of spirecomm. Note that when you make changes to the AI, you will need to run this install command again. You'll probably want to set runAtGameStart=true, otherwise to start the AI you'll need to click Mods > CommunicationMod > Run process to start the AI after loading up Slay the Spire.
 
-Optionally, if you installed SuperFastMode, find its config file in in %LOCALAPPDATA%\ModTheSpire\SuperFastMode and set the  deltaMultiplier to an arbitrarily large number.
+Optionally, if you installed SuperFastMode, find its config file in %LOCALAPPDATA%\ModTheSpire\SuperFastMode and set the  deltaMultiplier to 10.
 
 If everything was installed correctly, when you run Slay the Spire with the mods on, the AI will begin playing.
