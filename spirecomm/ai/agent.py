@@ -13,8 +13,6 @@ from spirecomm.ai.priorities import *
 
 import py_trees
 
-AI_DELAY = 0.1 # seconds delay per action, useful for actually seeing what's going on
-ASCENSION = 0
 		
 
 class SimpleAgent:
@@ -22,11 +20,14 @@ class SimpleAgent:
 	def __init__(self, logfile, chosen_class=PlayerClass.IRONCLAD):
 		self.chosen_class = chosen_class
 		self.change_class(chosen_class)
-		self.debug_queue = ["AI Initialized.", "Delay timer set to " + str(AI_DELAY)]
+		self.action_delay = 0.1 # seconds delay per action, useful for actually seeing what's going on
+		self.ascension = 0
+		self.debug_queue = ["AI Initialized.", "Delay timer set to " + str(self.action_delay)]
 		self.cmd_queue = []
 		self.logfile = logfile
 		self.skipping_card = False
 		self.paused = False
+		self.debug_level = 4
 		self.root = py_trees.composites.Selector("Root Context Selector")
 		self.init_behaviour_tree(self.root) # Warning: uses British spelling
 		self.behaviour_tree = py_trees.trees.BehaviourTree(self.root)
@@ -50,9 +51,33 @@ class SimpleAgent:
 		self.paused = False
 		self.log("Resuming")
 		
-	def log(self, msg):
+	# only show to screen if self.debug_level >= debug
+	"""
+	DEBUG LEVELS
+	0 Off
+	1 Fatal
+	2 Error
+	3 Warn
+	4 Info
+	5 Debug
+	6 Trace
+	7 All
+	"""
+	def log(self, msg, debug=4):
 		print(str(time.time()) + ": " + msg, file=self.logfile, flush=True)
-		self.debug_queue.append(msg)
+		if self.debug_level >= debug:
+			self.debug_queue.append(msg)
+			
+	# TODO, but maybe not like this
+	# def behaviour_tree_loader(self, filename):
+		# indent = 0
+		# lineno = 1
+		# with open(filename, 'r') as file:
+			# line = file.readlien()
+			# while line:
+				# # TODO
+				# line = fp.readline()
+				# lineno += 1
 		
 	def init_behaviour_tree(self, root):
 		choiceContext = py_trees.composites.Sequence("Choice Context")
@@ -67,10 +92,30 @@ class SimpleAgent:
 		combatAvail.add_children([playAvail, endAvail])
 		cancelAvail = BoolCheckBehaviour("Cancel Available", agent=self, boolean="cancel_available")
 		testBehaviour = TestBehaviour("Test", agent=self)
-		choiceContext.add_children([choiceAvail, testBehaviour])
-		proceedContext.add_children([proceedAvail, testBehaviour])
+		
+		choiceSelector = py_trees.composites.Selector("Type of Choice Selector")
+		eventContext = py_trees.composites.Sequence("Event Context")
+		eventAvail = CompareToConstBehaviour("Event Available", agent=self, attr="screen_type", static=ScreenType.EVENT)
+		
+		# TODO continue adding detail to the tree
+		#if self.blackboard.game.screen.event_id in ["Vampires", "Masked Bandits", "Knowing Skull", "Ghosts", "Liars Game", "Golden Idol", "Drug Dealer", "The Library"]:
+		#		return ChooseAction(len(self.blackboard.game.screen.options) - 1)
+		
+		chestContext = py_trees.composites.Sequence("Chest Context")
+		shopContext = py_trees.composites.Sequence("Shop Context")
+		restContext = py_trees.composites.Sequence("Rest Context")
+		cardRewardContext = py_trees.composites.Sequence("Card Reward Context")
+		combatRewardContext = py_trees.composites.Sequence("Combat Reward Context")
+		mapContext = py_trees.composites.Sequence("Map Context")
+		bossRewardContext = py_trees.composites.Sequence("Boss Reward Context")
+		shopScreenContext = py_trees.composites.Sequence("Shop Screen Context")
+		gridContext = py_trees.composites.Sequence("Grid Context")
+		selectFromHandContext = py_trees.composites.Sequence("Select From Hand Context")
+		
+		choiceContext.add_children([choiceAvail, choiceSelector])
+		proceedContext.add_children([proceedAvail, ActionBehaviour("Proceed", agent=self, action=ProceedAction())])
 		combatContext.add_children([combatAvail, testBehaviour])
-		cancelContext.add_children([cancelAvail, testBehaviour])
+		cancelContext.add_children([cancelAvail, ActionBehaviour("Cancel", agent=self, action=CancelAction())])
 		
 		# if self.blackboard.game.choice_available:
 			# return self.decide(self.handle_screen())
@@ -106,7 +151,7 @@ class SimpleAgent:
 			return Action()
 			
 	def decide(self, action):
-		self.log(str(action))
+		self.log(str(action), debug=5)
 		return action
 		
 	def change_class(self, new_class):
@@ -124,18 +169,16 @@ class SimpleAgent:
 	# For example, if we open pause menu, the last action we send will be Invalid
 	# Coordinator still needs an action input, so this function needs to return a valid action
 	def handle_error(self, error):
-		self.log("Error: " + str(error))
+		self.log("Error: " + str(error), debug=2)
 		if "Invalid command" in str(error):
 			# Assume this just means we're paused
-			self.log("Invalid command error")
-			self.log("zzz")
+			self.log("Invalid command error", debug=3)
 			time.sleep(1)
 			return Action()
 		elif "Selected card requires an enemy target" in str(error):
 			# I think this is related to unpausing, we accidentally input an un-initialized play
 			# For now, just try again
-			self.log("Selected card requires target error")
-			self.log("zzz")
+			self.log("Selected card requires target error", debug=3)
 			time.sleep(1)
 			return Action()
 		else:
@@ -151,12 +194,12 @@ class SimpleAgent:
 			return self.handle_combat()
 		if self.blackboard.game.cancel_available:
 			return self.decide(CancelAction())
-		self.log("Error: no choices available. Game paused?")
+		self.log("Error: no choices available. Game paused?", debug=2)
 		time.sleep(1)
 		return Action()
 
 	def get_next_action_in_game(self, game_state):
-		time.sleep(AI_DELAY)
+		time.sleep(self.action_delay)
 		while (self.paused):
 			time.sleep(1)
 			self.log("zzz")
@@ -164,12 +207,12 @@ class SimpleAgent:
 		
 		try:
 			self.compute_smart_state()
-			self.log(str(self.blackboard.game))
+			self.log(str(self.blackboard.game), debug=5)
 			self.behaviour_tree.tick() # should add an action to the self.cmd_queue
 		except Exception as e:
-			self.log("Agent encountered error")
-			self.log(str(e))
-			self.log(traceback.format_exc())
+			self.log("Agent encountered error", debug=2)
+			self.log(str(e), debug=2)
+			self.log(traceback.format_exc(), debug=2)
 			print(traceback.format_exc(), file=self.logfile, flush=True)
 		
 		return self.get_next_cmd()
@@ -177,7 +220,7 @@ class SimpleAgent:
 
 	def get_next_action_out_of_game(self):
 		self.log("Starting new game")
-		return StartGameAction(self.chosen_class, ascension_level=ASCENSION)
+		return StartGameAction(self.chosen_class, ascension_level=self.ascension)
 		
 	def compute_smart_state(self):
 		pass

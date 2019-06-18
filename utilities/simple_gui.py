@@ -90,7 +90,6 @@ class Base(BoxLayout):
 	
 	def do_resume(self, instance=None):
 		self.agent.resume()
-		#self.reconnect()
 		
 	def send_output(self, instance=None, text=None):
 		if text is None:
@@ -116,9 +115,19 @@ class Base(BoxLayout):
 				print(thread.isAlive(), file=self.log, flush=True)
 			return True
 			
-		if msg == "resend":
-			self.reconnect()
-			return True
+		if msg.startswith("delay "):
+			try:
+				self.agent.action_delay = float(msg[6:])
+				return True
+			except Exception as e:
+				print(e, file=self.log, flush=True)
+			
+		if msg.startswith("debug "):
+			try:
+				self.agent.debug_level = int(msg[6:])
+				return True
+			except Exception as e:
+				print(e, file=self.log, flush=True)
 			
 		if msg == "clear":
 			self.input_text.text = ""
@@ -126,9 +135,6 @@ class Base(BoxLayout):
 			
 		return False
 		
-	def reconnect(self):
-		self.input_text.text += "Attempting to reconnect..." + "\n"
-		#self.coordinator.unpause_agent()
 
 
 class CommunicationApp(App):
