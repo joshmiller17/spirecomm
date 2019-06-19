@@ -63,9 +63,17 @@ class Game:
 		self.proceed_available = False
 		self.cancel_available = False
 		
+		# Added state info
+		self.visited_shop = False
+		self.previous_floor = 0 # used to recognize floor changes, i.e. when floor != previous_floor
+		
 	# for some reason, pausing the game invalidates the state
 	def is_valid(self):
 		return self.end_available or self.potion_available or self.play_available or self.proceed_available or self.cancel_available
+		
+	# do any internal state updates we need to do if we change floors
+	def on_floor_change(self):
+		self.visited_shop = False
 		
 	def __str__(self):
 		string = "\n---- Game State ----\n"
@@ -139,6 +147,11 @@ class Game:
 		game.cancel_available = "cancel" in available_commands or "leave" in available_commands \
 								or "return" in available_commands or "skip" in available_commands
 
+		# Added state info
+		if game.floor != game.previous_floor:
+			game.on_floor_change()
+			game.previous_floor = game.floor
+		
 		return game
 
 	def are_potions_full(self):
