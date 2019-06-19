@@ -41,6 +41,7 @@ Because CommunicationMod eats all print statements when the program is running, 
 - Make sure you have installed kivy and py_trees
 - Make sure you never call print() in any code changes you've made to the AI
 - If running through ModTheSpire, check the ModTheSpire output for clues
+- If you made changes and you're not seeing them, did you re-run `python setup.py install`? If you added files, you may also need to run `python setup.py build`
 
 #### Kivy window won't open
 Symptoms: when running `python utilities/simple_gui.py` from the terminal, it prints ready but doesn't open a Kivy window
