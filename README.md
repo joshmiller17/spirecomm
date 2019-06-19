@@ -25,3 +25,20 @@ This work is built on top of ForgottenArbiter's [spirecomm](https://github.com/F
 Optionally, if you installed SuperFastMode, find its config file in %LOCALAPPDATA%\ModTheSpire\SuperFastMode and set the  deltaMultiplier to 10.
 
 If everything was installed correctly, when you run Slay the Spire with the mods on, the AI will begin playing.
+
+
+## Troubleshooting
+Because CommunicationMod eats all print statements when the program is running, debugging the AI can sometimes be non-intuitive. For this reason, three error log files are used for assistance with debugging.
+1. ai.log: This is the primary output file for any messages from the AI agent
+2. ai_comm.log: This is a mostly deprecated output file for any messages from the script which coordinates the AI and CommunicationMod (Coordinator.py)
+3. err.log: This is the primary error file for logging compile and runtime errors
+**Note:** When running spirecomm from your terminal, these log files will appear in your local repository, but when running spirecomm through ModTheSpire, these files will appear in your SlayTheSpire directory.
+
+### General Troubleshooting Tips
+- Check the log files for errors
+- Make sure you are using Python 3
+- Make sure you never call print() in any code changes you've made to the AI
+- If running through ModTheSpire, check the ModTheSpire output for clues
+
+#### *When I run `python utilities/simple_gui.py` from my terminal, it prints ready but doesn't open a Kivy window*
+Make sure that you are using Python 3. Check the log files for errors.
