@@ -113,6 +113,8 @@ class Base(BoxLayout):
 			for thread in threading.enumerate():
 				print(thread, file=self.log, flush=True)
 				print(thread.isAlive(), file=self.log, flush=True)
+				self.input_text.text += str(thread) + str(thread.isAlive()) + "\n"
+
 			return True
 			
 		if msg.startswith("delay "):
