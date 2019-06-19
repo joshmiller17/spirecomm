@@ -54,6 +54,7 @@ class SimpleAgent:
 	# only show to screen if self.debug_level >= debug
 	"""
 	DEBUG LEVELS
+	-1 Don't even save to logfile
 	0 Off
 	1 Fatal
 	2 Error
@@ -64,7 +65,8 @@ class SimpleAgent:
 	7 All
 	"""
 	def log(self, msg, debug=4):
-		print(str(time.time()) + ": " + msg, file=self.logfile, flush=True)
+		if self.debug_level >= 0 and debug >= 0:
+			print(str(time.time()) + ": " + msg, file=self.logfile, flush=True)
 		if self.debug_level >= debug:
 			self.debug_queue.append(msg)
 			
@@ -112,7 +114,7 @@ class SimpleAgent:
 		gridContext = py_trees.composites.Sequence("Grid Context")
 		selectFromHandContext = py_trees.composites.Sequence("Select From Hand Context")
 		
-		choiceContext.add_children([choiceAvail, choiceSelector])
+		choiceContext.add_children([choiceAvail, testBehaviour]) #choiceSelector])
 		proceedContext.add_children([proceedAvail, ActionBehaviour("Proceed", agent=self, action=ProceedAction())])
 		combatContext.add_children([combatAvail, testBehaviour])
 		cancelContext.add_children([cancelAvail, ActionBehaviour("Cancel", agent=self, action=CancelAction())])

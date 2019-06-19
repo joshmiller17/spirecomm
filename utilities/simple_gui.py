@@ -76,7 +76,7 @@ class Base(BoxLayout):
 		#	self.last_comm = comm_msg
 		
 		action_msg = self.coordinator.get_action_played()
-		if action_msg is not None:
+		if action_msg is not None and self.agent.debug_level > 4:
 			self.input_text.text += "> " + str(action_msg) + "\n"
 			
 		# Original Input GUI
@@ -118,6 +118,7 @@ class Base(BoxLayout):
 		if msg.startswith("delay "):
 			try:
 				self.agent.action_delay = float(msg[6:])
+				self.input_text.text += "DELAY SET TO " + str(self.agent.action_delay) + "\n"
 				return True
 			except Exception as e:
 				print(e, file=self.log, flush=True)
@@ -125,6 +126,7 @@ class Base(BoxLayout):
 		if msg.startswith("debug "):
 			try:
 				self.agent.debug_level = int(msg[6:])
+				self.input_text.text += "DEBUG SET TO " + str(self.agent.debug_level) + "\n"
 				return True
 			except Exception as e:
 				print(e, file=self.log, flush=True)
