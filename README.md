@@ -37,8 +37,9 @@ Because CommunicationMod eats all print statements when the program is running, 
 ### General Troubleshooting Tips
 - Check the log files for errors
 - Make sure you are using Python 3
+- Make sure you have installed kivy and py_trees
 - Make sure you never call print() in any code changes you've made to the AI
 - If running through ModTheSpire, check the ModTheSpire output for clues
 
 #### *When I run `python utilities/simple_gui.py` from my terminal, it prints ready but doesn't open a Kivy window*
-Make sure that you are using Python 3. Check the log files for errors.
+Make sure that you are using Python 3. Check the log files for errors. This is often due to a syntax error that isn't being caught by other error logging means.
