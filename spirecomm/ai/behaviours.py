@@ -211,5 +211,10 @@ class ActionBehaviour(DefaultBehaviour):
 		return py_trees.common.Status.SUCCESS
 
 	def to_json(self):
-		return ""
+		attrDict = {}
+		attrDict["name"] = self.name
+		attrDict["class"] = "ActionBehaviour"
+		attrDict["action"] = self.action.__class__.__name__
+		attrDict["children"] = [c.to_json() for c in self.iterate(direct_descendants=True) if c != self]
+		return attrDict
 		
