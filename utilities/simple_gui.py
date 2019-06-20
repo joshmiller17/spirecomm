@@ -114,6 +114,10 @@ class Base(BoxLayout):
 				print(thread, file=self.log, flush=True)
 				print(thread.isAlive(), file=self.log, flush=True)
 			return True
+
+		if msg == "write":
+			self.agent.tree_to_json("test.json")
+			return True
 			
 		if msg.startswith("delay "):
 			try:

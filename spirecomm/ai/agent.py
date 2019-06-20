@@ -28,7 +28,7 @@ class SimpleAgent:
 		self.skipping_card = False
 		self.paused = False
 		self.debug_level = 4
-		self.root = py_trees.composites.Selector("Root Context Selector")
+		self.root = SelectorBehaviour("Root Context Selector")
 		self.init_behaviour_tree(self.root) # Warning: uses British spelling
 		self.behaviour_tree = py_trees.trees.BehaviourTree(self.root)
 		self.blackboard = py_trees.blackboard.Blackboard()
@@ -50,6 +50,11 @@ class SimpleAgent:
 	def resume(self):
 		self.paused = False
 		self.log("Resuming")
+		
+	def tree_to_json(self,filename):
+		f = open(filename,"w")
+		f.write(json.dumps(self.root.to_json(),indent="\t"))
+		f.close()
 		
 	# only show to screen if self.debug_level >= debug
 	"""
@@ -82,13 +87,13 @@ class SimpleAgent:
 				# lineno += 1
 		
 	def init_behaviour_tree(self, root):
-		choiceContext = py_trees.composites.Sequence("Choice Context")
-		proceedContext = py_trees.composites.Sequence("Proceed Context")
-		combatContext = py_trees.composites.Sequence("Combat Context")
-		cancelContext = py_trees.composites.Sequence("Cancel Context")
+		choiceContext = SequenceBehaviour("Choice Context")
+		proceedContext = SequenceBehaviour("Proceed Context")
+		combatContext = SequenceBehaviour("Combat Context")
+		cancelContext = SequenceBehaviour("Cancel Context")
 		choiceAvail = BoolCheckBehaviour("Choice Available", agent=self, boolean="choice_available")
 		proceedAvail = BoolCheckBehaviour("Proceed Available", agent=self, boolean="proceed_available")
-		combatAvail = py_trees.composites.Selector("Combat Choice Available")
+		combatAvail = SelectorBehaviour("Combat Choice Available")
 		playAvail = BoolCheckBehaviour("Play Available", agent=self, boolean="play_available")
 		endAvail = BoolCheckBehaviour("End Available", agent=self, boolean="end_available")
 		combatAvail.add_children([playAvail, endAvail])
@@ -96,23 +101,23 @@ class SimpleAgent:
 		testBehaviour = TestBehaviour("Test", agent=self)
 		
 		choiceSelector = py_trees.composites.Selector("Type of Choice Selector")
-		eventContext = py_trees.composites.Sequence("Event Context")
+		eventContext = SequenceBehaviour("Event Context")
 		eventAvail = CompareToConstBehaviour("Event Available", agent=self, attr="screen_type", static=ScreenType.EVENT)
 		
 		# TODO continue adding detail to the tree
 		#if self.blackboard.game.screen.event_id in ["Vampires", "Masked Bandits", "Knowing Skull", "Ghosts", "Liars Game", "Golden Idol", "Drug Dealer", "The Library"]:
 		#		return ChooseAction(len(self.blackboard.game.screen.options) - 1)
 		
-		chestContext = py_trees.composites.Sequence("Chest Context")
-		shopContext = py_trees.composites.Sequence("Shop Context")
-		restContext = py_trees.composites.Sequence("Rest Context")
-		cardRewardContext = py_trees.composites.Sequence("Card Reward Context")
-		combatRewardContext = py_trees.composites.Sequence("Combat Reward Context")
-		mapContext = py_trees.composites.Sequence("Map Context")
-		bossRewardContext = py_trees.composites.Sequence("Boss Reward Context")
-		shopScreenContext = py_trees.composites.Sequence("Shop Screen Context")
-		gridContext = py_trees.composites.Sequence("Grid Context")
-		selectFromHandContext = py_trees.composites.Sequence("Select From Hand Context")
+		chestContext = SequenceBehaviour("Chest Context")
+		shopContext = SequenceBehaviour("Shop Context")
+		restContext = SequenceBehaviour("Rest Context")
+		cardRewardContext = SequenceBehaviour("Card Reward Context")
+		combatRewardContext = SequenceBehaviour("Combat Reward Context")
+		mapContext = SequenceBehaviour("Map Context")
+		bossRewardContext = SequenceBehaviour("Boss Reward Context")
+		shopScreenContext = SequenceBehaviour("Shop Screen Context")
+		gridContext = SequenceBehaviour("Grid Context")
+		selectFromHandContext = SequenceBehaviour("Select From Hand Context")
 		
 		choiceContext.add_children([choiceAvail, testBehaviour]) #choiceSelector])
 		proceedContext.add_children([proceedAvail, ActionBehaviour("Proceed", agent=self, action=ProceedAction())])

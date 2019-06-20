@@ -1,4 +1,5 @@
 import py_trees
+import json
 
 
 # This is the Template class from which all StS Behaviours inherit
@@ -83,6 +84,26 @@ class DefaultBehaviour(py_trees.behaviour.Behaviour):
 		"""
 		pass
 
+#like Sequence, but with a to_json method
+class SequenceBehaviour(py_trees.composites.Sequence):
+
+	def to_json(self):
+		attrDict = {}
+		attrDict["name"] = self.name
+		attrDict["class"] = "SequenceBehaviour"
+		attrDict["children"] = [c.to_json() for c in self.iterate(direct_descendants=True) if c != self]
+		return attrDict
+
+#like Selector, but with a to_json method
+class SelectorBehaviour(py_trees.composites.Selector):
+
+	def to_json(self):
+		attrDict = {}
+		attrDict["name"] = self.name
+		attrDict["class"] = "SelectorBehaviour"
+		attrDict["children"] = [c.to_json() for c in self.iterate(direct_descendants=True) if c != self]
+		return attrDict
+
 # A test-only class, returns the default logic of what the original AI would have done
 class TestBehaviour(DefaultBehaviour):
 	
@@ -90,6 +111,13 @@ class TestBehaviour(DefaultBehaviour):
 		self.log("tick", debug=6)
 		self.agent.cmd_queue.append(self.agent.default_logic(self.agent.blackboard.game))
 		return py_trees.common.Status.SUCCESS
+
+	def to_json(self):
+		attrDict = {}
+		attrDict["name"] = self.name
+		attrDict["class"] = "TestBehaviour"
+		attrDict["children"] = [c.to_json() for c in self.iterate(direct_descendants=True) if c != self]
+		return attrDict
 	
 # Returns success iff a blackboard.game boolean is true
 # To invert this logic, set success=False: behaviour will then return true iff bool is false
@@ -106,6 +134,15 @@ class BoolCheckBehaviour(DefaultBehaviour):
 		retStr = "SUCCESS" if ret else "FAILURE"
 		self.log(str(self.boolean) + " is " + str(value) + ": " + retStr, debug=6)
 		return py_trees.common.Status.SUCCESS if ret else py_trees.common.Status.FAILURE
+
+	def to_json(self):
+		attrDict = {}
+		attrDict["name"] = self.name
+		attrDict["class"] = "BoolCheckBehaviour"
+		attrDict["boolean"] = self.boolean
+		attrDict["success"] = self.success
+		attrDict["children"] = [c.to_json() for c in self.iterate(direct_descendants=True) if c != self]
+		return attrDict
 		
 # Returns success iff values are equal
 # To invert this logic, set success=False: behaviour will then return true iff values are not equal
@@ -128,6 +165,16 @@ class EqualityCheckBehaviour(BoolCheckBehaviour):
 		logStr += self.second + ": " + retStr
 		self.log(logStr, debug=6)
 		return py_trees.common.Status.SUCCESS if ret else py_trees.common.Status.FAILURE
+
+	def to_json(self):
+		attrDict = {}
+		attrDict["name"] = self.name
+		attrDict["class"] = "EqualityCheckBehaviour"
+		attrDict["first"] = self.first
+		attrDict["second"] = self.second
+		attrDict["success"] = self.success
+		attrDict["children"] = [c.to_json() for c in self.iterate(direct_descendants=True) if c != self]
+		return attrDict
 	
 # Like EqualityCheck, but the first value comes from game, second is given at init
 class CompareToConstBehaviour(EqualityCheckBehaviour):
@@ -140,6 +187,16 @@ class CompareToConstBehaviour(EqualityCheckBehaviour):
 	def update():
 		self.first = getattr(self.agent.blackboard.game, self.attr)
 		super().update()
+
+	def to_json(self):
+		attrDict = {}
+		attrDict["name"] = self.name
+		attrDict["class"] = "CompareToConstBehaviour"
+		attrDict["attr"] = self.attr
+		attrDict["static"] = self.static
+		attrDict["success"] = self.success
+		attrDict["children"] = [c.to_json() for c in self.iterate(direct_descendants=True) if c != self]
+		return attrDict
 	
 # The default ActionBehaviour, implemented by more complex action behaviours like Play
 # On update, it appends its action to the queue and returns SUCCESS
@@ -152,4 +209,7 @@ class ActionBehaviour(DefaultBehaviour):
 	def update(self):
 		self.agent.cmd_queue.append(self.action)
 		return py_trees.common.Status.SUCCESS
+
+	def to_json(self):
+		return ""
 		
