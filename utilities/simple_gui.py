@@ -76,8 +76,6 @@ class Base(BoxLayout):
 		#	self.last_comm = comm_msg
 		
 		action_msg = self.coordinator.get_action_played()
-		if action_msg is not None and self.agent.debug_level > 4:
-			self.input_text.text += "> " + str(action_msg) + "\n"
 			
 		# Original Input GUI
 		#message = self.coordinator.get_next_raw_message()

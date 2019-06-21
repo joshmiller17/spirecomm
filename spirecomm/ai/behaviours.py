@@ -18,7 +18,7 @@ class DefaultBehaviour(py_trees.behaviour.Behaviour):
 		self.agent = agent
 		
 	def log(self, msg, debug=4):
-		self.agent.log("[" + str(self.__class__.__name__) + "]: " + msg, debug=debug)
+		self.agent.log(str(self.name) + " [" + str(self.__class__.__name__) + "]: " + msg, debug=debug)
 
 	def setup(self):
 		"""
@@ -100,7 +100,8 @@ class CustomBehaviour(DefaultBehaviour):
 		self.function = function
 		
 	def update(self):
-		return self.agent.getattr(self.agent, self.function)()
+		self.agent.cmd_queue.append(getattr(self.agent, self.function)())
+		return py_trees.common.Status.SUCCESS
 	
 	
 # Returns success iff a blackboard.game boolean is true
@@ -151,7 +152,7 @@ class CompareToConstBehaviour(EqualityCheckBehaviour):
 		
 	def update(self):
 		self.first = getattr(self.agent.blackboard.game, self.attr)
-		super().update()
+		return super().update()
 	
 # The default ActionBehaviour, implemented by more complex action behaviours like Play
 # On update, it appends its action to the queue and returns SUCCESS

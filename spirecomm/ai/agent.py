@@ -29,7 +29,7 @@ class SimpleAgent:
 		self.logfile = logfile
 		self.skipping_card = False
 		self.paused = False
-		self.debug_level = 5
+		self.debug_level = 6
 		self.root = py_trees.composites.Selector("Root Context Selector")
 		self.init_behaviour_tree(self.root) # Warning: uses British spelling
 		self.behaviour_tree = py_trees.trees.BehaviourTree(self.root)
@@ -118,6 +118,7 @@ class SimpleAgent:
 		tryVisitingShop.add_children([visitedShop, visitShop])
 		dontVisitShop = ActionBehaviour("Leave Shop", agent=self, action=ProceedAction())
 		doShop.add_children([tryVisitingShop, dontVisitShop])
+		shopContext.add_children([shopAvail, doShop])
 		
 		restContext = py_trees.composites.Sequence("Rest Context")
 		restAvail = CompareToConstBehaviour("Rest Available", agent=self, attr="screen_type", static=ScreenType.REST)
@@ -157,11 +158,11 @@ class SimpleAgent:
 		gridContext.add_children([gridAvail, gridChoice])
 		
 		selectFromHandContext = py_trees.composites.Sequence("Select From Hand Context")
-		selectFromHandAvail = CompareToConstBehaviour("Hand Select Available", agent=self, attr="screen_type", static=ScreenType.GRID)
+		selectFromHandAvail = CompareToConstBehaviour("Hand Select Available", agent=self, attr="screen_type", static=ScreenType.HAND_SELECT)
 		selectFromHandChoice = CustomBehaviour("Handle Hand Select", agent=self, function="handle_hand_select")
 		selectFromHandContext.add_children([selectFromHandAvail, selectFromHandChoice])		
 		
-		choiceSelector.add_children([eventContext, chestContext, shopContext, restContext, cardRewardContext, 
+		choiceSelector.add_children([eventContext, chestContext, shopContext, restContext, cardRewardContext, combatRewardContext,
 		mapContext, bossRewardContext, shopScreenContext, gridContext, selectFromHandContext])
 		
 		choiceContext.add_children([choiceAvail, choiceSelector])
@@ -213,6 +214,7 @@ class SimpleAgent:
 	# For example, if we open pause menu, the last action we send will be Invalid
 	# Coordinator still needs an action input, so this function needs to return a valid action
 	def handle_error(self, error):
+		return Action() # TODO remove
 		self.log("Error: " + str(error), debug=2)
 		if "Invalid command" in str(error):
 			if "error" in str(error):
@@ -263,7 +265,9 @@ class SimpleAgent:
 			self.log(traceback.format_exc(), debug=2)
 			print(traceback.format_exc(), file=self.logfile, flush=True)
 		
-		return self.get_next_cmd()
+		cmd = self.get_next_cmd()
+		self.log("> " + str(cmd), debug=5)
+		return cmd
 		
 
 	def get_next_action_out_of_game(self):
