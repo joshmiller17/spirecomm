@@ -55,6 +55,13 @@ class SimpleAgent:
 		f = open(filename,"w")
 		f.write(json.dumps(self.root.to_json(),indent="\t"))
 		f.close()
+
+	def json_to_tree(self,filename):
+		f = open(filename,"r")
+		jsonTree = json.load(f)
+		f.close()
+
+		self.root = SelectorBehaviour.fromDict(jsonTree,self)
 		
 	# only show to screen if self.debug_level >= debug
 	"""

@@ -48,6 +48,7 @@ class DefaultBehaviour(py_trees.behaviour.Behaviour):
 		  - Middleware initialisation (e.g. ROS pubs/subs/services)
 		  - A parallel checking for a valid policy configuration after
 			children have been added or removed
+
 		"""
 		pass
 
@@ -94,6 +95,14 @@ class SequenceBehaviour(py_trees.composites.Sequence):
 		attrDict["children"] = [c.to_json() for c in self.iterate(direct_descendants=True) if c != self]
 		return attrDict
 
+	@classmethod
+	def fromDict(cls,d,agent):
+		ret = cls(d["name"])
+		for child in d["children"]:
+			childClass = child["class"]
+			ret.add_child(classMap[childClass].fromDict(child,agent))
+		return ret
+
 #like Selector, but with a to_json method
 class SelectorBehaviour(py_trees.composites.Selector):
 
@@ -103,6 +112,14 @@ class SelectorBehaviour(py_trees.composites.Selector):
 		attrDict["class"] = "SelectorBehaviour"
 		attrDict["children"] = [c.to_json() for c in self.iterate(direct_descendants=True) if c != self]
 		return attrDict
+
+	@classmethod
+	def fromDict(cls,d,agent):
+		ret = cls(d["name"])
+		for child in d["children"]:
+			childClass = child["class"]
+			ret.add_child(classMap[childClass].fromDict(child,agent))
+		return ret
 
 # A test-only class, returns the default logic of what the original AI would have done
 class TestBehaviour(DefaultBehaviour):
@@ -118,6 +135,14 @@ class TestBehaviour(DefaultBehaviour):
 		attrDict["class"] = "TestBehaviour"
 		attrDict["children"] = [c.to_json() for c in self.iterate(direct_descendants=True) if c != self]
 		return attrDict
+
+	@classmethod
+	def fromDict(cls,d,agent):
+		ret = cls(d["name"],agent)
+		for child in d["children"]:
+			childClass = child["class"]
+			ret.add_child(classMap[childClass].fromDict(child,agent))
+		return ret
 	
 # Returns success iff a blackboard.game boolean is true
 # To invert this logic, set success=False: behaviour will then return true iff bool is false
@@ -143,6 +168,14 @@ class BoolCheckBehaviour(DefaultBehaviour):
 		attrDict["success"] = self.success
 		attrDict["children"] = [c.to_json() for c in self.iterate(direct_descendants=True) if c != self]
 		return attrDict
+
+	@classmethod
+	def fromDict(cls,d,agent):
+		ret = cls(d["name"],agent,d["boolean"],d["success"])
+		for child in d["children"]:
+			childClass = child["class"]
+			ret.add_child(classMap[childClass].fromDict(child,agent))
+		return ret
 		
 # Returns success iff values are equal
 # To invert this logic, set success=False: behaviour will then return true iff values are not equal
@@ -175,6 +208,14 @@ class EqualityCheckBehaviour(BoolCheckBehaviour):
 		attrDict["success"] = self.success
 		attrDict["children"] = [c.to_json() for c in self.iterate(direct_descendants=True) if c != self]
 		return attrDict
+
+	@classmethod
+	def fromDict(cls,d,agent):
+		ret = cls(d["name"],agent,d["first"],d["second"],d["success"])
+		for child in d["children"]:
+			childClass = child["class"]
+			ret.add_child(classMap[childClass].fromDict(child,agent))
+		return ret
 	
 # Like EqualityCheck, but the first value comes from game, second is given at init
 class CompareToConstBehaviour(EqualityCheckBehaviour):
@@ -197,6 +238,14 @@ class CompareToConstBehaviour(EqualityCheckBehaviour):
 		attrDict["success"] = self.success
 		attrDict["children"] = [c.to_json() for c in self.iterate(direct_descendants=True) if c != self]
 		return attrDict
+
+	@classmethod
+	def fromDict(cls,d,agent):
+		ret = cls(d["name"],agent,d["attr"],d["static"],d["success"])
+		for child in d["children"]:
+			childClass = child["class"]
+			ret.add_child(classMap[childClass].fromDict(child,agent))
+		return ret
 	
 # The default ActionBehaviour, implemented by more complex action behaviours like Play
 # On update, it appends its action to the queue and returns SUCCESS
@@ -217,4 +266,20 @@ class ActionBehaviour(DefaultBehaviour):
 		attrDict["action"] = self.action.__class__.__name__
 		attrDict["children"] = [c.to_json() for c in self.iterate(direct_descendants=True) if c != self]
 		return attrDict
-		
+	
+	@classmethod
+	def fromDict(cls,d,agent):
+		ret = cls(d["name"],agent,action)
+		for child in d["children"]:
+			childClass = child["class"]
+			ret.add_child(classMap[childClass].fromDict(child,agent))
+		return ret
+
+classMap = {"SequenceBehaviour":SequenceBehaviour, \
+			"SelectorBehaviour":SelectorBehaviour, \
+			"TestBehaviour":TestBehaviour,\
+			"BoolCheckBehaviour":BoolCheckBehaviour, \
+			"EqualityCheckBehaviour":EqualityCheckBehaviour, \
+			"EqualityCheckBehaviour":EqualityCheckBehaviour, \
+			"CompareToConstBehaviour":CompareToConstBehaviour, \
+			"ActionBehaviour":ActionBehaviour}
