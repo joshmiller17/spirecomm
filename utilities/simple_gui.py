@@ -32,9 +32,10 @@ class Base(BoxLayout):
 		self.agent = agent
 		self.log = f
 		self.last_comm = ""
+		self.step = False # whether to Run or Step when pressing Resume
 		print("Base: Init", file=self.log, flush=True)
 
-		self.input_text = TextInput(size_hint=(1, 10))
+		self.input_text = TextInput(size_hint=(2, 5))
 		self.input_text.text = ""
 		self.input_text.foreground_color = (0, 0, 0, 1)
 		self.input_text.background_color = (1, 1, 1, 1)
@@ -87,7 +88,10 @@ class Base(BoxLayout):
 		self.agent.pause()
 	
 	def do_resume(self, instance=None):
-		self.agent.resume()
+		if not self.step:
+			self.agent.resume()
+		else:
+			self.agent.take_step()
 		
 	def send_output(self, instance=None, text=None):
 		if text is None:
@@ -114,13 +118,34 @@ class Base(BoxLayout):
 				self.input_text.text += str(thread) + str(thread.isAlive()) + "\n"
 
 			return True
-
-		if msg == "write":
-			self.agent.tree_to_json("testWrite.json")
+			
+		if msg == "step":
+			self.step = not self.step
+			self.input_text.text += "Step mode: " + ("ON" if self.step else "OFF") + "\n"
 			return True
 
-		if msg == "read":
-			self.agent.json_to_tree("testRead.json")
+		if msg == "write":
+			self.agent.tree_to_json("tree.json")
+			self.input_text.text += "Behaviour tree saved to tree.json\n"
+			return True
+			
+		elif msg.startswith("write "):
+			filename = msg[6:]
+			self.agent.tree_to_json(filename + ".json")
+			self.input_text.text += "Behaviour tree saved to " + filename + ".json\n"
+			return True
+
+		if msg == "load":
+			msg = "load tree"
+			
+		if msg.startswith("load "):
+			filename = msg[5:]
+			try:
+				self.input_text.text += "Loading " + filename + ".json\n"
+				self.agent.json_to_tree(filename + ".json")
+			except Exception as e:
+				print(e, file=self.log, flush=True)
+				
 			return True
 			
 		if msg.startswith("delay "):

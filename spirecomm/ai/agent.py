@@ -30,6 +30,7 @@ class SimpleAgent:
 		self.logfile = logfile
 		self.skipping_card = False
 		self.paused = False
+		self.step = False
 		self.debug_level = 6
 		self.root = SelectorBehaviour("Root Context Selector")
 		self.init_behaviour_tree(self.root) # Warning: uses British spelling
@@ -54,6 +55,12 @@ class SimpleAgent:
 		self.paused = False
 		self.log("Resuming")
 		
+	# do one action
+	def take_step(self):
+		self.paused = False
+		self.step = True
+		self.log("Taking a step")
+		
 	def tree_to_json(self,filename):
 		f = open(filename,"w")
 		f.write(json.dumps(self.root.to_json(),indent="\t"))
@@ -63,8 +70,10 @@ class SimpleAgent:
 		f = open(filename,"r")
 		jsonTree = json.load(f)
 		f.close()
-
+		
 		self.root = SelectorBehaviour.fromDict(jsonTree,self)
+		self.log(filename + " loaded successfully:")
+		self.log(py_trees.display.ascii_tree(root))
 		
 	# only show to screen if self.debug_level >= debug
 	"""
@@ -197,7 +206,8 @@ class SimpleAgent:
 			return self.debug_queue.pop()
 		except:
 			return ""
-			
+		
+	# equivalent to self.log(msg, debug=-1)
 	def think(self, msg):
 		self.debug_queue.append(msg)
 			
@@ -262,9 +272,13 @@ class SimpleAgent:
 
 	def get_next_action_in_game(self, game_state):
 		time.sleep(self.action_delay)
+		z_count = 0
 		while (self.paused):
 			time.sleep(1)
-			self.log("zzz")
+			if z_count == 0:
+				self.think("\n")
+			self.think("\r" + 'z' * (z_count % 3))
+			z_count += 1
 		self.blackboard.game = game_state
 		
 		try:
@@ -276,6 +290,10 @@ class SimpleAgent:
 			self.log(str(e), debug=2)
 			self.log(traceback.format_exc(), debug=2)
 			print(traceback.format_exc(), file=self.logfile, flush=True)
+		
+		if self.step: # finish taking one step
+			self.paused = True
+			self.step = False
 		
 		cmd = self.get_next_cmd()
 		self.log("> " + str(cmd), debug=5)

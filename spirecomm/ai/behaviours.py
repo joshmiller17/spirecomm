@@ -159,6 +159,7 @@ class CustomBehaviour(DefaultBehaviour):
 		attrDict = {}
 		attrDict["name"] = self.name
 		attrDict["class"] = "CustomBehaviour"
+		attrDict["function"] = self.function
 		attrDict["children"] = [c.to_json() for c in self.iterate(direct_descendants=True) if c != self]
 		return attrDict
 
@@ -260,7 +261,7 @@ class CompareToConstBehaviour(EqualityCheckBehaviour):
 		attrDict["name"] = self.name
 		attrDict["class"] = "CompareToConstBehaviour"
 		attrDict["attr"] = self.attr
-		attrDict["static"] = self.static
+		attrDict["static"] = str(self.static)
 		attrDict["success"] = self.success
 		attrDict["children"] = [c.to_json() for c in self.iterate(direct_descendants=True) if c != self]
 		return attrDict
