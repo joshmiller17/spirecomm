@@ -114,6 +114,14 @@ class Base(BoxLayout):
 				self.input_text.text += str(thread) + str(thread.isAlive()) + "\n"
 
 			return True
+
+		if msg == "write":
+			self.agent.tree_to_json("testWrite.json")
+			return True
+
+		if msg == "read":
+			self.agent.json_to_tree("testRead.json")
+			return True
 			
 		if msg.startswith("delay "):
 			try:
