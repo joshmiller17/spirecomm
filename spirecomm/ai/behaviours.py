@@ -19,7 +19,7 @@ class DefaultBehaviour(py_trees.behaviour.Behaviour):
 		self.agent = agent
 		
 	def log(self, msg, debug=4):
-		self.agent.log("[" + str(self.__class__.__name__) + "]: " + msg, debug=debug)
+		self.agent.log(str(self.name) + " [" + str(self.__class__.__name__) + "]: " + msg, debug=debug)
 
 	def setup(self):
 		"""
@@ -143,6 +143,33 @@ class TestBehaviour(DefaultBehaviour):
 			childClass = child["class"]
 			ret.add_child(classMap[childClass].fromDict(child,agent))
 		return ret
+		
+# Temporary behaviour, remove when behaviour tree is more fully realized
+# calls a custom function to handle complex logic for us
+class CustomBehaviour(DefaultBehaviour):
+
+	def __init__(self, name, agent, function):
+		super(CustomBehaviour, self).__init__(name, agent)
+		self.function = function
+		
+	def update(self):
+		self.agent.cmd_queue.append(getattr(self.agent, self.function)())
+		return py_trees.common.Status.SUCCESS
+	
+  def to_json(self):
+      attrDict = {}
+      attrDict["name"] = self.name
+      attrDict["class"] = "CustomBehaviour"
+      attrDict["children"] = [c.to_json() for c in self.iterate(direct_descendants=True) if c != self]
+      return attrDict
+
+    @classmethod
+    def fromDict(cls,d,agent):
+      ret = cls(d["name"],agent,d["function"])
+      for child in d["children"]:
+        childClass = child["class"]
+        ret.add_child(classMap[childClass].fromDict(child,agent))
+      return ret
 	
 # Returns success iff a blackboard.game boolean is true
 # To invert this logic, set success=False: behaviour will then return true iff bool is false
@@ -195,7 +222,7 @@ class EqualityCheckBehaviour(BoolCheckBehaviour):
 			logStr += "== "
 		else:
 			logStr += "!= "
-		logStr += self.second + ": " + retStr
+		logStr += str(self.second) + ": " + retStr
 		self.log(logStr, debug=6)
 		return py_trees.common.Status.SUCCESS if ret else py_trees.common.Status.FAILURE
 
@@ -225,9 +252,9 @@ class CompareToConstBehaviour(EqualityCheckBehaviour):
 		self.attr = attr
 		self.static = static
 		
-	def update():
+	def update(self):
 		self.first = getattr(self.agent.blackboard.game, self.attr)
-		super().update()
+    return super().update()
 
 	def to_json(self):
 		attrDict = {}
@@ -246,6 +273,7 @@ class CompareToConstBehaviour(EqualityCheckBehaviour):
 			childClass = child["class"]
 			ret.add_child(classMap[childClass].fromDict(child,agent))
 		return ret
+
 	
 # The default ActionBehaviour, implemented by more complex action behaviours like Play
 # On update, it appends its action to the queue and returns SUCCESS
