@@ -1,7 +1,6 @@
 import py_trees
 import json
 
-
 # This is the Template class from which all StS Behaviours inherit
 # It also includes the original comments for what should go in each method
 class DefaultBehaviour(py_trees.behaviour.Behaviour):
@@ -156,20 +155,20 @@ class CustomBehaviour(DefaultBehaviour):
 		self.agent.cmd_queue.append(getattr(self.agent, self.function)())
 		return py_trees.common.Status.SUCCESS
 	
-  def to_json(self):
-      attrDict = {}
-      attrDict["name"] = self.name
-      attrDict["class"] = "CustomBehaviour"
-      attrDict["children"] = [c.to_json() for c in self.iterate(direct_descendants=True) if c != self]
-      return attrDict
+	def to_json(self):
+		attrDict = {}
+		attrDict["name"] = self.name
+		attrDict["class"] = "CustomBehaviour"
+		attrDict["children"] = [c.to_json() for c in self.iterate(direct_descendants=True) if c != self]
+		return attrDict
 
-    @classmethod
-    def fromDict(cls,d,agent):
-      ret = cls(d["name"],agent,d["function"])
-      for child in d["children"]:
-        childClass = child["class"]
-        ret.add_child(classMap[childClass].fromDict(child,agent))
-      return ret
+	@classmethod
+	def fromDict(cls,d,agent):
+		ret = cls(d["name"],agent,d["function"])
+		for child in d["children"]:
+			childClass = child["class"]
+			ret.add_child(classMap[childClass].fromDict(child,agent))
+		return ret
 	
 # Returns success iff a blackboard.game boolean is true
 # To invert this logic, set success=False: behaviour will then return true iff bool is false
@@ -254,7 +253,7 @@ class CompareToConstBehaviour(EqualityCheckBehaviour):
 		
 	def update(self):
 		self.first = getattr(self.agent.blackboard.game, self.attr)
-    return super().update()
+		return super().update()
 
 	def to_json(self):
 		attrDict = {}
@@ -302,7 +301,9 @@ class ActionBehaviour(DefaultBehaviour):
 			childClass = child["class"]
 			ret.add_child(classMap[childClass].fromDict(child,agent))
 		return ret
-
+		
+		
+		
 classMap = {"SequenceBehaviour":SequenceBehaviour, \
 			"SelectorBehaviour":SelectorBehaviour, \
 			"TestBehaviour":TestBehaviour,\

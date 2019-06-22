@@ -22,7 +22,8 @@ class SimpleAgent:
 	def __init__(self, logfile, chosen_class=PlayerClass.IRONCLAD):
 		self.chosen_class = chosen_class
 		self.change_class(chosen_class)
-		self.action_delay = 0.5 # seconds delay per action, useful for actually seeing what's going on. Note that high delay will steal mouse focus
+		self.action_delay = 0.5 # seconds delay per action, useful for actually seeing what's going on.
+		# high delay will steal mouse focus??
 		self.ascension = 0
 		self.debug_queue = ["AI Initialized.", "Delay timer set to " + str(self.action_delay)]
 		self.cmd_queue = []
@@ -109,7 +110,7 @@ class SimpleAgent:
 		cancelAvail = BoolCheckBehaviour("Cancel Available", agent=self, boolean="cancel_available")
 		testBehaviour = TestBehaviour("Test", agent=self)
 		
-		choiceSelector = py_trees.composites.Selector("Type of Choice Selector")
+		choiceSelector = SelectorBehaviour("Type of Choice Selector")
 		eventContext = SequenceBehaviour("Event Context")
 		eventAvail = CompareToConstBehaviour("Event Available", agent=self, attr="screen_type", static=ScreenType.EVENT)
 		eventDecision = ActionBehaviour("Default Choose", agent=self, action=ChooseAction(0))
@@ -122,8 +123,8 @@ class SimpleAgent:
 		
 		shopContext = SequenceBehaviour("Shop Context")
 		shopAvail = CompareToConstBehaviour("Shop Available", agent=self, attr="screen_type", static=ScreenType.SHOP_ROOM)
-		doShop = py_trees.composites.Selector("Check Shop")
-		tryVisitingShop = py_trees.composites.Sequence("Try Visiting Shop")
+		doShop = SelectorBehaviour("Check Shop")
+		tryVisitingShop = SequenceBehaviour("Try Visiting Shop")
 		visitedShop = BoolCheckBehaviour("Is Shop Visited", agent=self, boolean="visited_shop")
 		visitShop = ActionBehaviour("Visit Shop", agent=self, action=ChooseShopkeeperAction())
 		tryVisitingShop.add_children([visitedShop, visitShop])
@@ -163,7 +164,7 @@ class SimpleAgent:
 		shopScreenContext.add_children([shopScreenAvail, shopScreenChoice])
 		
 		
-	  gridContext = SequenceBehaviour("Grid Context")
+		gridContext = SequenceBehaviour("Grid Context")
 		gridAvail = CompareToConstBehaviour("Grid Available", agent=self, attr="screen_type", static=ScreenType.GRID)
 		gridChoice = CustomBehaviour("Handle Grid", agent=self, function="handle_grid")
 		gridContext.add_children([gridAvail, gridChoice])
