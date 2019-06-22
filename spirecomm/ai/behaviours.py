@@ -18,7 +18,7 @@ class DefaultBehaviour(py_trees.behaviour.Behaviour):
 		self.agent = agent
 		
 	def log(self, msg, debug=4):
-		self.agent.log("[" + str(self.__class__.__name__) + "]: " + msg, debug=debug)
+		self.agent.log(str(self.name) + " [" + str(self.__class__.__name__) + "]: " + msg, debug=debug)
 
 	def setup(self):
 		"""
@@ -90,6 +90,19 @@ class TestBehaviour(DefaultBehaviour):
 		self.log("tick", debug=6)
 		self.agent.cmd_queue.append(self.agent.default_logic(self.agent.blackboard.game))
 		return py_trees.common.Status.SUCCESS
+		
+# Temporary behaviour, remove when behaviour tree is more fully realized
+# calls a custom function to handle complex logic for us
+class CustomBehaviour(DefaultBehaviour):
+
+	def __init__(self, name, agent, function):
+		super(CustomBehaviour, self).__init__(name, agent)
+		self.function = function
+		
+	def update(self):
+		self.agent.cmd_queue.append(getattr(self.agent, self.function)())
+		return py_trees.common.Status.SUCCESS
+	
 	
 # Returns success iff a blackboard.game boolean is true
 # To invert this logic, set success=False: behaviour will then return true iff bool is false
@@ -125,7 +138,7 @@ class EqualityCheckBehaviour(BoolCheckBehaviour):
 			logStr += "== "
 		else:
 			logStr += "!= "
-		logStr += self.second + ": " + retStr
+		logStr += str(self.second) + ": " + retStr
 		self.log(logStr, debug=6)
 		return py_trees.common.Status.SUCCESS if ret else py_trees.common.Status.FAILURE
 	
@@ -137,9 +150,9 @@ class CompareToConstBehaviour(EqualityCheckBehaviour):
 		self.attr = attr
 		self.static = static
 		
-	def update():
+	def update(self):
 		self.first = getattr(self.agent.blackboard.game, self.attr)
-		super().update()
+		return super().update()
 	
 # The default ActionBehaviour, implemented by more complex action behaviours like Play
 # On update, it appends its action to the queue and returns SUCCESS

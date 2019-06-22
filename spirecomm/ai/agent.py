@@ -2,6 +2,8 @@ from __future__ import division
 import time
 import random
 import collections
+import traceback
+import sys
 
 from spirecomm.spire.game import Game
 from spirecomm.spire.character import Intent, PlayerClass
@@ -13,21 +15,21 @@ from spirecomm.ai.priorities import *
 
 import py_trees
 
-		
+
 
 class SimpleAgent:
 
 	def __init__(self, logfile, chosen_class=PlayerClass.IRONCLAD):
 		self.chosen_class = chosen_class
 		self.change_class(chosen_class)
-		self.action_delay = 0.1 # seconds delay per action, useful for actually seeing what's going on
+		self.action_delay = 0.5 # seconds delay per action, useful for actually seeing what's going on. Note that high delay will steal mouse focus
 		self.ascension = 0
 		self.debug_queue = ["AI Initialized.", "Delay timer set to " + str(self.action_delay)]
 		self.cmd_queue = []
 		self.logfile = logfile
 		self.skipping_card = False
 		self.paused = False
-		self.debug_level = 4
+		self.debug_level = 6
 		self.root = py_trees.composites.Selector("Root Context Selector")
 		self.init_behaviour_tree(self.root) # Warning: uses British spelling
 		self.behaviour_tree = py_trees.trees.BehaviourTree(self.root)
@@ -96,41 +98,82 @@ class SimpleAgent:
 		testBehaviour = TestBehaviour("Test", agent=self)
 		
 		choiceSelector = py_trees.composites.Selector("Type of Choice Selector")
+		
 		eventContext = py_trees.composites.Sequence("Event Context")
 		eventAvail = CompareToConstBehaviour("Event Available", agent=self, attr="screen_type", static=ScreenType.EVENT)
-		
-		# TODO continue adding detail to the tree
-		#if self.blackboard.game.screen.event_id in ["Vampires", "Masked Bandits", "Knowing Skull", "Ghosts", "Liars Game", "Golden Idol", "Drug Dealer", "The Library"]:
-		#		return ChooseAction(len(self.blackboard.game.screen.options) - 1)
+		eventDecision = ActionBehaviour("Default Choose", agent=self, action=ChooseAction(0))
+		eventContext.add_children([eventAvail, eventDecision])
 		
 		chestContext = py_trees.composites.Sequence("Chest Context")
-		shopContext = py_trees.composites.Sequence("Shop Context")
-		restContext = py_trees.composites.Sequence("Rest Context")
-		cardRewardContext = py_trees.composites.Sequence("Card Reward Context")
-		combatRewardContext = py_trees.composites.Sequence("Combat Reward Context")
-		mapContext = py_trees.composites.Sequence("Map Context")
-		bossRewardContext = py_trees.composites.Sequence("Boss Reward Context")
-		shopScreenContext = py_trees.composites.Sequence("Shop Screen Context")
-		gridContext = py_trees.composites.Sequence("Grid Context")
-		selectFromHandContext = py_trees.composites.Sequence("Select From Hand Context")
+		chestAvail = CompareToConstBehaviour("Chest Available", agent=self, attr="screen_type", static=ScreenType.CHEST)
+		chestDecision = ActionBehaviour("Default Chest Open", agent=self, action=OpenChestAction())
+		chestContext.add_children([chestAvail, chestDecision])
 		
-		choiceContext.add_children([choiceAvail, testBehaviour]) #choiceSelector])
+		shopContext = py_trees.composites.Sequence("Shop Context")
+		shopAvail = CompareToConstBehaviour("Shop Available", agent=self, attr="screen_type", static=ScreenType.SHOP_ROOM)
+		doShop = py_trees.composites.Selector("Check Shop")
+		tryVisitingShop = py_trees.composites.Sequence("Try Visiting Shop")
+		visitedShop = BoolCheckBehaviour("Is Shop Visited", agent=self, boolean="visited_shop")
+		visitShop = ActionBehaviour("Visit Shop", agent=self, action=ChooseShopkeeperAction())
+		tryVisitingShop.add_children([visitedShop, visitShop])
+		dontVisitShop = ActionBehaviour("Leave Shop", agent=self, action=ProceedAction())
+		doShop.add_children([tryVisitingShop, dontVisitShop])
+		shopContext.add_children([shopAvail, doShop])
+		
+		restContext = py_trees.composites.Sequence("Rest Context")
+		restAvail = CompareToConstBehaviour("Rest Available", agent=self, attr="screen_type", static=ScreenType.REST)
+		doRest = CustomBehaviour("Choose Rest Option", agent=self, function="choose_rest_option")
+		restContext.add_children([restAvail, doRest])
+
+		cardRewardContext = py_trees.composites.Sequence("Card Reward Context")
+		cardRewardAvail = CompareToConstBehaviour("Card Reward Available", agent=self, attr="screen_type", static=ScreenType.CARD_REWARD)
+		chooseCard = CustomBehaviour("Choose a Card", agent=self, function="choose_card_reward")
+		cardRewardContext.add_children([cardRewardAvail, chooseCard])
+		
+		
+		combatRewardContext = py_trees.composites.Sequence("Combat Reward Context")
+		combatRewardAvail = CompareToConstBehaviour("Combat Reward Available", agent=self, attr="screen_type", static=ScreenType.COMBAT_REWARD)
+		handleRewards = CustomBehaviour("Handle Rewards", agent=self, function="handle_rewards")
+		combatRewardContext.add_children([combatRewardAvail, handleRewards])
+		
+		mapContext = py_trees.composites.Sequence("Map Context")
+		mapAvail = CompareToConstBehaviour("Map Available", agent=self, attr="screen_type", static=ScreenType.MAP)
+		mapChoice = CustomBehaviour("Handle Map", agent=self, function="make_map_choice")
+		mapContext.add_children([mapAvail, mapChoice])
+		
+		bossRewardContext = py_trees.composites.Sequence("Boss Reward Context")
+		bossAvail = CompareToConstBehaviour("Boss Reward Available", agent=self, attr="screen_type", static=ScreenType.BOSS_REWARD)
+		bossChoice = CustomBehaviour("Handle Boss Reward", agent=self, function="handle_boss_reward")
+		bossRewardContext.add_children([bossAvail, bossChoice])
+		
+		shopScreenContext = py_trees.composites.Sequence("Shop Screen Context")
+		shopScreenAvail = CompareToConstBehaviour("Shop Screen Available", agent=self, attr="screen_type", static=ScreenType.SHOP_SCREEN)
+		shopScreenChoice = CustomBehaviour("Handle Shop Screen", agent=self, function="handle_shop_screen")
+		shopScreenContext.add_children([shopScreenAvail, shopScreenChoice])
+		
+		
+		gridContext = py_trees.composites.Sequence("Grid Context")
+		gridAvail = CompareToConstBehaviour("Grid Available", agent=self, attr="screen_type", static=ScreenType.GRID)
+		gridChoice = CustomBehaviour("Handle Grid", agent=self, function="handle_grid")
+		gridContext.add_children([gridAvail, gridChoice])
+		
+		selectFromHandContext = py_trees.composites.Sequence("Select From Hand Context")
+		selectFromHandAvail = CompareToConstBehaviour("Hand Select Available", agent=self, attr="screen_type", static=ScreenType.HAND_SELECT)
+		selectFromHandChoice = CustomBehaviour("Handle Hand Select", agent=self, function="handle_hand_select")
+		selectFromHandContext.add_children([selectFromHandAvail, selectFromHandChoice])		
+		
+		choiceSelector.add_children([eventContext, chestContext, shopContext, restContext, cardRewardContext, combatRewardContext,
+		mapContext, bossRewardContext, shopScreenContext, gridContext, selectFromHandContext])
+		
+		choiceContext.add_children([choiceAvail, choiceSelector])
 		proceedContext.add_children([proceedAvail, ActionBehaviour("Proceed", agent=self, action=ProceedAction())])
 		combatContext.add_children([combatAvail, testBehaviour])
 		cancelContext.add_children([cancelAvail, ActionBehaviour("Cancel", agent=self, action=CancelAction())])
 		
-		# if self.blackboard.game.choice_available:
-			# return self.decide(self.handle_screen())
-		# if self.blackboard.game.proceed_available:
-			# return self.decide(ProceedAction())
-		# if self.blackboard.game.play_available or self.blackboard.game.end_available:
-			# return self.handle_combat()
-		# if self.blackboard.game.cancel_available:
-			# return self.decide(CancelAction())
-		
 		root.add_children([choiceContext, proceedContext, combatContext, cancelContext])
 		self.log("Behaviour Tree initialized.")
 		self.log(py_trees.display.ascii_tree(root))
+		#py_trees.display.render_dot_tree(root) # FIXME can't render dot tree: FileNotFoundError: [WinError 2] "dot" not found in path.
 		
 	# For this to get plugged in, need to set pre_tick_handler = this func at some point
 	# Can also set a post tick handler
@@ -171,14 +214,19 @@ class SimpleAgent:
 	# For example, if we open pause menu, the last action we send will be Invalid
 	# Coordinator still needs an action input, so this function needs to return a valid action
 	def handle_error(self, error):
+		return Action() # TODO remove
 		self.log("Error: " + str(error), debug=2)
 		if "Invalid command" in str(error):
+			if "error" in str(error):
+				self.log(traceback.format_exc(), debug=2)
+				self.log(str(sys.exc_info()), debug=2)
+				print(traceback.format_exc(), file=self.logfile, flush=True)
 			# Assume this just means we're paused
 			self.log("Invalid command error", debug=3)
 			time.sleep(1)
 			return Action()
 		elif "Selected card requires an enemy target" in str(error):
-			# I think this is related to unpausing, we accidentally input an un-initialized play
+			# FIXME I think this is related to unpausing from in-game pause menu, we accidentally input an un-initialized play
 			# For now, just try again
 			self.log("Selected card requires target error", debug=3)
 			time.sleep(1)
@@ -217,7 +265,9 @@ class SimpleAgent:
 			self.log(traceback.format_exc(), debug=2)
 			print(traceback.format_exc(), file=self.logfile, flush=True)
 		
-		return self.get_next_cmd()
+		cmd = self.get_next_cmd()
+		self.log("> " + str(cmd), debug=5)
+		return cmd
 		
 
 	def get_next_action_out_of_game(self):
@@ -356,6 +406,7 @@ class SimpleAgent:
 		
 	# TODO
 	def handle_shop_screen(self):
+		self.game.visited_shop = True
 		if self.blackboard.game.screen.purge_available and self.blackboard.game.gold >= self.blackboard.game.screen.purge_cost:
 			return ChooseAction(name="purge")
 		for card in self.blackboard.game.screen.cards:
@@ -383,6 +434,23 @@ class SimpleAgent:
 		relics = self.blackboard.game.screen.relics
 		best_boss_relic = self.priorities.get_best_boss_relic(relics)
 		return BossRewardAction(best_boss_relic)
+		
+	def handle_grid(self):
+		if not self.blackboard.game.choice_available:
+			return ProceedAction()
+		if self.blackboard.game.screen.for_upgrade or self.choose_good_card:
+			available_cards = self.priorities.get_sorted_cards(self.blackboard.game.screen.cards)
+		else:
+			available_cards = self.priorities.get_sorted_cards(self.blackboard.game.screen.cards, reverse=True)
+		num_cards = self.blackboard.game.screen.num_cards
+		return CardSelectAction(available_cards[:num_cards])
+		
+	def handle_hand_select(self):
+		if not self.blackboard.game.choice_available:
+			return ProceedAction()
+		# Usually, we don't want to choose the whole hand for a hand select. 3 seems like a good compromise.
+		num_cards = min(self.blackboard.game.screen.num_cards, 3)
+		return CardSelectAction(self.priorities.get_cards_for_action(self.blackboard.game.current_action, self.blackboard.game.screen.cards, num_cards))
 		
 		
 	def handle_screen(self):
