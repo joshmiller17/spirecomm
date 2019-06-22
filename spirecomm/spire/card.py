@@ -33,6 +33,8 @@ class Card:
 		self.is_playable = is_playable
 		self.exhausts = exhausts
 		self.value = {}
+		
+		# Static values, load from cards/[name].json
 		self.value["damage"] = None
 		self.value["mitigation"] = None
 		self.value["scaling damage"] = None
@@ -40,6 +42,27 @@ class Card:
 		self.value["aoe"] = None
 		self.value["draw"] = None
 		self.value["utility"] = None
+		'''
+		Synergy format:
+		(Synergy type (string), value (float)) tuple
+		e.g. pummel might have (Strength, 4)
+		'''
+		self.value["synergies"] = []
+		
+		'''
+		Effect format:
+		(Effect, value) tuple
+		e.g.:
+		- Well-Laid Plains is (Retain, 1)
+		- Defend is (Block, 5)
+		- Headbutt is (DiscardToTop, 1) -- cards which have unique abilities can be tracked uniquely
+		'''
+		self.value["effects"] = []
+		
+		# Dynamic values
+		self.value["upgrade value"] = None # How much do we want to upgrade this card?
+		self.value["purge value"] = None # How much do we want to get rid of this card?
+		self.value["synergy value"] = None # How well does this work with our deck?
 
 	@classmethod
 	def from_json(cls, json_object):

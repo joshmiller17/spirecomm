@@ -90,6 +90,26 @@ class Monster(Character):
         self.move_adjusted_damage = move_adjusted_damage
         self.move_hits = move_hits
         self.monster_index = 0
+		
+		# Load from monsters/[name].json
+		'''
+		Move format
+		name : effects (list)
+		
+		Effect format
+		(name, value)
+		e.g. Damage, 10; Vulnerable, 2
+		
+		'''
+		self.moves = {}
+		'''
+		States format
+		state : { transition: [(new state, probability), ...], moveset: [(move, probability), ...]}
+		Always starts in state 1
+		states dict lists probability to transition to other states
+		TODO some enemies transition on trigger condition, like half health
+		'''
+		self.states = {}
 
     @classmethod
     def from_json(cls, json_object):
