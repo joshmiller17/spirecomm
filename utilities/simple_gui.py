@@ -34,6 +34,8 @@ class Base(BoxLayout):
 		self.log = f
 		self.last_comm = ""
 		self.step = False # whether to Run or Step when pressing Resume
+		self.sleeping = False
+		self.z_count = 0
 		print("Base: Init", file=self.log, flush=True)
 
 		self.input_text = TextInput(size_hint=(2, 7))
@@ -78,10 +80,20 @@ class Base(BoxLayout):
 		
 		new_msg = str(self.agent.get_next_msg())
 		if new_msg != "":
-			msgs = new_msg.split('\n')
-			for m in msgs:
-				self.in_history.append(m)
-		self.input_text.text = "\n".join(self.in_history) #+ "\n"
+			if new_msg == 'z':
+				self.sleeping = True
+				self.z_count += 1
+			else:
+				self.sleeping = False
+				self.z_count = 0
+				msgs = new_msg.split('\n')
+				for m in msgs:
+					self.in_history.append(m)
+					
+		
+		self.input_text.text = "\n".join(self.in_history)
+		if self.sleeping:
+			self.input_text.text += "\n" + 'z' * (1 + self.z_count % 3)
 		
 		action_msg = self.coordinator.get_action_played()
 			
@@ -135,6 +147,10 @@ class Base(BoxLayout):
 			filename = msg[6:]
 			self.agent.tree_to_json(filename + ".json")
 			self.in_history.append("Behaviour tree saved to " + filename + ".json")
+			return True
+			
+		if msg == "tree":
+			self.agent.print_tree()
 			return True
 
 		if msg == "load":

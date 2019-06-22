@@ -1,0 +1,339 @@
+{
+	"name": "Root Context Selector",
+	"class": "SelectorBehaviour",
+	"children": [
+		{
+			"name": "Choice Context",
+			"class": "SequenceBehaviour",
+			"children": [
+				{
+					"name": "Choice Available",
+					"class": "BoolCheckBehaviour",
+					"boolean": "choice_available",
+					"success": true,
+					"children": []
+				},
+				{
+					"name": "Type of Choice Selector",
+					"class": "SelectorBehaviour",
+					"children": [
+						{
+							"name": "Event Context",
+							"class": "SequenceBehaviour",
+							"children": [
+								{
+									"name": "Event Available",
+									"class": "CompareToConstBehaviour",
+									"attr": "screen_type",
+									"static": "ScreenType.EVENT",
+									"success": true,
+									"children": []
+								},
+								{
+									"name": "Default Choose",
+									"class": "ActionBehaviour",
+									"action": "ChooseAction",
+									"children": []
+								}
+							]
+						},
+						{
+							"name": "Chest Context",
+							"class": "SequenceBehaviour",
+							"children": [
+								{
+									"name": "Chest Available",
+									"class": "CompareToConstBehaviour",
+									"attr": "screen_type",
+									"static": "ScreenType.CHEST",
+									"success": true,
+									"children": []
+								},
+								{
+									"name": "Default Chest Open",
+									"class": "ActionBehaviour",
+									"action": "OpenChestAction",
+									"children": []
+								}
+							]
+						},
+						{
+							"name": "Shop Context",
+							"class": "SequenceBehaviour",
+							"children": [
+								{
+									"name": "Shop Available",
+									"class": "CompareToConstBehaviour",
+									"attr": "screen_type",
+									"static": "ScreenType.SHOP_ROOM",
+									"success": true,
+									"children": []
+								},
+								{
+									"name": "Check Shop",
+									"class": "SelectorBehaviour",
+									"children": [
+										{
+											"name": "Try Visiting Shop",
+											"class": "SequenceBehaviour",
+											"children": [
+												{
+													"name": "Is Shop Visited",
+													"class": "BoolCheckBehaviour",
+													"boolean": "visited_shop",
+													"success": true,
+													"children": []
+												},
+												{
+													"name": "Visit Shop",
+													"class": "ActionBehaviour",
+													"action": "ChooseShopkeeperAction",
+													"children": []
+												}
+											]
+										},
+										{
+											"name": "Leave Shop",
+											"class": "ActionBehaviour",
+											"action": "ProceedAction",
+											"children": []
+										}
+									]
+								}
+							]
+						},
+						{
+							"name": "Rest Context",
+							"class": "SequenceBehaviour",
+							"children": [
+								{
+									"name": "Rest Available",
+									"class": "CompareToConstBehaviour",
+									"attr": "screen_type",
+									"static": "ScreenType.REST",
+									"success": true,
+									"children": []
+								},
+								{
+									"name": "Choose Rest Option",
+									"class": "CustomBehaviour",
+									"function": "choose_rest_option",
+									"children": []
+								}
+							]
+						},
+						{
+							"name": "Card Reward Context",
+							"class": "SequenceBehaviour",
+							"children": [
+								{
+									"name": "Card Reward Available",
+									"class": "CompareToConstBehaviour",
+									"attr": "screen_type",
+									"static": "ScreenType.CARD_REWARD",
+									"success": true,
+									"children": []
+								},
+								{
+									"name": "Choose a Card",
+									"class": "CustomBehaviour",
+									"function": "choose_card_reward",
+									"children": []
+								}
+							]
+						},
+						{
+							"name": "Combat Reward Context",
+							"class": "SequenceBehaviour",
+							"children": [
+								{
+									"name": "Combat Reward Available",
+									"class": "CompareToConstBehaviour",
+									"attr": "screen_type",
+									"static": "ScreenType.COMBAT_REWARD",
+									"success": true,
+									"children": []
+								},
+								{
+									"name": "Handle Rewards",
+									"class": "CustomBehaviour",
+									"function": "handle_rewards",
+									"children": []
+								}
+							]
+						},
+						{
+							"name": "Map Context",
+							"class": "SequenceBehaviour",
+							"children": [
+								{
+									"name": "Map Available",
+									"class": "CompareToConstBehaviour",
+									"attr": "screen_type",
+									"static": "ScreenType.MAP",
+									"success": true,
+									"children": []
+								},
+								{
+									"name": "Handle Map",
+									"class": "CustomBehaviour",
+									"function": "make_map_choice",
+									"children": []
+								}
+							]
+						},
+						{
+							"name": "Boss Reward Context",
+							"class": "SequenceBehaviour",
+							"children": [
+								{
+									"name": "Boss Reward Available",
+									"class": "CompareToConstBehaviour",
+									"attr": "screen_type",
+									"static": "ScreenType.BOSS_REWARD",
+									"success": true,
+									"children": []
+								},
+								{
+									"name": "Handle Boss Reward",
+									"class": "CustomBehaviour",
+									"function": "handle_boss_reward",
+									"children": []
+								}
+							]
+						},
+						{
+							"name": "Shop Screen Context",
+							"class": "SequenceBehaviour",
+							"children": [
+								{
+									"name": "Shop Screen Available",
+									"class": "CompareToConstBehaviour",
+									"attr": "screen_type",
+									"static": "ScreenType.SHOP_SCREEN",
+									"success": true,
+									"children": []
+								},
+								{
+									"name": "Handle Shop Screen",
+									"class": "CustomBehaviour",
+									"function": "handle_shop_screen",
+									"children": []
+								}
+							]
+						},
+						{
+							"name": "Grid Context",
+							"class": "SequenceBehaviour",
+							"children": [
+								{
+									"name": "Grid Available",
+									"class": "CompareToConstBehaviour",
+									"attr": "screen_type",
+									"static": "ScreenType.GRID",
+									"success": true,
+									"children": []
+								},
+								{
+									"name": "Handle Grid",
+									"class": "CustomBehaviour",
+									"function": "handle_grid",
+									"children": []
+								}
+							]
+						},
+						{
+							"name": "Select From Hand Context",
+							"class": "SequenceBehaviour",
+							"children": [
+								{
+									"name": "Hand Select Available",
+									"class": "CompareToConstBehaviour",
+									"attr": "screen_type",
+									"static": "ScreenType.HAND_SELECT",
+									"success": true,
+									"children": []
+								},
+								{
+									"name": "Handle Hand Select",
+									"class": "CustomBehaviour",
+									"function": "handle_hand_select",
+									"children": []
+								}
+							]
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Proceed Context",
+			"class": "SequenceBehaviour",
+			"children": [
+				{
+					"name": "Proceed Available",
+					"class": "BoolCheckBehaviour",
+					"boolean": "proceed_available",
+					"success": true,
+					"children": []
+				},
+				{
+					"name": "Proceed",
+					"class": "ActionBehaviour",
+					"action": "ProceedAction",
+					"children": []
+				}
+			]
+		},
+		{
+			"name": "Combat Context",
+			"class": "SequenceBehaviour",
+			"children": [
+				{
+					"name": "Combat Choice Available",
+					"class": "SelectorBehaviour",
+					"children": [
+						{
+							"name": "Play Available",
+							"class": "BoolCheckBehaviour",
+							"boolean": "play_available",
+							"success": true,
+							"children": []
+						},
+						{
+							"name": "End Available",
+							"class": "BoolCheckBehaviour",
+							"boolean": "end_available",
+							"success": true,
+							"children": []
+						}
+					]
+				},
+				{
+					"name": "Test",
+					"class": "TestBehaviour",
+					"children": []
+				}
+			]
+		},
+		{
+			"name": "Cancel Context",
+			"class": "SequenceBehaviour",
+			"children": [
+				{
+					"name": "Cancel Available",
+					"class": "BoolCheckBehaviour",
+					"boolean": "cancel_available",
+					"success": true,
+					"children": []
+				},
+				{
+					"name": "Cancel",
+					"class": "ActionBehaviour",
+					"action": "CancelAction",
+					"children": []
+				}
+			]
+		}
+	]
+}

@@ -22,7 +22,7 @@ class SimpleAgent:
 	def __init__(self, logfile, chosen_class=PlayerClass.IRONCLAD):
 		self.chosen_class = chosen_class
 		self.change_class(chosen_class)
-		self.action_delay = 0.5 # seconds delay per action, useful for actually seeing what's going on.
+		self.action_delay = 2.0 # seconds delay per action, useful for actually seeing what's going on.
 		# high delay will steal mouse focus??
 		self.ascension = 0
 		self.debug_queue = ["AI Initialized.", "Delay timer set to " + str(self.action_delay)]
@@ -73,7 +73,10 @@ class SimpleAgent:
 		
 		self.root = SelectorBehaviour.fromDict(jsonTree,self)
 		self.log(filename + " loaded successfully:")
-		self.log(py_trees.display.ascii_tree(root))
+		self.log(py_trees.display.ascii_tree(self.root))
+		
+	def print_tree(self):
+		self.log(py_trees.display.ascii_tree(self.root))
 		
 	# only show to screen if self.debug_level >= debug
 	"""
@@ -272,13 +275,9 @@ class SimpleAgent:
 
 	def get_next_action_in_game(self, game_state):
 		time.sleep(self.action_delay)
-		z_count = 0
 		while (self.paused):
 			time.sleep(1)
-			if z_count == 0:
-				self.think("\n")
-			self.think("\r" + 'z' * (z_count % 3))
-			z_count += 1
+			self.think('z')
 		self.blackboard.game = game_state
 		
 		try:
