@@ -21,6 +21,7 @@ from kivy.uix.textinput import TextInput
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.button import Button
+from kivy.uix.label import Label
 from kivy.clock import Clock
 from kivy.core.window import Window
 
@@ -35,17 +36,24 @@ class Base(BoxLayout):
 		self.step = False # whether to Run or Step when pressing Resume
 		print("Base: Init", file=self.log, flush=True)
 
-		self.input_text = TextInput(size_hint=(2, 5))
+		self.input_text = TextInput(size_hint=(2, 7))
 		self.input_text.text = ""
-		self.input_text.foreground_color = (0, 0, 0, 1)
-		self.input_text.background_color = (1, 1, 1, 1)
+		self.input_text.foreground_color = (1, 1, 1, 1)
+		self.input_text.background_color = (.1, .1, .1, 1)
 		self.input_text.readonly = True
+		self.max_in_history_lines = 15
+		self.in_history = collections.deque(maxlen=self.max_in_history_lines)
 		self.add_widget(self.input_text)
 
-		self.history_text = TextInput(size_hint=(1, 2))
-		self.add_widget(self.history_text)
+		self.out_history_text = TextInput(size_hint=(1, 2))
+		self.out_history_text.readonly = True
+		self.out_history_text.foreground_color = (1, 1, 1, 1)
+		self.out_history_text.background_color = (.1, .1, .1, 1)
+		self.add_widget(self.out_history_text)
 
 		self.output_text = TextInput(size_hint=(1, 1))
+		self.output_text.foreground_color = (1, 1, 1, 1)
+		self.output_text.background_color = (.1, .1, .1, 1)
 		self.add_widget(self.output_text)
 
 		self.button = Button(text='Send', size_hint=(1, 1))
@@ -60,29 +68,23 @@ class Base(BoxLayout):
 		self.resume.bind(on_press=self.do_resume)
 		self.add_widget(self.resume)
 
-		self.max_history_lines = 5
-		self.history_lines = collections.deque(maxlen=self.max_history_lines)
+		self.max_out_history_lines = 5
+		self.out_history_lines = collections.deque(maxlen=self.max_out_history_lines)
 
 		Window.bind(on_key_up=self.key_callback)
 
 	def do_communication(self, dt):
+	
+		
 		new_msg = str(self.agent.get_next_msg())
 		if new_msg != "":
-			self.input_text.text += new_msg + "\n"
-			
-		# We no longer care to print out the raw state of the game
-		#comm_msg = self.coordinator.view_last_msg()
-		#if comm_msg != self.last_comm:
-		#	self.input_text.text += comm_msg + "\n"
-		#	self.last_comm = comm_msg
+			msgs = new_msg.split('\n')
+			for m in msgs:
+				self.in_history.append(m)
+		self.input_text.text = "\n".join(self.in_history) #+ "\n"
 		
 		action_msg = self.coordinator.get_action_played()
 			
-		# Original Input GUI
-		#message = self.coordinator.get_next_raw_message()
-		#if message is not None:
-		#	self.input_text.text = message + '\n' + self.agent.get_next_msg()
-		#self.coordinator.execute_next_action_if_ready()
 
 	def do_pause(self, instance=None):
 		self.agent.pause()
@@ -99,8 +101,8 @@ class Base(BoxLayout):
 		text = text.strip()
 		if not self.handle_debug_cmds(text):
 			print(text, end='\n', flush=True)
-		self.history_lines.append(text)
-		self.history_text.text = "\n".join(self.history_lines)
+		self.out_history_lines.append(text)
+		self.out_history_text.text = "\n".join(self.out_history_lines)
 		self.output_text.text = ""
 
 	def key_callback(self, window, keycode, *args):
@@ -115,24 +117,24 @@ class Base(BoxLayout):
 			for thread in threading.enumerate():
 				print(thread, file=self.log, flush=True)
 				print(thread.isAlive(), file=self.log, flush=True)
-				self.input_text.text += str(thread) + str(thread.isAlive()) + "\n"
+				self.in_history.append(str(thread) + str(thread.isAlive()))
 
 			return True
 			
 		if msg == "step":
 			self.step = not self.step
-			self.input_text.text += "Step mode: " + ("ON" if self.step else "OFF") + "\n"
+			self.in_history.append("Step mode: " + ("ON" if self.step else "OFF"))
 			return True
 
 		if msg == "write":
 			self.agent.tree_to_json("tree.json")
-			self.input_text.text += "Behaviour tree saved to tree.json\n"
+			self.in_history.append("Behaviour tree saved to tree.json")
 			return True
 			
 		elif msg.startswith("write "):
 			filename = msg[6:]
 			self.agent.tree_to_json(filename + ".json")
-			self.input_text.text += "Behaviour tree saved to " + filename + ".json\n"
+			self.in_history.append("Behaviour tree saved to " + filename + ".json")
 			return True
 
 		if msg == "load":
@@ -141,7 +143,7 @@ class Base(BoxLayout):
 		if msg.startswith("load "):
 			filename = msg[5:]
 			try:
-				self.input_text.text += "Loading " + filename + ".json\n"
+				self.in_history.append("Loading " + filename + ".json")
 				self.agent.json_to_tree(filename + ".json")
 			except Exception as e:
 				print(e, file=self.log, flush=True)
@@ -151,7 +153,7 @@ class Base(BoxLayout):
 		if msg.startswith("delay "):
 			try:
 				self.agent.action_delay = float(msg[6:])
-				self.input_text.text += "DELAY SET TO " + str(self.agent.action_delay) + "\n"
+				self.in_history.append("DELAY SET TO " + str(self.agent.action_delay))
 				return True
 			except Exception as e:
 				print(e, file=self.log, flush=True)
@@ -159,7 +161,7 @@ class Base(BoxLayout):
 		if msg.startswith("debug "):
 			try:
 				self.agent.debug_level = int(msg[6:])
-				self.input_text.text += "DEBUG SET TO " + str(self.agent.debug_level) + "\n"
+				self.in_history.append("DEBUG SET TO " + str(self.agent.debug_level))
 				return True
 			except Exception as e:
 				print(e, file=self.log, flush=True)
