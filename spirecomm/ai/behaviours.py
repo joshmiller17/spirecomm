@@ -1,6 +1,8 @@
 import py_trees
 import json
 
+from spirecomm.communication.action import *
+
 # This is the Template class from which all StS Behaviours inherit
 # It also includes the original comments for what should go in each method
 class DefaultBehaviour(py_trees.behaviour.Behaviour):
@@ -279,25 +281,29 @@ class CompareToConstBehaviour(EqualityCheckBehaviour):
 # On update, it appends its action to the queue and returns SUCCESS
 class ActionBehaviour(DefaultBehaviour):
 
-	def __init__(self, name, agent, action):
+	def __init__(self, name, agent, action, params=[]):
 		super(ActionBehaviour, self).__init__(name, agent)
 		self.action = action
+		self.params = params
 
 	def update(self):
-		self.agent.cmd_queue.append(self.action)
+		action_class = globals()[self.action]
+		command = action_class(*self.params)
+		self.agent.cmd_queue.append(command)
 		return py_trees.common.Status.SUCCESS
 
 	def to_json(self):
 		attrDict = {}
 		attrDict["name"] = self.name
 		attrDict["class"] = "ActionBehaviour"
-		attrDict["action"] = self.action.__class__.__name__
+		attrDict["action"] = self.action
+		attrDict["params"] = self.params
 		attrDict["children"] = [c.to_json() for c in self.iterate(direct_descendants=True) if c != self]
 		return attrDict
 	
 	@classmethod
 	def fromDict(cls,d,agent):
-		ret = cls(d["name"],agent,action)
+		ret = cls(d["name"],agent,d["action"],d["params"])
 		for child in d["children"]:
 			childClass = child["class"]
 			ret.add_child(classMap[childClass].fromDict(child,agent))
