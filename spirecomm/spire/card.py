@@ -1,4 +1,5 @@
 from enum import Enum
+import os
 
 
 class CardType(Enum):
@@ -59,10 +60,25 @@ class Card:
 		'''
 		self.value["effects"] = []
 		
+		try:
+			with open(os.path.join("cards", self.name + ".json"),"r") as f:
+				jsonValues = json.load(f)
+			self.value = Card.fromDict(jsonTree,self)
+		except Exception as e:
+			raise Exception(e)
+		
 		# Dynamic values
 		self.value["upgrade value"] = None # How much do we want to upgrade this card?
 		self.value["purge value"] = None # How much do we want to get rid of this card?
 		self.value["synergy value"] = None # How well does this work with our deck?
+		
+	@classmethod
+	def fromDict(cls,d):
+		ret = cls(d["name"],agent,action)
+		for child in d["children"]:
+			childClass = child["class"]
+			ret.add_child(classMap[childClass].fromDict(child,agent))
+		return ret
 
 	@classmethod
 	def from_json(cls, json_object):
