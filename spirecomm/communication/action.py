@@ -155,7 +155,7 @@ class OpenChestAction(ChooseAction):
 		super().__init__(name="open")
 		
 	def __str__(self):
-		return "[Chest Action (Open)]" + super().__str__()
+		return "[Open Chest]" + super().__str__()
 
 
 class BuyCardAction(ChooseAction):

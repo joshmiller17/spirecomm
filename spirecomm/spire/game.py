@@ -1,4 +1,6 @@
 from enum import Enum
+import copy
+
 
 import spirecomm.spire.relic
 import spirecomm.spire.card
@@ -168,3 +170,95 @@ class Game:
 			if potion.potion_id != "Potion Slot":
 				potions.append(potion)
 		return potions
+		
+
+# ---------- MCTS SIMULATIONS -----------		
+
+		
+	def get_possible_actions(self):
+		
+		possible_actions = [EndTurnAction()]
+		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+		
+		for potion in self.get_real_potions():
+			if potion.requires_target:
+				for monster in available_monsters:
+					possible_actions.append(PotionAction(True, potion=potion, target_monster=monster))
+			else:
+				possible_actions.append(PotionAction(True, potion=potion))
+				
+		for card in self.hand:
+			if len(available_monsters) == 0 and card != spirecomm.spire.card.CardType.POWER:
+				continue
+			if card.has_target:
+				for monster in available_monsters:
+					possible_actions.append(PlayCardAction(card=card, target_monster=monster))
+			else:
+				possible_actions.append(PlayCardAction(card=card))
+				
+		return possible_actions
+	
+	
+	# Returns a list of (new_state, probability) tuples
+	def take_action(action):
+		
+		new_state = copy.deepcopy(self)
+		
+		if action.command.startswith("end"):
+			return simulate_end_turn(new_state)
+		elif action.command.startswith("potion"):
+			return simulate_potion(new_state)
+		elif action.command.startswith("play"):
+			return simulate_play(new_state)
+		else:
+			raise Exception("Chosen simulated action is not a valid combat action.")
+		
+		
+	# Returns a list of (new_state, probability) tuples
+	def simulate_end_turn(new_state):
+		
+	
+		# TODO consider retaining cards (well-laid plans) or runic pyramid
+		
+		# Hand discarded
+		new_state.discard_pile += new_state.hand
+		new_state.hand = []
+		
+		# Monsters attack
+		# TODO consider known intent rotation with more nuance
+		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+		for monster in available_monsters:
+			if monster.intent.is_attack():
+				if monster.move_adjusted_damage is not None:
+					# are weak and vulnerable accounted for?
+					incoming_damage = monster.move_adjusted_damage * monster.move_hits
+					damage_after_block = new_state.player.block - incoming_damage
+					if damage_after_block > 0:
+						new_state.player.current_hp -= damage_after_block
+						new_state.player.block = 0
+					else:
+						new_state.player.block -= incoming_damage
+	
+		# Draw new hand - TODO consider relic modifiers
+		
+		# TODO how to draw a hand without blowing up exponentially?
+	
+		return new_state
+		
+		
+	# Returns a list of (new_state, probability) tuples
+	def simulate_potion(new_state):
+	
+	
+		return new_state
+		
+		
+	# Returns a list of (new_state, probability) tuples
+	def simulate_play(new_state):
+	
+	
+		return new_state
+		
+		
+		
+		
