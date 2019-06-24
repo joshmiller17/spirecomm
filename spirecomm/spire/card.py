@@ -64,9 +64,11 @@ class Card:
 		try:
 			with open(os.path.join("cards", self.name + ".json"),"r") as f:
 				self.value = json.load(f)
-				print(self.value) # TEST REMOVE
 		except Exception as e:
-			raise Exception(e)
+			with open('err.log', 'a+') as err_file:
+				err_file.write("Card Error: no card file for " + str(self.name))
+				err_file.write(e)
+			#raise Exception(e)
 		
 		# Dynamic values
 		self.value["upgrade value"] = None # How much do we want to upgrade this card?

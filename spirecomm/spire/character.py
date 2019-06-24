@@ -118,7 +118,10 @@ class Monster(Character):
 				self.states = jsonDict["states"]
 				self.moves = jsonDict["moves"]
 		except Exception as e:
-			raise Exception(e)
+			with open('err.log', 'a+') as err_file:
+				err_file.write("Monster Error: no monster file for " + str(self.name))
+				err_file.write(e)
+			#raise Exception(e)
 
 	@classmethod
 	def from_json(cls, json_object):
