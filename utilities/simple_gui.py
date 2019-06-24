@@ -9,6 +9,9 @@ import threading
 
 #import spirecomm
 #print(spirecomm.__file__)
+
+import spirecomm.spire.card
+
 import spirecomm.communication.coordinator as coord
 from spirecomm.ai.agent import SimpleAgent
 from spirecomm.spire.character import PlayerClass
@@ -124,6 +127,13 @@ class Base(BoxLayout):
 	# Returns True if message was a debug command to execute,
 	# False if we should print out for CommMod
 	def handle_debug_cmds(self, msg):
+	
+		# testbed
+		if msg == "test":
+		
+			spirecomm.spire.card.Card("0", "Strike", "Attack", "Common")
+		
+			return True
 	
 		if msg == "threadcheck":
 			for thread in threading.enumerate():

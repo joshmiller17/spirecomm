@@ -22,6 +22,7 @@ class Game:
 		# General state
 
 		self.current_action = None
+		self.act_boss = None
 		self.current_hp = 0
 		self.max_hp = 0
 		self.floor = 0
@@ -112,6 +113,7 @@ class Game:
 		game.deck = [spirecomm.spire.card.Card.from_json(json_card) for json_card in json_state.get("deck")]
 		game.map = spirecomm.spire.map.Map.from_json(json_state.get("map"))
 		game.potions = [spirecomm.spire.potion.Potion.from_json(potion) for potion in json_state.get("potions")]
+		game.act_boss = json_state.get("act_boss", None)
 
 		# Screen State
 
