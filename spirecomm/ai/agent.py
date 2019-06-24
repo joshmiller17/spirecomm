@@ -114,12 +114,12 @@ class SimpleAgent:
 		choiceSelector = SelectorBehaviour("Type of Choice Selector")
 		eventContext = SequenceBehaviour("Event Context")
 		eventAvail = CompareToConstBehaviour("Event Available", agent=self, attr="screen_type", static=ScreenType.EVENT)
-		eventDecision = ActionBehaviour("Default Choose", agent=self, action=ChooseAction(0))
+		eventDecision = ActionBehaviour("Default Choose", agent=self, action="ChooseAction",params=[0])
 		eventContext.add_children([eventAvail, eventDecision])
 		
 		chestContext = SequenceBehaviour("Chest Context")
 		chestAvail = CompareToConstBehaviour("Chest Available", agent=self, attr="screen_type", static=ScreenType.CHEST)
-		chestDecision = ActionBehaviour("Default Chest Open", agent=self, action=OpenChestAction())
+		chestDecision = ActionBehaviour("Default Chest Open", agent=self, action="OpenChestAction")
 		chestContext.add_children([chestAvail, chestDecision])
 		
 		shopContext = SequenceBehaviour("Shop Context")
@@ -127,9 +127,9 @@ class SimpleAgent:
 		doShop = SelectorBehaviour("Check Shop")
 		tryVisitingShop = SequenceBehaviour("Try Visiting Shop")
 		visitedShop = BoolCheckBehaviour("Is Shop Visited", agent=self, boolean="visited_shop")
-		visitShop = ActionBehaviour("Visit Shop", agent=self, action=ChooseShopkeeperAction())
+		visitShop = ActionBehaviour("Visit Shop", agent=self, action="ChooseShopkeeperAction")
 		tryVisitingShop.add_children([visitedShop, visitShop])
-		dontVisitShop = ActionBehaviour("Leave Shop", agent=self, action=ProceedAction())
+		dontVisitShop = ActionBehaviour("Leave Shop", agent=self, action="ProceedAction")
 		doShop.add_children([tryVisitingShop, dontVisitShop])
 		shopContext.add_children([shopAvail, doShop])
 		
@@ -179,9 +179,9 @@ class SimpleAgent:
 		mapContext, bossRewardContext, shopScreenContext, gridContext, selectFromHandContext])
 
 		choiceContext.add_children([choiceAvail, choiceSelector])
-		proceedContext.add_children([proceedAvail, ActionBehaviour("Proceed", agent=self, action=ProceedAction())])
+		proceedContext.add_children([proceedAvail, ActionBehaviour("Proceed", agent=self, action="ProceedAction")])
 		combatContext.add_children([combatAvail, testBehaviour])
-		cancelContext.add_children([cancelAvail, ActionBehaviour("Cancel", agent=self, action=CancelAction())])
+		cancelContext.add_children([cancelAvail, ActionBehaviour("Cancel", agent=self, action="CancelAction")])
 		
 		root.add_children([choiceContext, proceedContext, combatContext, cancelContext])
 		self.log("Behaviour Tree initialized.")
