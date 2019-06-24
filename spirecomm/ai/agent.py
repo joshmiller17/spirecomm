@@ -96,17 +96,6 @@ class SimpleAgent:
 			print(str(time.time()) + ": " + msg, file=self.logfile, flush=True)
 		if self.debug_level >= debug:
 			self.debug_queue.append(msg)
-			
-	# TODO, but maybe not like this
-	# def behaviour_tree_loader(self, filename):
-		# indent = 0
-		# lineno = 1
-		# with open(filename, 'r') as file:
-			# line = file.readlien()
-			# while line:
-				# # TODO
-				# line = fp.readline()
-				# lineno += 1
 		
 	def init_behaviour_tree(self, root):
 		choiceContext = SequenceBehaviour("Choice Context")

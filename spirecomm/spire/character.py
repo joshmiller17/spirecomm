@@ -119,7 +119,7 @@ class Monster(Character):
 				self.moves = jsonDict["moves"]
 		except Exception as e:
 			with open('err.log', 'a+') as err_file:
-				err_file.write("Monster Error: no monster file for " + str(self.name))
+				err_file.write("Monster Error: " + str(self.name))
 				err_file.write(e)
 			#raise Exception(e)
 

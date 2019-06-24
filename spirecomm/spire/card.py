@@ -66,7 +66,7 @@ class Card:
 				self.value = json.load(f)
 		except Exception as e:
 			with open('err.log', 'a+') as err_file:
-				err_file.write("Card Error: no card file for " + str(self.name))
+				err_file.write("Card Error: " + str(self.name))
 				err_file.write(e)
 			#raise Exception(e)
 		
