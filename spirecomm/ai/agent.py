@@ -31,12 +31,13 @@ class SimpleAgent:
 		self.skipping_card = False
 		self.paused = False
 		self.step = False
-		self.debug_level = 6
+		self.debug_level = 7
 		self.root = SelectorBehaviour("Root Context Selector")
 		self.init_behaviour_tree(self.root) # Warning: uses British spelling
 		self.behaviour_tree = py_trees.trees.BehaviourTree(self.root)
 		self.blackboard = py_trees.blackboard.Blackboard()
 		self.blackboard.game = Game()
+		self.last_game_state = Game()
 		# call behaviour_tree.tick() for one tick
 		# can use behaviour.tick_once() to tick a specific behaviour
 		
@@ -213,6 +214,51 @@ class SimpleAgent:
 		self.log(str(action), debug=5)
 		return action
 		
+	# Returns a dict of what changed between game states
+	def state_diff(self, state1, state2):
+		diff = {}
+		if state1.player is None or state2.player is None: # we haven't initialized yet
+			return diff
+		if state1.current_action != state2.current_action:
+			diff["current_action"] = state2.current_action
+		if state1.act_boss != state2.act_boss:
+			diff["act_boss"] = state2.act_boss
+		if state1.current_hp != state2.current_hp:
+			diff["current_hp"] = state2.current_hp - state1.current_hp
+		if state1.max_hp != state2.max_hp:
+			diff["max_hp"] = state2.max_hp - state1.max_hp
+		if state1.floor != state2.floor:
+			diff["floor"] = state2.floor
+		if state1.act != state2.act:
+			diff["act"] = state2.act
+		if state1.gold != state2.gold:
+			diff["gold"] = state2.gold - state1.gold
+		if state1.relics != state2.relics:
+			diff["relics"] = [r.name for r in list(set(state2.relics) - set(state1.relics))]
+		if state1.deck != state2.deck:
+			diff["deck_added"] = [c.name for c in list(set(state2.deck) - set(state1.deck))]
+			diff["deck_removed"] = [c.name for c in list(set(state1.deck) - set(state2.deck))]
+		if state1.potions != state2.potions:
+			diff["potions_added"] = [p.name for p in list(set(state2.potions) - set(state1.potions))]
+			diff["potions_removed"] = [p.name for p in list(set(state1.potions) - set(state2.potions))]	
+		if state1.in_combat != state2.in_combat:
+			diff["in_combat"] = state2.in_combat
+		if state1.player.powers != state2.player.powers: # TODO fix how powers works
+			diff["powers"] = []
+			for power2 in state2.player.powers:
+				found = False
+				for power1 in state1.player.powers:
+					if power1.name == power2.name:
+						found = True
+						diff["powers"].append((power1.name, power2.amount - power1.amount))
+				if not found:
+					diff["powers"].append((power2.name, power2.amount))		
+		if state1.player.block != state2.player.block:
+			diff["block"] = state2.player.block - state1.player.block
+			
+		return diff
+		
+		
 	def change_class(self, new_class):
 		self.chosen_class = new_class
 		if self.chosen_class == PlayerClass.THE_SILENT:
@@ -267,7 +313,10 @@ class SimpleAgent:
 		while (self.paused):
 			time.sleep(1)
 			self.think('z')
+		self.last_game_state = self.blackboard.game
 		self.blackboard.game = game_state
+		
+		self.log(str(self.state_diff(self.last_game_state, self.blackboard.game)), debug=7)
 		
 		try:
 			self.compute_smart_state()

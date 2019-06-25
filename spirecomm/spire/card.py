@@ -62,12 +62,14 @@ class Card:
 		self.value["effects"] = []
 		
 		try:
-			with open(os.path.join("cards", self.name + ".json"),"r") as f:
+			with open(os.path.join("..", "ai", "cards", self.name + ".json"),"r") as f:
 				self.value = json.load(f)
 		except Exception as e:
 			with open('err.log', 'a+') as err_file:
-				err_file.write("Card Error: " + str(self.name))
-				err_file.write(e)
+				err_file.write("\nCard Error: " + str(self.name))
+				err_file.write(str(e))
+				err_file.write("(working directory is " + str(os.getcwd()) + ")")
+
 			#raise Exception(e)
 		
 		# Dynamic values
@@ -95,3 +97,6 @@ class Card:
 
 	def __eq__(self, other):
 		return self.uuid == other.uuid
+		
+	def __hash__(self):
+		return hash(str(self))

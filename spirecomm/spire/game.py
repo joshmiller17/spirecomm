@@ -1,5 +1,6 @@
 from enum import Enum
 import copy
+import random
 
 
 import spirecomm.spire.relic
@@ -80,7 +81,7 @@ class Game:
 		
 	def __str__(self):
 		string = "\n---- Game State ----\n"
-		string += "HP: " + str(self.current_hp) + "/" + str(self.max_hp) + "\n"
+		#string += "HP: " + str(self.current_hp) + "/" + str(self.max_hp) + "\n"
 		string += "Screen: " + str(self.screen) + " (" + str(self.screen_type) + ")\n"
 		string += "Room: " + str(self.room_type) + "\n"
 		string += "Choices: " + str(self.choice_list) + " \n"
@@ -226,7 +227,7 @@ class Game:
 		
 		# Monsters attack
 		# TODO consider known intent rotation with more nuance
-		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+		available_monsters = [monster for monster in new_state.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
 		for monster in available_monsters:
 			if monster.intent.is_attack():
 				if monster.move_adjusted_damage is not None:
@@ -239,23 +240,23 @@ class Game:
 					else:
 						new_state.player.block -= incoming_damage
 	
-		# Draw new hand - TODO consider relic modifiers
-		
-		# TODO how to draw a hand without blowing up exponentially?
+		# Draw new hand - TODO consider relic modifiers and known information
+		while len(new_state.hand) < 5:
+			new_state.hand.append(new_state.draw_pile.pop(random.randrange(len(new_state.draw_pile))))
 	
 		return new_state
 		
 		
 	# Returns a list of (new_state, probability) tuples
 	def simulate_potion(new_state):
-	
-	
+		# TODO
+		
 		return new_state
 		
 		
 	# Returns a list of (new_state, probability) tuples
 	def simulate_play(new_state):
-	
+		# TODO
 	
 		return new_state
 		

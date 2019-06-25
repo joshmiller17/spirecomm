@@ -237,6 +237,7 @@ def run_agent(f, communication_coordinator):
 	except Exception as e:
 		print("Agent thread encountered error:", file=f, flush=True)
 		print(e, file=f, flush=True)
+		print(traceback.format_exc(), file=f, flush=True)
 	
 	# return # END TEST
 

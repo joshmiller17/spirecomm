@@ -113,14 +113,14 @@ class Monster(Character):
 		self.states = {}
 		
 		try:
-			with open(os.path.join("monsters", self.name + ".json"),"r") as f:
+			with open(os.path.join("..", "ai", "monsters", self.name + ".json"),"r") as f:
 				jsonDict = json.load(f)
 				self.states = jsonDict["states"]
 				self.moves = jsonDict["moves"]
 		except Exception as e:
 			with open('err.log', 'a+') as err_file:
-				err_file.write("Monster Error: " + str(self.name))
-				err_file.write(e)
+				err_file.write("\nMonster Error: " + str(self.name))
+				err_file.write(str(e))
 			#raise Exception(e)
 
 	@classmethod

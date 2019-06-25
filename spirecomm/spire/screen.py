@@ -268,12 +268,12 @@ class GridSelectScreen(Screen):
 
 	SCREEN_TYPE = ScreenType.GRID
 
-	def __init__(self, cards, selected_cards, num_cards, any_number, confirm_up, for_upgrade, for_transform, for_purge):
+	def __init__(self, cards, selected_cards, num_cards, confirm_up, for_upgrade, for_transform, for_purge):
 		super().__init__()
 		self.cards = cards
 		self.selected_cards = selected_cards
 		self.num_cards = num_cards
-		self.any_number = any_number
+	#	self.any_number = any_number # TODO add this back in when CommMod gets updated
 		self.confirm_up = confirm_up
 		self.for_upgrade = for_upgrade
 		self.for_tranform = for_transform
@@ -288,7 +288,7 @@ class GridSelectScreen(Screen):
 		for_upgrade = json_object.get("for_upgrade")
 		for_transform = json_object.get("for_tranform")
 		for_purge = json_object.get("for_purge")
-		return cls(cards, selected_cards, num_cards, any_number, confirm_up, for_upgrade, for_transform, for_purge)
+		return cls(cards, selected_cards, num_cards, confirm_up, for_upgrade, for_transform, for_purge)
 
 
 class HandSelectScreen(Screen):
