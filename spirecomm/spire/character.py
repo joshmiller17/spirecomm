@@ -1,5 +1,6 @@
 from enum import Enum
 import json
+import os
 
 from spirecomm.spire.power import Power
 
@@ -61,6 +62,12 @@ class Character:
 		self.block = block
 		self.powers = []
 
+	def add_power(self, power_name, amount):
+		for power in self.powers:
+			if power.power_name == power_name:
+				power.amount += amount
+				return
+		self.powers.append(Power(0, power_name, amount)) # TODO power ID??
 
 class Player(Character):
 
@@ -118,6 +125,7 @@ class Monster(Character):
 				self.states = jsonDict["states"]
 				self.moves = jsonDict["moves"]
 		except Exception as e:
+			return # TODO remove
 			with open('err.log', 'a+') as err_file:
 				err_file.write("\nMonster Error: " + str(self.name))
 				err_file.write(str(e))

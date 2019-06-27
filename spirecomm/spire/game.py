@@ -1,6 +1,7 @@
 from enum import Enum
 import copy
 import random
+import math
 
 
 import spirecomm.spire.relic
@@ -200,23 +201,24 @@ class Game:
 		return possible_actions
 	
 	
-	# Returns a list of (new_state, probability) tuples
+	# Returns a new state
 	def take_action(action):
 		
 		new_state = copy.deepcopy(self)
 		
 		if action.command.startswith("end"):
-			return simulate_end_turn(new_state)
+			return simulate_end_turn(action, new_state)
 		elif action.command.startswith("potion"):
-			return simulate_potion(new_state)
+			new_state.potions.remove(action.potion)
+			return simulate_potion(action, new_state)
 		elif action.command.startswith("play"):
-			return simulate_play(new_state)
+			return simulate_play(action, new_state)
 		else:
 			raise Exception("Chosen simulated action is not a valid combat action.")
 		
 		
-	# Returns a list of (new_state, probability) tuples
-	def simulate_end_turn(new_state):
+	# Returns a new state
+	def simulate_end_turn(action, new_state):
 		
 	
 		# TODO consider retaining cards (well-laid plans) or runic pyramid
@@ -247,15 +249,112 @@ class Game:
 		return new_state
 		
 		
-	# Returns a list of (new_state, probability) tuples
-	def simulate_potion(new_state):
-		# TODO
+	# Returns a new state
+	def simulate_potion(action, new_state):
+		
+		if action.potion == "Artifact Potion":
+			new_state.player.add_power("Artifact", 1)
+		
+		elif action.potion == "Attack Potion":
+			# TODO
+			pass
+		
+		elif action.potion == "Block Potion":
+			new_state.player.block += 12
+		
+		elif action.potion == "Blood Potion":
+			hp_gained = int(math.ceil(new_state.player.max_hp * 0.10))
+			new_hp = min(new_state.player.max_hp, new_state.player.current_hp + hp_gained)
+			new_state.player.current_hp = new_hp
+		
+		elif action.potion == "Dexterity Potion":
+			new_state.player.add_power("Dexterity", 2)
+		
+		elif action.potion == "Energy Potion":
+			new_state.player.energy += 2
+		
+		elif action.potion == "Entropic Brew":
+			# TODO
+			pass
+		
+		elif action.potion == "Essence of Steel":
+			new_state.player.add_power("Plated Armor", 4)
+		
+		elif action.potion == "Explosive Potion":
+			# TODO
+			pass
+		
+		# TODO Fairy in a Bottle is not usable but should be considered in game state
+		
+		elif action.potion == "Fear Potion":
+			# TODO
+			pass
+		
+		elif action.potion == "Fire Potion":
+			# TODO
+			pass
+		
+		elif action.potion == "Focus Potion":
+			new_state.player.add_power("Focus", 2)
+		
+		elif action.potion == "Fruit Juice":
+			new_state.player.max_hp += 5
+			new_state.player.current_hp += 5
+		
+		elif action.potion == "Gambler's Brew":
+			# TODO
+			pass
+		
+		elif action.potion == "Liquid Bronze":
+			new_state.player.add_power("Thorns", 3)
+		
+		elif action.potion == "Poison Potion":
+			# TODO
+			pass
+		
+		elif action.potion == "Power Potion":
+			# TODO
+			pass
+		
+		elif action.potion == "Skill Potion":
+			# TODO
+			pass
+		
+		elif action.potion == "Smoke Bomb":
+			# TODO
+			pass
+		
+		elif action.potion == "Snecko Oil":
+			# TODO
+			pass
+		
+		elif action.potion == "Speed Potion":
+			new_state.player.add_power("Dexterity", 5)
+			new_state.player.add_power("Dexterity Down", 5)
+		
+		elif action.potion == "Steroid Potion":
+			new_state.player.add_power("Strength", 5)
+			new_state.player.add_power("Strength Down", 5)
+		
+		elif action.potion == "Strength Potion":
+			new_state.player.add_power("Strength", 3)
+		
+		elif action.potion == "Swift Potion":
+			# TODO
+			pass
+		
+		elif action.potion == "Weak Potion":
+			# TODO
+			pass
+		
+		else:
+			raise Exception("No handler for potion: " + str(action.potion))
 		
 		return new_state
 		
 		
-	# Returns a list of (new_state, probability) tuples
-	def simulate_play(new_state):
+	# Returns a new state
+	def simulate_play(action, new_state):
 		# TODO
 	
 		return new_state

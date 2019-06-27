@@ -65,6 +65,7 @@ class Card:
 			with open(os.path.join("..", "ai", "cards", self.name + ".json"),"r") as f:
 				self.value = json.load(f)
 		except Exception as e:
+			return # TODO remove
 			with open('err.log', 'a+') as err_file:
 				err_file.write("\nCard Error: " + str(self.name))
 				err_file.write(str(e))

@@ -217,8 +217,6 @@ class SimpleAgent:
 	# Returns a dict of what changed between game states
 	def state_diff(self, state1, state2):
 		diff = {}
-		if state1.player is None or state2.player is None: # we haven't initialized yet
-			return diff
 		if state1.current_action != state2.current_action:
 			diff["current_action"] = state2.current_action
 		if state1.act_boss != state2.act_boss:
@@ -234,7 +232,18 @@ class SimpleAgent:
 		if state1.gold != state2.gold:
 			diff["gold"] = state2.gold - state1.gold
 		if state1.relics != state2.relics:
-			diff["relics"] = [r.name for r in list(set(state2.relics) - set(state1.relics))]
+			diff["relics"] = []
+			for relic2 in state2.relics:
+				found = False
+				for relic1 in state1.relics:
+					if relic1.name == relic2.name:
+						found = True
+						if relic1.counter != relic2.counter:
+							diff["relics"].append((relic2.name, relic2.counter - relic1.counter))
+				if not found:
+					diff["relics"].append(relic2.name)
+			if diff["relics"] == []:
+				diff.pop("relics", None)
 		if state1.deck != state2.deck:
 			diff["deck_added"] = [c.name for c in list(set(state2.deck) - set(state1.deck))]
 			diff["deck_removed"] = [c.name for c in list(set(state1.deck) - set(state2.deck))]
@@ -243,19 +252,27 @@ class SimpleAgent:
 			diff["potions_removed"] = [p.name for p in list(set(state1.potions) - set(state2.potions))]	
 		if state1.in_combat != state2.in_combat:
 			diff["in_combat"] = state2.in_combat
-		if state1.player.powers != state2.player.powers: # TODO fix how powers works
-			diff["powers"] = []
-			for power2 in state2.player.powers:
-				found = False
-				for power1 in state1.player.powers:
-					if power1.name == power2.name:
-						found = True
-						diff["powers"].append((power1.name, power2.amount - power1.amount))
-				if not found:
-					diff["powers"].append((power2.name, power2.amount))		
-		if state1.player.block != state2.player.block:
-			diff["block"] = state2.player.block - state1.player.block
-			
+		
+
+		# Combat for both states
+		if state1.player is not None and state2.player is not None:
+		
+			if state1.player.block != state2.player.block:
+				diff["block"] = state2.player.block - state1.player.block
+				
+			if state1.player.powers != state2.player.powers:
+				diff["powers"] = []
+				for power2 in state2.player.powers:
+					found = False
+					for power1 in state1.player.powers:
+						if power1.power_name == power2.power_name:
+							found = True
+							diff["powers"].append((power1.power_name, power2.amount - power1.amount))
+					if not found:
+						diff["powers"].append((power2.power_name, power2.amount))
+		
+		
+		self.log(str(diff)) # TODO remove
 		return diff
 		
 		
