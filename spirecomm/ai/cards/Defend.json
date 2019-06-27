@@ -1,0 +1,19 @@
+{
+	"value": {
+		"synergies": [
+			{
+			"name" : "Dexterity",
+			"amount" : 1,
+			"enable" : False
+			}
+		]
+	}
+	
+	"effects": [
+		{
+		"target" : "self",
+		"effect" : "Block",
+		"amount" : 5
+		}
+	]
+}

@@ -2,8 +2,8 @@
 	"value": {
 		"synergies": [
 			{
-			"name" : "Perfected Strike",
-			"amount" : 1,
+			"name" : "Vulnerable",
+			"amount" : 2,
 			"enable" : True
 			}
 		]
@@ -13,7 +13,13 @@
 		{
 		"target" : "one",
 		"effect" : "Damage",
-		"amount" : 6
+		"amount" : 8
+		},
+		
+		{
+		"target" : "one",
+		"effect" : "Vulnerable",
+		"amount" : 8
 		}
 	]
 }
