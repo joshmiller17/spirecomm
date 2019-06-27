@@ -1,6 +1,9 @@
 from enum import Enum
 import os
 import json
+import spirecomm.config as config
+
+CARDS_PATH = os.path.join(config.SPIRECOMM_PATH, "spirecomm", "ai", "cards")
 
 
 class CardType(Enum):
@@ -73,7 +76,7 @@ class Card:
 		self.effects["amount"] = None
 		
 		try:
-			with open(os.path.join("..", "ai", "cards", self.name + ".json"),"r") as f:
+			with open(os.path.join(CARDS_PATH, self.name + ".json"),"r") as f:
 				jsonData = json.load(f)
 				self.value = jsonData["value"]
 				self.effects = jsonData["effects"]

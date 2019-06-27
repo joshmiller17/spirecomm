@@ -4,10 +4,10 @@
 			{
 			"name" : "Perfected Strike",
 			"amount" : 1,
-			"enable" : True
+			"enable" : true
 			}
 		]
-	}
+	},
 	
 	"effects": [
 		{

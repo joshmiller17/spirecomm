@@ -10,6 +10,7 @@ import threading
 #import spirecomm
 #print(spirecomm.__file__)
 
+import spirecomm.config as config
 import spirecomm.spire.card
 
 import spirecomm.communication.coordinator as coord
@@ -274,6 +275,12 @@ def launch_gui():
 
 if __name__ == "__main__":	
 	lf = open("err.log", "w")
+	
+	if config.SPIRECOMM_PATH == "C:\\path\\to\\spirecomm":
+		err_msg = "ERROR: Please set the path to spirecomm in spirecomm/config.py"
+		print(err_msg, file=lf, flush=True)
+		print(err_msg)
+	
 	try:
 		launch_gui()
 	except Exception as e:

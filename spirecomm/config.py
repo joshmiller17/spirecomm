@@ -1,0 +1,1 @@
+SPIRECOMM_PATH="C:\\path\\to\\spirecomm"
