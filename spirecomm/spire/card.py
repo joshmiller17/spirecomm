@@ -1,6 +1,9 @@
 from enum import Enum
 import os
 import json
+import spirecomm.config as config
+
+CARDS_PATH = os.path.join(config.SPIRECOMM_PATH, "spirecomm", "ai", "cards")
 
 
 class CardType(Enum):
@@ -34,9 +37,10 @@ class Card:
 		self.price = price
 		self.is_playable = is_playable
 		self.exhausts = exhausts
-		self.value = {}
+		
 		
 		# Static values, load from cards/[name].json
+		self.value = {}
 		self.value["damage"] = None
 		self.value["mitigation"] = None
 		self.value["scaling damage"] = None
@@ -44,31 +48,44 @@ class Card:
 		self.value["aoe"] = None
 		self.value["draw"] = None
 		self.value["utility"] = None
-		'''
-		Synergy format:
+		'''Synergy format:
+		name: name of synergy
+		amount: float value of effectiveness
+		enable: boolean whether it contributes its value to enabling the synergy or just benefits from it
 		(Synergy type (string), value (float)) tuple
 		e.g. pummel might have (Strength, 4)
 		'''
 		self.value["synergies"] = []
 		
-		'''
-		Effect format:
-		(Effect, value) tuple
+		
+		self.effects = {}	
+		self.loadedFromJSON = False
+		'''Effect format:
+		target: self, one, all, or random (enemy)
+		effect: effect name
+		amount: amount or value of the effect
+		random is only randomized once per effect: an effect listed as "one" will take the target of the last effect
+		-- this is in case the entire card's target is randomized, simply change the first effect from one -> random
 		e.g.:
-		- Well-Laid Plains is (Retain, 1)
-		- Defend is (Block, 5)
-		- Headbutt is (DiscardToTop, 1) -- cards which have unique abilities can be tracked uniquely
+		- Well-Laid Plains is (self, Retain, 1)
+		- Defend is (self, Block, 5)
+		- Headbutt is (one, DiscardToTop, 1) -- cards which have unique abilities can be tracked uniquely
+		- Sword Boomerang is three copies of (random, damage, 3)
 		'''
-		self.value["effects"] = []
+		self.effects["target"] = None
+		self.effects["effect"] = None
+		self.effects["amount"] = None
 		
 		try:
-			with open(os.path.join("..", "ai", "cards", self.name + ".json"),"r") as f:
-				self.value = json.load(f)
+			with open(os.path.join(CARDS_PATH, self.name + ".json"),"r") as f:
+				jsonData = json.load(f)
+				self.value = jsonData["value"]
+				self.effects = jsonData["effects"]
+				self.loadedFromJSON = True
 		except Exception as e:
 			with open('err.log', 'a+') as err_file:
 				err_file.write("\nCard Error: " + str(self.name))
 				err_file.write(str(e))
-				err_file.write("(working directory is " + str(os.getcwd()) + ")")
 
 			#raise Exception(e)
 		

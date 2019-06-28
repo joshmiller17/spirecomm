@@ -1,5 +1,6 @@
 from enum import Enum
 import json
+import os
 
 from spirecomm.spire.power import Power
 
@@ -25,7 +26,6 @@ class Intent(Enum):
 
 	def is_attack(self):
 		return self in [Intent.ATTACK, Intent.ATTACK_BUFF, Intent.ATTACK_DEBUFF, Intent.ATTACK_DEFEND]
-
 
 class PlayerClass(Enum):
 	IRONCLAD = 1
@@ -61,8 +61,29 @@ class Character:
 		self.block = block
 		self.powers = []
 
+	def add_power(self, power_name, amount):
+		for power in self.powers:
+			if power.power_name == power_name:
+				power.amount += amount
+				return
+		self.powers.append(Power(0, power_name, amount)) # TODO power ID??
+		
+	def has_power(self, power_name):
+		for power in self.powers:
+			if power.power_name == power_name:
+				return True
+		return False
+		
+	def get_power_amount(self, power_name):
+		for power in self.powers:
+			if power.power_name == power_name:
+				return power.amount
+		return 0
 
 class Player(Character):
+
+	# NOTE: DO NOT USE CURRENT_HP/MAX_HP
+	# Use game.current_hp and game.max_hp instead
 
 	def __init__(self, max_hp, current_hp=None, block=0, energy=0):
 		super().__init__(max_hp, current_hp, block)
@@ -91,37 +112,60 @@ class Monster(Character):
 		self.move_adjusted_damage = move_adjusted_damage
 		self.move_hits = move_hits
 		self.monster_index = 0
+
+		
+		self.move_powers = []
+		self.move_block = 0
 		
 		# Load from monsters/[name].json
 		'''
-		Move format
-		name : effects (list)
-		
-		Effect format
-		(name, value)
-		e.g. Damage, 10; Vulnerable, 2
-		
+		Intents format
+		startswith: Move or none
+		moveset: {
+			name : 
+				{
+				probability: chance to use
+				effects: list of effects as { name : name, amount: amount}
+				}
+			}
+		limits: { (Movename, # in a row max) }
 		'''
-		self.moves = {}
-		'''
-		States format
-		state : { transition: [(new state, probability), ...], moveset: [(move, probability), ...]}
-		Always starts in state 1
-		states dict lists probability to transition to other states
-		TODO some enemies transition on trigger condition, like half health
-		'''
-		self.states = {}
+		#TODO some enemies transition on trigger condition, like half health
+
+		self.intents = {}
+		self.second_last_move = None
+		self.last_move = None
+		self.current_move = None
+		self.expected_next_move = None
 		
 		try:
 			with open(os.path.join("..", "ai", "monsters", self.name + ".json"),"r") as f:
-				jsonDict = json.load(f)
-				self.states = jsonDict["states"]
-				self.moves = jsonDict["moves"]
+				self.intents = json.load(f)
 		except Exception as e:
 			with open('err.log', 'a+') as err_file:
 				err_file.write("\nMonster Error: " + str(self.name))
 				err_file.write(str(e))
 			#raise Exception(e)
+			
+		def __eq__(self, other):
+			if self.monster_id == other.monster_id and self.monster_index == other.monster_index:
+				return True
+			return False
+			
+	# try to load more information about attacks from JSON
+	def recognize_intents(self):
+		if self.intents != {}:
+			pass # TODO: figure out what move corresponds with the move currently being made
+			# then set expected next move
+			
+			moveset = self.intents["moveset"]
+			moves = []
+			probabilities = []
+			for move in moveset.keys():
+				moves.append(move)
+				probabilities.append(moveset[move]["probability"])
+			selected_move = random.choices(moves, weights=probabilities)
+			self.expected_next_move = selected_move
 
 	@classmethod
 	def from_json(cls, json_object):

@@ -10,6 +10,7 @@ import threading
 #import spirecomm
 #print(spirecomm.__file__)
 
+import spirecomm.config as config
 import spirecomm.spire.card
 
 import spirecomm.communication.coordinator as coord
@@ -130,9 +131,8 @@ class Base(BoxLayout):
 	
 		# testbed
 		if msg == "test":
-		
-			spirecomm.spire.card.Card("0", "Strike", "Attack", "Common")
-		
+			
+			self.in_history.append("Executed test operations successfully.")
 			return True
 	
 		if msg == "threadcheck":
@@ -161,6 +161,30 @@ class Base(BoxLayout):
 			
 		if msg == "tree":
 			self.agent.print_tree()
+			return True
+			
+		if msg == "test combat":
+			try:
+				import json, random
+				from spirecomm.spire.game import Game
+				communication_state = json.load(open(os.path.join(config.SPIRECOMM_PATH, "utilities", "combat_example.json")))
+				game_state = Game.from_json(communication_state.get("game_state"), communication_state.get("available_commands"))
+				
+				
+				# TODO replace this block with MCTS
+				while game_state.player.current_hp > 0 and game_state.monsters[0].current_hp > 0:
+					actions = game_state.get_possible_actions(debug_file="game.log")
+					game_state = game_state.take_action(random.choice(actions), debug_file="game.log")
+				
+				
+				self.in_history.append("VICTORY" if game_state.player.current_hp > 0 else "DEFEAT")
+				self.in_history.append("See game.log for details")
+			except Exception as e:
+				print(str(e))
+				print(traceback.format_exc())
+				self.in_history.append("Error: " + str(e))
+				print(traceback.format_exc(), file=self.log, flush=True)
+
 			return True
 
 		if msg == "load":
@@ -274,6 +298,16 @@ def launch_gui():
 
 if __name__ == "__main__":	
 	lf = open("err.log", "w")
+	open("game.log", "w").close()
+		
+	if config.SPIRECOMM_PATH == "C:\\path\\to\\spirecomm":
+		err_msg = "\nERROR: Please set the path to spirecomm in spirecomm/config.py\n"
+		err_msg += "If you intend to push changes, run this command after editing your path:\n"
+		err_msg += "    git update-index --assume-unchanged spirecomm/config.py"
+		print(err_msg, file=lf, flush=True)
+		print(err_msg)
+		exit(1)
+	
 	try:
 		launch_gui()
 	except Exception as e:
