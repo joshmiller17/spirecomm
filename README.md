@@ -21,6 +21,9 @@ This work is built on top of ForgottenArbiter's [spirecomm](https://github.com/F
 2. Verify that ModTheSpire and mods are installed by running Slay the Spire With Mods (through Steam) or running the ModTheSpire executable. This step is also necessary for CommunicationMod to run first-time setup.
 3. Find the CommunicationMod config file in %LOCALAPPDATA%\ModTheSpire\CommunicationMod\config.properties and edit the command to command=python C\\:\\\\ _...path\\\\to..._ \\\\spirecomm\\\\utilities\\\\simple_gui.py Note the double backslashes in the path!
 4. Run `python setup.py install` from the root directory of spirecomm. Note that when you make changes to the AI, you will need to run this install command again *and* restart the game. You'll probably want to set runAtGameStart=true, otherwise to start the AI you'll need to click Mods > CommunicationMod > Run process to start the AI after loading up Slay the Spire.
+5. Open `spirecomm/config.py` and set `SPIRECOMM_PATH` to the correct path to your repository. This enables the AI to load in its data on specific cards and monsters from `ai/cards` and `ai/monsters` respectively. Note that if you plan on pushing changes to the repository, you should call `git update-index --assume-unchanged spirecomm/config.py` so that you don't push your path to the repo.
+
+As a test, you can now run `python utilities/simple_gui.py` from your terminal and the Kivy window should load.
 
 Optionally, if you installed SuperFastMode, find its config file in %LOCALAPPDATA%\ModTheSpire\SuperFastMode and set the  deltaMultiplier to 10.
 
