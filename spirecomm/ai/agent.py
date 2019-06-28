@@ -272,7 +272,6 @@ class SimpleAgent:
 						diff["powers"].append((power2.power_name, power2.amount))
 		
 		
-		self.log(str(diff)) # TODO remove
 		return diff
 		
 		

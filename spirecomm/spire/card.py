@@ -59,6 +59,7 @@ class Card:
 		
 		
 		self.effects = {}	
+		self.loadedFromJSON = False
 		'''Effect format:
 		target: self, one, all, or random (enemy)
 		effect: effect name
@@ -80,12 +81,11 @@ class Card:
 				jsonData = json.load(f)
 				self.value = jsonData["value"]
 				self.effects = jsonData["effects"]
+				self.loadedFromJSON = True
 		except Exception as e:
-			return # TODO remove
 			with open('err.log', 'a+') as err_file:
 				err_file.write("\nCard Error: " + str(self.name))
 				err_file.write(str(e))
-				err_file.write("(working directory is " + str(os.getcwd()) + ")")
 
 			#raise Exception(e)
 		

@@ -11,6 +11,8 @@ import spirecomm.spire.map
 import spirecomm.spire.potion
 import spirecomm.spire.screen
 
+from spirecomm.communication.action import *
+
 
 class RoomPhase(Enum):
 	COMBAT = 1,
@@ -202,83 +204,100 @@ class Game:
 	
 	
 	# Returns a new state
-	def take_action(action):
+	def take_action(self, action, debug_file=None):
+	
+		if debug_file:
+			with open(debug_file, 'a+') as d:
+				d.write("\nTaking Action:\n")
+				d.write(str(action))
 		
 		new_state = copy.deepcopy(self)
 		
 		if action.command.startswith("end"):
-			return simulate_end_turn(action, new_state)
+			return new_state.simulate_end_turn(action, debug_file=debug_file)
 		elif action.command.startswith("potion"):
 			new_state.potions.remove(action.potion)
-			return simulate_potion(action, new_state)
+			return new_state.simulate_potion(action, debug_file=debug_file)
 		elif action.command.startswith("play"):
-			return simulate_play(action, new_state)
+			return new_state.simulate_play(action, debug_file=debug_file)
 		else:
 			raise Exception("Chosen simulated action is not a valid combat action.")
 		
 		
 	# Returns a new state
-	def simulate_end_turn(action, new_state):
+	def simulate_end_turn(self, action, debug_file=None):
 		
+		debug_log = []
 	
 		# TODO consider retaining cards (well-laid plans) or runic pyramid
 		
 		# Hand discarded
-		new_state.discard_pile += new_state.hand
-		new_state.hand = []
+		self.discard_pile += self.hand
+		self.hand = []
 		
 		# Monsters attack
 		# TODO consider known intent rotation with more nuance
-		available_monsters = [monster for monster in new_state.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
 		for monster in available_monsters:
 			if monster.intent.is_attack():
 				if monster.move_adjusted_damage is not None:
 					# are weak and vulnerable accounted for?
 					incoming_damage = monster.move_adjusted_damage * monster.move_hits
-					damage_after_block = new_state.player.block - incoming_damage
+					damage_after_block = self.player.block - incoming_damage
 					if damage_after_block > 0:
-						new_state.player.current_hp -= damage_after_block
-						new_state.player.block = 0
+						self.player.current_hp -= damage_after_block
+						self.player.block = 0
 					else:
-						new_state.player.block -= incoming_damage
+						self.player.block -= incoming_damage
 	
 		# Draw new hand - TODO consider relic modifiers and known information
-		while len(new_state.hand) < 5:
-			new_state.hand.append(new_state.draw_pile.pop(random.randrange(len(new_state.draw_pile))))
-	
-		return new_state
+		while len(self.hand) < 5:
+			if len(self.draw_pile) == 0:
+				self.draw_pile = self.discard_pile
+				self.discard_pile = []
+			self.hand.append(self.draw_pile.pop(random.randrange(len(self.draw_pile))))
+			
+		if debug_file:
+			with open(debug_file, 'a+') as d:
+				d.write('\n'.join(debug_log))
+				d.write("\nNew State:\n")
+				d.write(str(self))
+			
+		return self
 		
 		
 	# Returns a new state
-	def simulate_potion(action, new_state):
+	def simulate_potion(self, action, debug_file=None):
+	
+		debug_log = []
 		
 		if action.potion == "Artifact Potion":
-			new_state.player.add_power("Artifact", 1)
+			self.player.add_power("Artifact", 1)
 		
 		elif action.potion == "Attack Potion":
 			# TODO
 			pass
 		
 		elif action.potion == "Block Potion":
-			new_state.player.block += 12
+			self.player.block += 12
 		
 		elif action.potion == "Blood Potion":
-			hp_gained = int(math.ceil(new_state.player.max_hp * 0.10))
-			new_hp = min(new_state.player.max_hp, new_state.player.current_hp + hp_gained)
-			new_state.player.current_hp = new_hp
+			hp_gained = int(math.ceil(self.player.max_hp * 0.10))
+			new_hp = min(self.player.max_hp, self.player.current_hp + hp_gained)
+			self.player.current_hp = new_hp
 		
 		elif action.potion == "Dexterity Potion":
-			new_state.player.add_power("Dexterity", 2)
+			self.player.add_power("Dexterity", 2)
 		
 		elif action.potion == "Energy Potion":
-			new_state.player.energy += 2
+			self.player.energy += 2
 		
 		elif action.potion == "Entropic Brew":
 			# TODO
 			pass
 		
 		elif action.potion == "Essence of Steel":
-			new_state.player.add_power("Plated Armor", 4)
+			self.player.add_power("Plated Armor", 4)
 		
 		elif action.potion == "Explosive Potion":
 			# TODO
@@ -295,18 +314,18 @@ class Game:
 			pass
 		
 		elif action.potion == "Focus Potion":
-			new_state.player.add_power("Focus", 2)
+			self.player.add_power("Focus", 2)
 		
 		elif action.potion == "Fruit Juice":
-			new_state.player.max_hp += 5
-			new_state.player.current_hp += 5
+			self.player.max_hp += 5
+			self.player.current_hp += 5
 		
 		elif action.potion == "Gambler's Brew":
 			# TODO
 			pass
 		
 		elif action.potion == "Liquid Bronze":
-			new_state.player.add_power("Thorns", 3)
+			self.player.add_power("Thorns", 3)
 		
 		elif action.potion == "Poison Potion":
 			# TODO
@@ -329,15 +348,15 @@ class Game:
 			pass
 		
 		elif action.potion == "Speed Potion":
-			new_state.player.add_power("Dexterity", 5)
-			new_state.player.add_power("Dexterity Down", 5)
+			self.player.add_power("Dexterity", 5)
+			self.player.add_power("Dexterity Down", 5)
 		
 		elif action.potion == "Steroid Potion":
-			new_state.player.add_power("Strength", 5)
-			new_state.player.add_power("Strength Down", 5)
+			self.player.add_power("Strength", 5)
+			self.player.add_power("Strength Down", 5)
 		
 		elif action.potion == "Strength Potion":
-			new_state.player.add_power("Strength", 3)
+			self.player.add_power("Strength", 3)
 		
 		elif action.potion == "Swift Potion":
 			# TODO
@@ -350,14 +369,69 @@ class Game:
 		else:
 			raise Exception("No handler for potion: " + str(action.potion))
 		
-		return new_state
+		if debug_file:
+			with open(debug_file, 'a+') as d:
+				d.write('\n'.join(debug_log))
+				d.write("\nNew State:\n")
+				d.write(str(self))
+		
+		return self
 		
 		
 	# Returns a new state
-	def simulate_play(action, new_state):
+	def simulate_play(self, action, debug_file=None):
 		# TODO
+		
+		debug_log = []
+		
+		if not action.card.loadedFromJSON:
+			raise Exception("Card not loaded from JSON: " + str(action.card.name))
+			
+		effect_targets = []
+		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+		for effect in action.card.effects:
+			
+			# Pick target(s)
+			if effect["target"] == "self":
+				effect_targets = [self.player]
+			elif effect["target"] == "one":
+				for monster in available_monsters:
+					if action.target_monster == monster:
+						effect_targets = [monster]
+						break
+			elif effect["target"] == "all":
+				effect_targets = available_monsters
+			elif effect["target"] == "random":
+				effect_targets = random.choice(available_monsters)
+				
+			
+			# Do effect
+			for target in effect_targets:
+			
+				if effect["effect"] == "Block":
+					real_amount = effect["amount"]
+					real_amount += target.get_power_amount("Dexterity")
+					if target.has_power("Frail"):
+						real_amount = int(math.floor(real_amount - (0.25 * real_amount)))
+					target.block += real_amount
+					
+				if effect["effect"] == "Damage":
+					real_amount = effect["amount"]
+					real_amount += self.player.get_power_amount("Strength")
+					if self.player.has_power("Weakened"):
+						real_amount = int(math.floor(real_amount - (0.25 * real_amount)))
+					if target.has_power("Vulnerable"):
+						real_amount = int(math.floor(real_amount + (0.50 * real_amount)))
+					target.current_hp = max(target.current_hp - real_amount, 0)
+			
+		if debug_file:
+			with open(debug_file, 'a+') as d:
+				d.write('\n'.join(debug_log))
+				d.write("\nNew State:\n")
+				d.write(str(self))
+			
 	
-		return new_state
+		return self
 		
 		
 		

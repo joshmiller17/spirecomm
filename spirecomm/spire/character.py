@@ -68,6 +68,18 @@ class Character:
 				power.amount += amount
 				return
 		self.powers.append(Power(0, power_name, amount)) # TODO power ID??
+		
+	def has_power(self, power_name):
+		for power in self.powers:
+			if power.power_name == power_name:
+				return True
+		return False
+		
+	def get_power_amount(self, power_name):
+		for power in self.powers:
+			if power.power_name == power_name:
+				return power.amount
+		return 0
 
 class Player(Character):
 
@@ -125,11 +137,15 @@ class Monster(Character):
 				self.states = jsonDict["states"]
 				self.moves = jsonDict["moves"]
 		except Exception as e:
-			return # TODO remove
 			with open('err.log', 'a+') as err_file:
 				err_file.write("\nMonster Error: " + str(self.name))
 				err_file.write(str(e))
 			#raise Exception(e)
+			
+		def __eq__(self, other):
+			if self.monster_id == other.monster_id and self.monster_index == other.monster_index:
+				return True
+			return False
 
 	@classmethod
 	def from_json(cls, json_object):

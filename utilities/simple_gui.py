@@ -163,6 +163,23 @@ class Base(BoxLayout):
 		if msg == "tree":
 			self.agent.print_tree()
 			return True
+			
+		if msg == "test combat":
+			try:
+				import json, random
+				from spirecomm.spire.game import Game
+				communication_state = json.load(open(os.path.join(config.SPIRECOMM_PATH, "utilities", "combat_example.json")))
+				game_state = Game.from_json(communication_state.get("game_state"), communication_state.get("available_commands"))
+				actions = game_state.get_possible_actions()
+				new_state = game_state.take_action(random.choice(actions), debug_file="game.log")
+				actions = new_state.get_possible_actions()
+				new_state = new_state.take_action(random.choice(actions), debug_file="game.log")
+				actions = new_state.get_possible_actions()
+				new_state = new_state.take_action(random.choice(actions), debug_file="game.log")
+				self.in_history.append("Combat test successful! See game.log for details")
+			except Exception as e:
+				print(str(e))
+			return True
 
 		if msg == "load":
 			msg = "load tree"
@@ -275,6 +292,7 @@ def launch_gui():
 
 if __name__ == "__main__":	
 	lf = open("err.log", "w")
+	open("game.log", "w").close()
 	
 	if config.SPIRECOMM_PATH == "C:\\path\\to\\spirecomm":
 		err_msg = "ERROR: Please set the path to spirecomm in spirecomm/config.py"
