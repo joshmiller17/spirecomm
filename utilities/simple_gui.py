@@ -170,12 +170,15 @@ class Base(BoxLayout):
 				from spirecomm.spire.game import Game
 				communication_state = json.load(open(os.path.join(config.SPIRECOMM_PATH, "utilities", "combat_example.json")))
 				game_state = Game.from_json(communication_state.get("game_state"), communication_state.get("available_commands"))
+				
+				# TODO replace this block with MCTS, add better debugging statements for the state of the game (e.g. what's in our hand) and what actions we're taking at each step
 				actions = game_state.get_possible_actions()
 				new_state = game_state.take_action(random.choice(actions), debug_file="game.log")
 				actions = new_state.get_possible_actions()
 				new_state = new_state.take_action(random.choice(actions), debug_file="game.log")
 				actions = new_state.get_possible_actions()
 				new_state = new_state.take_action(random.choice(actions), debug_file="game.log")
+				
 				self.in_history.append("Combat test successful! See game.log for details")
 			except Exception as e:
 				print(str(e))
