@@ -56,7 +56,7 @@ class PlayCardAction(Action):
 			coordinator.send_message("{} {} {}".format(self.command, hand_card_index, self.target_index))
 
 		def __str__(self):
-			return "[Play Action] {} {} on {} {}".format(self.card, self.card_index, self.target_index, self.target_monster)
+			return "[Play] {} {} on {} {}".format(self.card.name, self.card_index, self.target_index, self.target_monster.name)
 		
 
 class PotionAction(Action):
@@ -88,7 +88,7 @@ class PotionAction(Action):
 		coordinator.send_message(" ".join(arguments))
 		
 	def __str__(self):
-		return "[Potion Action] use {} potion {} {} on {} {}".format(self.use, self.potion, self.potion_index, self.target_monster, self.target_index)
+		return "[Potion] use {} potion {} {} on {} {}".format(self.use, self.potion.name, self.potion_index, self.target_monster.name, self.target_index)
 
 
 class EndTurnAction(Action):
@@ -98,7 +98,7 @@ class EndTurnAction(Action):
 		super().__init__("end")
 		
 	def __str__(self):
-		return "[End Turn Action]"
+		return "[End Turn]"
 
 
 class ProceedAction(Action):
@@ -108,7 +108,7 @@ class ProceedAction(Action):
 		super().__init__("proceed")
 		
 	def __str__(self):
-		return "[Proceed Action]"
+		return "[Proceed]"
 
 
 class CancelAction(Action):
@@ -118,7 +118,7 @@ class CancelAction(Action):
 		super().__init__("cancel")
 		
 	def __str__(self):
-		return "[Cancel Action]"
+		return "[Cancel]"
 
 
 class ChooseAction(Action):
@@ -136,7 +136,7 @@ class ChooseAction(Action):
 			coordinator.send_message("{} {}".format(self.command, self.choice_index))
 
 	def __str__(self):
-		return "[Choose Action] {} {}".format(self.choice_index, self.name)
+		return "[Choose] {} {}".format(self.choice_index, self.name)
 
 class ChooseShopkeeperAction(ChooseAction):
 	"""An action to open the shop on a shop screen"""
@@ -145,7 +145,7 @@ class ChooseShopkeeperAction(ChooseAction):
 		super().__init__(name="shop")
 		
 	def __str__(self):
-		return "[Shop Action]" + super().__str__()
+		return "[Shop]" + super().__str__()
 
 
 class OpenChestAction(ChooseAction):
@@ -165,7 +165,7 @@ class BuyCardAction(ChooseAction):
 		super().__init__(name=card.name)
 		
 	def __str__(self):
-		return "[Buy Card Action]" + super().__str__()
+		return "[Buy Card]" + super().__str__()
 
 
 class BuyPotionAction(ChooseAction):
@@ -180,7 +180,7 @@ class BuyPotionAction(ChooseAction):
 		super().execute(coordinator)
 		
 	def __str__(self):
-		return "[Buy Potion Action]" + super().__str__()
+		return "[Buy Potion]" + super().__str__()
 
 
 class BuyRelicAction(ChooseAction):
@@ -190,7 +190,7 @@ class BuyRelicAction(ChooseAction):
 		super().__init__(name=relic.name)
 		
 	def __str__(self):
-		return "[Buy Relic Action]" + super().__str__()
+		return "[Buy Relic]" + super().__str__()
 
 
 class BuyPurgeAction(Action):
@@ -208,7 +208,7 @@ class BuyPurgeAction(Action):
 			coordinator.add_action_to_queue(CardSelectAction([self.card_to_purge]))
 			
 	def __str__(self):
-		return "[Buy Purge Action]" + super().__str__()
+		return "[Buy Purge]" + super().__str__()
 
 
 class EventOptionAction(ChooseAction):
@@ -218,7 +218,7 @@ class EventOptionAction(ChooseAction):
 		super().__init__(choice_index=option.choice_index)
 		
 	def __str__(self):
-		return "[Event Option Action]" + super().__str__()
+		return "[Event Option]" + super().__str__()
 
 
 class RestAction(ChooseAction):
@@ -244,7 +244,7 @@ class CardRewardAction(ChooseAction):
 		super().__init__(name=name)
 		
 	def __str__(self):
-		return "[Card Reward Action]" + super().__str__()
+		return "[Card Reward]" + super().__str__()
 
 
 class CombatRewardAction(ChooseAction):
@@ -266,7 +266,7 @@ class CombatRewardAction(ChooseAction):
 		super().execute(coordinator)
 		
 	def __str__(self):
-		return "[Combat Reward Action]" + super().__str__()
+		return "[Combat Reward]" + super().__str__()
 
 
 class BossRewardAction(ChooseAction):
@@ -276,7 +276,7 @@ class BossRewardAction(ChooseAction):
 		super().__init__(name=relic.name)
 		
 	def __str__(self):
-		return "[Boss Reward Action]" + super().__str__()
+		return "[Boss Reward]" + super().__str__()
 
 
 class OptionalCardSelectConfirmAction(Action):
@@ -295,7 +295,7 @@ class OptionalCardSelectConfirmAction(Action):
 			coordinator.add_action_to_queue(StateAction())
 			
 	def __str__(self):
-		return "[Optional Card Select Confirm Action]"
+		return "[Optional Card Select Confirm]"
 
 
 class CardSelectAction(Action):
@@ -328,7 +328,7 @@ class CardSelectAction(Action):
 		coordinator.add_action_to_queue(OptionalCardSelectConfirmAction())
 		
 	def __str__(self):
-		return "[Card Select Action]"
+		return "[Card Select]"
 
 
 class ChooseMapNodeAction(ChooseAction):
@@ -348,7 +348,7 @@ class ChooseMapNodeAction(ChooseAction):
 		super().execute(coordinator)
 		
 	def __str__(self):
-		return "[Choose Map Action] {}".format(self.node) + super().__str__()
+		return "[Choose Map] {}".format(self.node) + super().__str__()
 
 
 class ChooseMapBossAction(ChooseAction):
@@ -366,7 +366,7 @@ class ChooseMapBossAction(ChooseAction):
 		super().execute(coordinator)
 		
 	def __str__(self):
-		return "[Choose Map Boss Action]" + super().__str__()
+		return "[Choose Map Boss]" + super().__str__()
 
 
 class StartGameAction(Action):
@@ -385,7 +385,7 @@ class StartGameAction(Action):
 		coordinator.send_message(" ".join(arguments))
 		
 	def __str__(self):
-		return "[Start Game Action] As {} A{} Seed:{}".format(self.player_class, self.ascension_level, self.seed)
+		return "[Start Game] As {} A{} Seed:{}".format(self.player_class, self.ascension_level, self.seed)
 
 
 class StateAction(Action):

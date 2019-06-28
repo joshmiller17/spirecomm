@@ -211,6 +211,8 @@ class SimpleAgent:
 			return Action()
 			
 	def decide(self, action):
+		if action.command.startswith("end"):
+			self.blackboard.game.combat_round += 1
 		self.log(str(action), debug=5)
 		return action
 		
@@ -440,7 +442,7 @@ class SimpleAgent:
 			else:
 				nonzero_cost_cards = [card for card in nonzero_cost_cards if not card.exhausts]
 		if len(playable_cards) == 0:
-			return EndTurnAction()
+			return self.decide(EndTurnAction())
 		if len(zero_cost_non_attacks) > 0:
 			card_to_play = self.priorities.get_best_card_to_play(zero_cost_non_attacks)
 		elif len(nonzero_cost_cards) > 0:
@@ -451,11 +453,11 @@ class SimpleAgent:
 			card_to_play = self.priorities.get_best_card_to_play(zero_cost_attacks)
 		else:
 			# This shouldn't happen!
-			return EndTurnAction()
+			return self.decide(EndTurnAction())
 		if card_to_play.has_target:
 			available_monsters = [monster for monster in self.blackboard.game.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
 			if len(available_monsters) == 0:
-				return EndTurnAction()
+				return self.decide(EndTurnAction())
 			if card_to_play.type == spirecomm.spire.card.CardType.ATTACK:
 				target = self.get_low_hp_target()
 			else:

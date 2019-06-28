@@ -172,11 +172,11 @@ class Base(BoxLayout):
 				game_state = Game.from_json(communication_state.get("game_state"), communication_state.get("available_commands"))
 				
 				# TODO replace this block with MCTS, add better debugging statements for the state of the game (e.g. what's in our hand) and what actions we're taking at each step
-				actions = game_state.get_possible_actions()
+				actions = game_state.get_possible_actions(debug_file="game.log")
 				new_state = game_state.take_action(random.choice(actions), debug_file="game.log")
-				actions = new_state.get_possible_actions()
+				actions = new_state.get_possible_actions(debug_file="game.log")
 				new_state = new_state.take_action(random.choice(actions), debug_file="game.log")
-				actions = new_state.get_possible_actions()
+				actions = new_state.get_possible_actions(debug_file="game.log")
 				new_state = new_state.take_action(random.choice(actions), debug_file="game.log")
 				
 				self.in_history.append("Combat test successful! See game.log for details")
@@ -298,9 +298,12 @@ if __name__ == "__main__":
 	open("game.log", "w").close()
 	
 	if config.SPIRECOMM_PATH == "C:\\path\\to\\spirecomm":
-		err_msg = "ERROR: Please set the path to spirecomm in spirecomm/config.py"
+		err_msg = "\nERROR: Please set the path to spirecomm in spirecomm/config.py\n"
+		err_msg += "If you intend to push changes, run this command after editing your path:\n"
+		err_msg += "    git update-index --assume-unchanged spirecomm/config.py"
 		print(err_msg, file=lf, flush=True)
 		print(err_msg)
+		exit(1)
 	
 	try:
 		launch_gui()

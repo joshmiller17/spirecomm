@@ -45,6 +45,7 @@ class Game:
 		# Combat state
 
 		self.in_combat = False
+		self.combat_round = 0
 		self.player = None
 		self.monsters = []
 		self.draw_pile = []
@@ -81,7 +82,8 @@ class Game:
 	# do any internal state updates we need to do if we change floors
 	def on_floor_change(self):
 		self.visited_shop = False
-		
+		self.combat_round = 0
+	
 	def __str__(self):
 		string = "\n---- Game State ----\n"
 		#string += "HP: " + str(self.current_hp) + "/" + str(self.max_hp) + "\n"
@@ -179,7 +181,7 @@ class Game:
 # ---------- MCTS SIMULATIONS -----------		
 
 		
-	def get_possible_actions(self):
+	def get_possible_actions(self, debug_file=None):
 		
 		possible_actions = [EndTurnAction()]
 		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
@@ -199,6 +201,13 @@ class Game:
 					possible_actions.append(PlayCardAction(card=card, target_monster=monster))
 			else:
 				possible_actions.append(PlayCardAction(card=card))
+				
+		if debug_file:
+			with open(debug_file, 'a+') as d:
+				d.write("\nGame State:\n")
+				d.write(str(self))
+				d.write("\nPossible Actions:\n")
+				d.write("\n".join([str(a) for a in possible_actions]))
 				
 		return possible_actions
 	
@@ -228,6 +237,8 @@ class Game:
 	def simulate_end_turn(self, action, debug_file=None):
 		
 		debug_log = []
+		
+		self.combat_round += 1
 	
 		# TODO consider retaining cards (well-laid plans) or runic pyramid
 		
