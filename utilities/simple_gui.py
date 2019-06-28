@@ -177,13 +177,13 @@ class Base(BoxLayout):
 
 				
 				# TODO replace this block with MCTS
-				while game_state.player.current_hp > 0 and game_state.monsters[0].current_hp > 0:
+				while game_state.current_hp > 0 and game_state.monsters[0].current_hp > 0:
 					#actions = game_state.get_possible_actions(debug_file="game.log")
 					#game_state = game_state.take_action(random.choice(actions), debug_file="game.log")
 					action = mcts.search(initialState=game_state)
 					game_state = game_state.takeAction(action)
-				
-				self.in_history.append("VICTORY" if game_state.player.current_hp > 0 else "DEFEAT")
+									
+				self.in_history.append("VICTORY" if game_state.current_hp > 0 else "DEFEAT")
 				self.in_history.append("See game.log for details")
 			except Exception as e:
 				print(str(e))
