@@ -198,12 +198,12 @@ class Game:
 # ---------- MCTS SIMULATIONS -----------		
 
 	# True iff either we're dead or the monsters are
-	def is_terminal(self):
+	def isTerminal(self):
 		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
 		return self.current_hp <= 0 or len(available_monsters) < 1
 		
 	# return value of terminal state
-	def get_reward(self):
+	def getReward(self):
 		
 		# Trace back to where we started
 		original_game_state = self
@@ -217,7 +217,7 @@ class Game:
 		return delta_hp * MCTS_HP_VALUE + delta_max_hp * MCTS_MAX_HP_VALUE + delta_potions * MCTS_POTION_VALUE
 
 
-	def get_possible_actions(self):
+	def getPossibleActions(self):
 		
 		possible_actions = [EndTurnAction()]
 		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
@@ -253,7 +253,7 @@ class Game:
 	
 	
 	# Returns a new state
-	def take_action(self, action):
+	def takeAction(self, action):
 	
 		if self.debug_file:
 			with open(self.debug_file, 'a+') as d:

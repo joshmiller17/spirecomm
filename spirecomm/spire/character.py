@@ -1,6 +1,7 @@
 from enum import Enum
 import json
 import os
+import random
 
 from spirecomm.spire.power import Power
 import spirecomm.config as config
@@ -158,7 +159,7 @@ class Monster(Character):
 	# try to load more information about attacks from JSON
 	def recognize_intents(self):
 		if self.intents != {}:
-			pass # TODO: figure out what move corresponds with the move currently being made
+			return # TODO: figure out what move corresponds with the move currently being made
 			# then set expected next move
 			
 			moveset = self.intents["moveset"]

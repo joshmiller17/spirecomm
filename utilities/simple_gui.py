@@ -167,15 +167,21 @@ class Base(BoxLayout):
 			try:
 				import json, random
 				from spirecomm.spire.game import Game
+				from mcts import mcts
 				communication_state = json.load(open(os.path.join(config.SPIRECOMM_PATH, "utilities", "combat_example.json")))
 				game_state = Game.from_json(communication_state.get("game_state"), communication_state.get("available_commands"))
-				
+				game_state.debug_file = "game.log"
+				#define the timeout time for the monte carlo tree search, in ms
+				mcts_timeout = 1000
+				mcts = mcts(timeLimit=mcts_timeout)
+
 				
 				# TODO replace this block with MCTS
 				while game_state.player.current_hp > 0 and game_state.monsters[0].current_hp > 0:
-					actions = game_state.get_possible_actions(debug_file="game.log")
-					game_state = game_state.take_action(random.choice(actions), debug_file="game.log")
-				
+					#actions = game_state.get_possible_actions(debug_file="game.log")
+					#game_state = game_state.take_action(random.choice(actions), debug_file="game.log")
+					action = mcts.search(initialState=game_state)
+					game_state = game_state.takeAction(action)
 				
 				self.in_history.append("VICTORY" if game_state.player.current_hp > 0 else "DEFEAT")
 				self.in_history.append("See game.log for details")
