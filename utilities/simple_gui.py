@@ -170,17 +170,21 @@ class Base(BoxLayout):
 				communication_state = json.load(open(os.path.join(config.SPIRECOMM_PATH, "utilities", "combat_example.json")))
 				game_state = Game.from_json(communication_state.get("game_state"), communication_state.get("available_commands"))
 				
-				# TODO replace this block with MCTS, add better debugging statements for the state of the game (e.g. what's in our hand) and what actions we're taking at each step
-				actions = game_state.get_possible_actions(debug_file="game.log")
-				new_state = game_state.take_action(random.choice(actions), debug_file="game.log")
-				actions = new_state.get_possible_actions(debug_file="game.log")
-				new_state = new_state.take_action(random.choice(actions), debug_file="game.log")
-				actions = new_state.get_possible_actions(debug_file="game.log")
-				new_state = new_state.take_action(random.choice(actions), debug_file="game.log")
 				
-				self.in_history.append("Combat test successful! See game.log for details")
+				# TODO replace this block with MCTS
+				while game_state.player.current_hp > 0 and game_state.monsters[0].current_hp > 0:
+					actions = game_state.get_possible_actions(debug_file="game.log")
+					game_state = game_state.take_action(random.choice(actions), debug_file="game.log")
+				
+				
+				self.in_history.append("VICTORY" if game_state.player.current_hp > 0 else "DEFEAT")
+				self.in_history.append("See game.log for details")
 			except Exception as e:
 				print(str(e))
+				print(traceback.format_exc())
+				self.in_history.append("Error: " + str(e))
+				print(traceback.format_exc(), file=self.log, flush=True)
+
 			return True
 
 		if msg == "load":

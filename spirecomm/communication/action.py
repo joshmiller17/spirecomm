@@ -55,9 +55,12 @@ class PlayCardAction(Action):
 		else:
 			coordinator.send_message("{} {} {}".format(self.command, hand_card_index, self.target_index))
 
-		def __str__(self):
-			return "[Play] {} {} on {} {}".format(self.card.name, self.card_index, self.target_index, self.target_monster.name)
-		
+	def __str__(self):
+		if self.target_index is not None and self.monster is not None:
+			return "[Play] {} [{}] on {} [{}]".format(self.card.name, self.card_index, self.target_monster.name, self.target_index)
+		else:
+			return "[Play] {} [{}]".format(self.card.name, self.card_index)
+
 
 class PotionAction(Action):
 	"""An action to use or discard a selected potion"""

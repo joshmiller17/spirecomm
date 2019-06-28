@@ -45,7 +45,7 @@ class Game:
 		# Combat state
 
 		self.in_combat = False
-		self.combat_round = 0
+		self.combat_round = 1
 		self.player = None
 		self.monsters = []
 		self.draw_pile = []
@@ -82,14 +82,24 @@ class Game:
 	# do any internal state updates we need to do if we change floors
 	def on_floor_change(self):
 		self.visited_shop = False
-		self.combat_round = 0
+		self.combat_round = 1
 	
 	def __str__(self):
-		string = "\n---- Game State ----\n"
-		#string += "HP: " + str(self.current_hp) + "/" + str(self.max_hp) + "\n"
-		string += "Screen: " + str(self.screen) + " (" + str(self.screen_type) + ")\n"
-		string += "Room: " + str(self.room_type) + "\n"
-		string += "Choices: " + str(self.choice_list) + " \n"
+		string = "\n\n---- Game State ----\n"
+		#string += "Screen: " + str(self.screen) + " (" + str(self.screen_type) + ")\n"
+		#string += "Room: " + str(self.room_type) + "\n"
+		if str(self.room_type) == "MonsterRoom":
+			string += "\nHP: " + str(self.current_hp) + "/" + str(self.max_hp)
+			string += "\nBlock: " + str(self.player.block)
+			string += "\nRound: " + str(self.combat_round)
+			string += "\nEnergy: " + str(self.player.energy)
+			string += "\nMonsters: "
+			string += "\n    ".join([str(monster.name) + "(" + str(monster.current_hp) + \
+						"/" + str(monster.max_hp) + ") using {} {}".format(str(monster.intent), 
+						"" if not monster.intent.is_attack() else "for {}x{}".format(monster.move_adjusted_damage, monster.move_hits)) for monster in self.monsters])
+			string += "\nHand: " + ", ".join([card.name for card in self.hand])
+		if self.choice_list != []:
+			string += "\nChoices: " + str(self.choice_list) + " \n"
 		available_choices = []
 		if self.end_available:
 			available_choices.append("end")
@@ -101,7 +111,7 @@ class Game:
 			available_choices.append("proceed")
 		if self.cancel_available:
 			available_choices.append("cancel")
-		string += "Available commands: " + ", ".join(available_choices)
+		string += "\n\nAvailable commands: " + ", ".join(available_choices)
 		return string
 
 
@@ -185,6 +195,8 @@ class Game:
 		
 		possible_actions = [EndTurnAction()]
 		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+		for monster in available_monsters:
+			monster.recognize_intents()
 		
 		for potion in self.get_real_potions():
 			if potion.requires_target:
@@ -196,17 +208,19 @@ class Game:
 		for card in self.hand:
 			if len(available_monsters) == 0 and card != spirecomm.spire.card.CardType.POWER:
 				continue
+			if card.cost > self.player.energy:
+				continue
 			if card.has_target:
 				for monster in available_monsters:
 					possible_actions.append(PlayCardAction(card=card, target_monster=monster))
 			else:
 				possible_actions.append(PlayCardAction(card=card))
-				
+		
 		if debug_file:
 			with open(debug_file, 'a+') as d:
-				d.write("\nGame State:\n")
 				d.write(str(self))
-				d.write("\nPossible Actions:\n")
+				d.write("\n-----------------------------\n")
+				d.write("Possible Actions:\n")
 				d.write("\n".join([str(a) for a in possible_actions]))
 				
 		return possible_actions
@@ -217,8 +231,8 @@ class Game:
 	
 		if debug_file:
 			with open(debug_file, 'a+') as d:
-				d.write("\nTaking Action:\n")
-				d.write(str(action))
+				d.write("\n\nTaking Action: ")
+				d.write(str(action) + "\n\n")
 		
 		new_state = copy.deepcopy(self)
 		
@@ -239,28 +253,34 @@ class Game:
 		debug_log = []
 		
 		self.combat_round += 1
-	
+		self.player.energy = 3 # hard coded energy per turn. TODO energy relics; if icecream, += 3
+		# TODO this technically happens at the start of turn
+		
 		# TODO consider retaining cards (well-laid plans) or runic pyramid
 		
 		# Hand discarded
 		self.discard_pile += self.hand
 		self.hand = []
 		
-		# Monsters attack
+		# MONSTER TURN / MONSTERS ATTACK
 		# TODO consider known intent rotation with more nuance
 		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
 		for monster in available_monsters:
+			#if monster.intents != {}: # we have correctly loaded intents JSON
+			#	
+			#else:
+			# default behaviour: just assume the same move as the first turn of simulation
 			if monster.intent.is_attack():
 				if monster.move_adjusted_damage is not None:
 					# are weak and vulnerable accounted for?
 					incoming_damage = monster.move_adjusted_damage * monster.move_hits
-					damage_after_block = self.player.block - incoming_damage
+					damage_after_block = incoming_damage - self.player.block
 					if damage_after_block > 0:
-						self.player.current_hp -= damage_after_block
+						self.current_hp -= damage_after_block
 						self.player.block = 0
 					else:
 						self.player.block -= incoming_damage
-	
+
 		# Draw new hand - TODO consider relic modifiers and known information
 		while len(self.hand) < 5:
 			if len(self.draw_pile) == 0:
@@ -271,8 +291,8 @@ class Game:
 		if debug_file:
 			with open(debug_file, 'a+') as d:
 				d.write('\n'.join(debug_log))
-				d.write("\nNew State:\n")
-				d.write(str(self))
+				#d.write("\nNew State:\n")
+				#d.write(str(self))
 			
 		return self
 		
@@ -293,9 +313,9 @@ class Game:
 			self.player.block += 12
 		
 		elif action.potion == "Blood Potion":
-			hp_gained = int(math.ceil(self.player.max_hp * 0.10))
-			new_hp = min(self.player.max_hp, self.player.current_hp + hp_gained)
-			self.player.current_hp = new_hp
+			hp_gained = int(math.ceil(self.max_hp * 0.10))
+			new_hp = min(self.max_hp, self.current_hp + hp_gained)
+			self.current_hp = new_hp
 		
 		elif action.potion == "Dexterity Potion":
 			self.player.add_power("Dexterity", 2)
@@ -328,8 +348,8 @@ class Game:
 			self.player.add_power("Focus", 2)
 		
 		elif action.potion == "Fruit Juice":
-			self.player.max_hp += 5
-			self.player.current_hp += 5
+			self.max_hp += 5
+			self.current_hp += 5
 		
 		elif action.potion == "Gambler's Brew":
 			# TODO
@@ -383,8 +403,8 @@ class Game:
 		if debug_file:
 			with open(debug_file, 'a+') as d:
 				d.write('\n'.join(debug_log))
-				d.write("\nNew State:\n")
-				d.write(str(self))
+				#d.write("\nNew State:\n")
+				#d.write(str(self))
 		
 		return self
 		
@@ -397,6 +417,11 @@ class Game:
 		
 		if not action.card.loadedFromJSON:
 			raise Exception("Card not loaded from JSON: " + str(action.card.name))
+			
+		# move card to discard
+		self.player.energy -= action.card.cost
+		self.hand.remove(action.card)
+		self.discard_pile.append(action.card)
 			
 		effect_targets = []
 		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
@@ -438,8 +463,8 @@ class Game:
 		if debug_file:
 			with open(debug_file, 'a+') as d:
 				d.write('\n'.join(debug_log))
-				d.write("\nNew State:\n")
-				d.write(str(self))
+				#d.write("\nNew State:\n")
+				#d.write(str(self))
 			
 	
 		return self
