@@ -13,6 +13,10 @@ import spirecomm.spire.screen
 
 from spirecomm.communication.action import *
 
+# MCTS values for changes to game state
+MCTS_MAX_HP_VALUE = 7
+MCTS_HP_VALUE = 1
+MCTS_POTION_VALUE = 7 # TODO change by potion type
 
 class RoomPhase(Enum):
 	COMBAT = 1,
@@ -72,6 +76,8 @@ class Game:
 		self.cancel_available = False
 		
 		# Added state info
+		self.original_state = None # For MCTS simulations; FIXME might be a huge memory storage for in-depth simulations? Consider only storing values important for reward func
+		self.debug_file = None
 		self.visited_shop = False
 		self.previous_floor = 0 # used to recognize floor changes, i.e. when floor != previous_floor
 		
@@ -83,6 +89,7 @@ class Game:
 	def on_floor_change(self):
 		self.visited_shop = False
 		self.combat_round = 1
+		self.original_state = None
 	
 	def __str__(self):
 		string = "\n\n---- Game State ----\n"
@@ -190,8 +197,27 @@ class Game:
 
 # ---------- MCTS SIMULATIONS -----------		
 
+	# True iff either we're dead or the monsters are
+	def is_terminal(self):
+		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+		return self.current_hp <= 0 or len(available_monsters) < 1
 		
-	def get_possible_actions(self, debug_file=None):
+	# return value of terminal state
+	def get_reward(self):
+		
+		# Trace back to where we started
+		original_game_state = self
+		while original_game_state.original_state is not None:
+			original_game_state = original_game_state.original_state
+			
+		delta_hp = self.current_hp - original_game_state.current_hp
+		delta_max_hp = self.max_hp - original_game_state.max_hp
+		delta_potions = len(self.potions) - len(original_game_state.potions)
+		
+		return delta_hp * MCTS_HP_VALUE + delta_max_hp * MCTS_MAX_HP_VALUE + delta_potions * MCTS_POTION_VALUE
+
+
+	def get_possible_actions(self):
 		
 		possible_actions = [EndTurnAction()]
 		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
@@ -216,8 +242,8 @@ class Game:
 			else:
 				possible_actions.append(PlayCardAction(card=card))
 		
-		if debug_file:
-			with open(debug_file, 'a+') as d:
+		if self.debug_file:
+			with open(self.debug_file, 'a+') as d:
 				d.write(str(self))
 				d.write("\n-----------------------------\n")
 				d.write("Possible Actions:\n")
@@ -227,28 +253,28 @@ class Game:
 	
 	
 	# Returns a new state
-	def take_action(self, action, debug_file=None):
+	def take_action(self, action):
 	
-		if debug_file:
-			with open(debug_file, 'a+') as d:
+		if self.debug_file:
+			with open(self.debug_file, 'a+') as d:
 				d.write("\n\nTaking Action: ")
 				d.write(str(action) + "\n\n")
 		
 		new_state = copy.deepcopy(self)
 		
 		if action.command.startswith("end"):
-			return new_state.simulate_end_turn(action, debug_file=debug_file)
+			return new_state.simulate_end_turn(action)
 		elif action.command.startswith("potion"):
 			new_state.potions.remove(action.potion)
-			return new_state.simulate_potion(action, debug_file=debug_file)
+			return new_state.simulate_potion(action)
 		elif action.command.startswith("play"):
-			return new_state.simulate_play(action, debug_file=debug_file)
+			return new_state.simulate_play(action)
 		else:
 			raise Exception("Chosen simulated action is not a valid combat action.")
 		
 		
 	# Returns a new state
-	def simulate_end_turn(self, action, debug_file=None):
+	def simulate_end_turn(self, action):
 		
 		debug_log = []
 		
@@ -288,8 +314,8 @@ class Game:
 				self.discard_pile = []
 			self.hand.append(self.draw_pile.pop(random.randrange(len(self.draw_pile))))
 			
-		if debug_file:
-			with open(debug_file, 'a+') as d:
+		if self.debug_file:
+			with open(self.debug_file, 'a+') as d:
 				d.write('\n'.join(debug_log))
 				#d.write("\nNew State:\n")
 				#d.write(str(self))
@@ -298,7 +324,7 @@ class Game:
 		
 		
 	# Returns a new state
-	def simulate_potion(self, action, debug_file=None):
+	def simulate_potion(self, action):
 	
 		debug_log = []
 		
@@ -400,8 +426,8 @@ class Game:
 		else:
 			raise Exception("No handler for potion: " + str(action.potion))
 		
-		if debug_file:
-			with open(debug_file, 'a+') as d:
+		if self.debug_file:
+			with open(self.debug_file, 'a+') as d:
 				d.write('\n'.join(debug_log))
 				#d.write("\nNew State:\n")
 				#d.write(str(self))
@@ -410,7 +436,7 @@ class Game:
 		
 		
 	# Returns a new state
-	def simulate_play(self, action, debug_file=None):
+	def simulate_play(self, action):
 		# TODO
 		
 		debug_log = []
@@ -460,8 +486,8 @@ class Game:
 						real_amount = int(math.floor(real_amount + (0.50 * real_amount)))
 					target.current_hp = max(target.current_hp - real_amount, 0)
 			
-		if debug_file:
-			with open(debug_file, 'a+') as d:
+		if self.debug_file:
+			with open(self.debug_file, 'a+') as d:
 				d.write('\n'.join(debug_log))
 				#d.write("\nNew State:\n")
 				#d.write(str(self))
