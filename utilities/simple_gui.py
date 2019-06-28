@@ -6,6 +6,8 @@ import sys
 import time
 import traceback
 import threading
+import json, random
+from mcts import mcts				
 
 #import spirecomm
 #print(spirecomm.__file__)
@@ -13,6 +15,7 @@ import threading
 import spirecomm.config as config
 import spirecomm.spire.card
 
+from spirecomm.spire.game import Game
 import spirecomm.communication.coordinator as coord
 from spirecomm.ai.agent import SimpleAgent
 from spirecomm.spire.character import PlayerClass
@@ -165,23 +168,22 @@ class Base(BoxLayout):
 			
 		if msg == "test combat":
 			try:
-				import json, random
-				from spirecomm.spire.game import Game
-				from mcts import mcts
+				open("game.log", "w").close()
 				communication_state = json.load(open(os.path.join(config.SPIRECOMM_PATH, "utilities", "combat_example.json")))
 				game_state = Game.from_json(communication_state.get("game_state"), communication_state.get("available_commands"))
 				game_state.debug_file = "game.log"
 				#define the timeout time for the monte carlo tree search, in ms
 				mcts_timeout = 1000
-				mcts = mcts(timeLimit=mcts_timeout)
+				monte_carlo = mcts(timeLimit=mcts_timeout)
 
 				
 				# TODO replace this block with MCTS
 				while game_state.current_hp > 0 and game_state.monsters[0].current_hp > 0:
 					#actions = game_state.get_possible_actions(debug_file="game.log")
 					#game_state = game_state.take_action(random.choice(actions), debug_file="game.log")
-					action = mcts.search(initialState=game_state)
+					action = monte_carlo.search(initialState=game_state)
 					game_state = game_state.takeAction(action)
+					print("MCTS choosing: " + str(action))
 									
 				self.in_history.append("VICTORY" if game_state.current_hp > 0 else "DEFEAT")
 				self.in_history.append("See game.log for details")

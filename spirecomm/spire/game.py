@@ -214,7 +214,19 @@ class Game:
 		delta_max_hp = self.max_hp - original_game_state.max_hp
 		delta_potions = len(self.potions) - len(original_game_state.potions)
 		
-		return delta_hp * MCTS_HP_VALUE + delta_max_hp * MCTS_MAX_HP_VALUE + delta_potions * MCTS_POTION_VALUE
+		reward = 0
+		reward += delta_hp * MCTS_HP_VALUE
+		reward += delta_max_hp * MCTS_MAX_HP_VALUE
+		reward += delta_potions * MCTS_POTION_VALUE
+		
+		if self.debug_file:
+			with open(self.debug_file, 'a+') as d:
+				d.write("\n~~~~~~~~~~~~~~\n")
+				d.write("\nTerminal state reached, reward: " + str(reward) + "\n")
+				d.write(str(self))
+				d.write("\n~~~~~~~~~~~~~~\n")
+		
+		return reward
 
 
 	def getPossibleActions(self):
@@ -261,6 +273,7 @@ class Game:
 				d.write(str(action) + "\n\n")
 		
 		new_state = copy.deepcopy(self)
+		new_state.original_state = self
 		
 		if action.command.startswith("end"):
 			return new_state.simulate_end_turn(action)
