@@ -3,6 +3,9 @@ import json
 import os
 
 from spirecomm.spire.power import Power
+import spirecomm.config as config
+
+MONSTERS_PATH = os.path.join(config.SPIRECOMM_PATH, "spirecomm", "ai", "monsters")
 
 
 class Intent(Enum):
@@ -139,7 +142,7 @@ class Monster(Character):
 		self.expected_next_move = None
 		
 		try:
-			with open(os.path.join("..", "ai", "monsters", self.name + ".json"),"r") as f:
+			with open(os.path.join(MONSTERS_PATH, self.name + ".json"),"r") as f:
 				self.intents = json.load(f)
 		except Exception as e:
 			with open('err.log', 'a+') as err_file:
