@@ -131,9 +131,8 @@ class Base(BoxLayout):
 	
 		# testbed
 		if msg == "test":
-		
-			spirecomm.spire.card.Card("0", "Strike", "Attack", "Common")
-		
+			
+			self.in_history.append("Executed test operations successfully.")
 			return True
 	
 		if msg == "threadcheck":
@@ -296,7 +295,7 @@ def launch_gui():
 if __name__ == "__main__":	
 	lf = open("err.log", "w")
 	open("game.log", "w").close()
-	
+		
 	if config.SPIRECOMM_PATH == "C:\\path\\to\\spirecomm":
 		err_msg = "\nERROR: Please set the path to spirecomm in spirecomm/config.py\n"
 		err_msg += "If you intend to push changes, run this command after editing your path:\n"
