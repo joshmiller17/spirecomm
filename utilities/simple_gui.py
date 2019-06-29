@@ -184,8 +184,8 @@ class Base(BoxLayout):
 					#actions = game_state.get_possible_actions(debug_file="game.log")
 					#game_state = game_state.take_action(random.choice(actions), debug_file="game.log")
 					action = monte_carlo.search(initialState=game_state)
-					game_state = game_state.takeAction(action)
 					print("MCTS choosing: " + str(action))
+					game_state = game_state.takeAction(action)
 					return True
 
 									

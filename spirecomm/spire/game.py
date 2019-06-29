@@ -80,6 +80,7 @@ class Game:
 		self.debug_file = None
 		self.visited_shop = False
 		self.previous_floor = 0 # used to recognize floor changes, i.e. when floor != previous_floor
+		self.possible_actions = None
 		
 	# for some reason, pausing the game invalidates the state
 	def is_valid(self):
@@ -230,38 +231,41 @@ class Game:
 
 
 	def getPossibleActions(self):
+		if self.possible_actions == None:
 		
-		possible_actions = [EndTurnAction()]
-		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
-		for monster in available_monsters:
-			monster.recognize_intents()
-		
-		for potion in self.get_real_potions():
-			if potion.requires_target:
-				for monster in available_monsters:
-					possible_actions.append(PotionAction(True, potion=potion, target_monster=monster))
-			else:
-				possible_actions.append(PotionAction(True, potion=potion))
+			possible_actions = [EndTurnAction()]
+			available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+			for monster in available_monsters:
+				monster.recognize_intents()
+			
+			for potion in self.get_real_potions():
+				if potion.requires_target:
+					for monster in available_monsters:
+						possible_actions.append(PotionAction(True, potion=potion, target_monster=monster))
+				else:
+					possible_actions.append(PotionAction(True, potion=potion))
+					
+			for card in self.hand:
+				if len(available_monsters) == 0 and card != spirecomm.spire.card.CardType.POWER:
+					continue
+				if card.cost > self.player.energy:
+					continue
+				if card.has_target:
+					for monster in available_monsters:
+						possible_actions.append(PlayCardAction(card=card, target_monster=monster))
+				else:
+					possible_actions.append(PlayCardAction(card=card))
+			
+			if self.debug_file:
+				with open(self.debug_file, 'a+') as d:
+					d.write(str(self))
+					d.write("\n-----------------------------\n")
+					d.write("Possible Actions:\n")
+					d.write("\n".join([str(a) for a in possible_actions]))
+
+			self.possible_actions = possible_actions
 				
-		for card in self.hand:
-			if len(available_monsters) == 0 and card != spirecomm.spire.card.CardType.POWER:
-				continue
-			if card.cost > self.player.energy:
-				continue
-			if card.has_target:
-				for monster in available_monsters:
-					possible_actions.append(PlayCardAction(card=card, target_monster=monster))
-			else:
-				possible_actions.append(PlayCardAction(card=card))
-		
-		if self.debug_file:
-			with open(self.debug_file, 'a+') as d:
-				d.write(str(self))
-				d.write("\n-----------------------------\n")
-				d.write("Possible Actions:\n")
-				d.write("\n".join([str(a) for a in possible_actions]))
-				
-		return possible_actions
+		return self.possible_actions
 	
 	
 	# Returns a new state
