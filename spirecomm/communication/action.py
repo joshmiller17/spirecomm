@@ -60,9 +60,9 @@ class PlayCardAction(Action):
 
 	def __str__(self):
 		if self.target_index is not None and self.monster is not None:
-			return "[Play] {} [{}] on {} [{}]".format(self.card.name, self.card_index, self.target_monster.name, self.target_index)
+			return "[Play] {} ({}){} on {} [{}]".format(self.card.name, self.card.cost, " [{}]".format(self.card_index) if self.card_index != -1 else "", self.target_monster.name, self.target_index)
 		else:
-			return "[Play] {} [{}]".format(self.card.name, self.card_index)
+			return "[Play] {} ({}){}".format(self.card.name, self.card.cost, " [{}]".format(self.card_index) if self.card_index != -1 else "")
 
 class PotionAction(Action):
 	"""An action to use or discard a selected potion"""

@@ -23,6 +23,10 @@ class treeNode():
 		self.totalReward = 0
 		self.children = {}
 		
+	# Returns a tree that explains its decision-making process
+	def explain(self):
+		pass # TODO
+		
 	def __str__(self):
 		# TEST
 		print(str(self.state))
