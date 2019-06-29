@@ -2,15 +2,16 @@
 	"value": {
 		"synergies": [
 			{
-			"name" : "Dexterity",
+			"name" : "Exhaust",
 			"amount" : 1,
 			"enable" : false
 			},
 			{
-			"name" : "Block",
-			"amount" : 1,
+			"name" : "Energy",
+			"amount" : 0.5,
 			"enable" : true
 			}
+			
 		]
 	},
 	

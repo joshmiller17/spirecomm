@@ -2,15 +2,11 @@
 	"value": {
 		"synergies": [
 			{
-			"name" : "Dexterity",
-			"amount" : 1,
-			"enable" : false
-			},
-			{
 			"name" : "Block",
 			"amount" : 1,
 			"enable" : true
 			}
+			
 		]
 	},
 	
@@ -18,7 +14,12 @@
 		{
 		"target" : "self",
 		"effect" : "Block",
-		"amount" : 5
+		"amount" : 15
+		},
+		{
+		"target" : "self",
+		"effect" : "WoundToHand",
+		"amount" : 2
 		}
 	]
 }

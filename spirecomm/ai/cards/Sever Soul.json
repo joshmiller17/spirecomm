@@ -1,0 +1,25 @@
+{
+	"value": {
+		"synergies": [
+			{
+			"name" : "Exhaust",
+			"amount" : 2,
+			"enable" : true
+			}
+			
+		]
+	},
+	
+	"effects": [
+		{
+		"target" : "self",
+		"effect" : "ExhaustAllNonAttacks",
+		"amount" : 1
+		},
+		{
+		"target" : "one",
+		"effect" : "Damage",
+		"amount" : 16
+		}
+	]
+}

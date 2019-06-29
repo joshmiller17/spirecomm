@@ -16,9 +16,14 @@
 	
 	"effects": [
 		{
-		"target" : "self",
+		"target" : "one",
 		"effect" : "Block",
-		"amount" : 5
+		"amount" : 8
+		},
+		{
+		"target" : "self",
+		"effect" : "Draw",
+		"amount" : 1
 		}
 	]
 }

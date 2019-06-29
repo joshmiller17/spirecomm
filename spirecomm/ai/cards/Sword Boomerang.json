@@ -1,0 +1,29 @@
+{
+	"value": {
+		"synergies": [
+			{
+			"name" : "Strength",
+			"amount" : 3,
+			"enable" : false
+			}
+		]
+	},
+	
+	"effects": [
+		{
+		"target" : "random",
+		"effect" : "Damage",
+		"amount" : 3
+		},
+		{
+		"target" : "random",
+		"effect" : "Damage",
+		"amount" : 3
+		},
+		{
+		"target" : "random",
+		"effect" : "Damage",
+		"amount" : 3
+		}
+	]
+}

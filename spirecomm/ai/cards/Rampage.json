@@ -2,22 +2,23 @@
 	"value": {
 		"synergies": [
 			{
-			"name" : "Dexterity",
+			"name" : "Headbutt",
 			"amount" : 1,
 			"enable" : false
-			},
-			{
-			"name" : "Block",
-			"amount" : 1,
-			"enable" : true
 			}
+			
 		]
 	},
 	
 	"effects": [
 		{
+		"target" : "one",
+		"effect" : "Damage",
+		"amount" : 8
+		},
+		{
 		"target" : "self",
-		"effect" : "Block",
+		"effect" : "Rampage",
 		"amount" : 5
 		}
 	]

@@ -1,9 +1,27 @@
+DEBUFFS = [
+	"Bias",
+	"Confused",
+	"Constricted",
+	"Dexterity Down",
+	"Draw Reduction",
+	"Entangled",
+	"Frail",
+	"Hex",
+	"No Draw",
+	"No Block",
+	"Strength Down",
+	"Vulnerable",
+	"Weakened", # Weak?
+	"Wraith Form"
+]
+
 class Power:
 
 	def __init__(self, power_id, name, amount):
 		self.power_id = power_id
 		self.power_name = name
 		self.amount = amount
+		self.is_debuff = self.power_name in DEBUFFS
 
 	@classmethod
 	def from_json(cls, json_object):

@@ -2,23 +2,24 @@
 	"value": {
 		"synergies": [
 			{
-			"name" : "Dexterity",
-			"amount" : 1,
+			"name" : "Lose HP",
+			"amount" : 2,
 			"enable" : false
 			},
 			{
-			"name" : "Block",
-			"amount" : 1,
+			"name" : "Strength",
+			"amount" : 2,
 			"enable" : true
 			}
+			
 		]
 	},
 	
 	"effects": [
 		{
 		"target" : "self",
-		"effect" : "Block",
-		"amount" : 5
+		"effect" : "Rupture",
+		"amount" : 1
 		}
 	]
 }

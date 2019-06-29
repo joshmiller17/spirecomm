@@ -2,23 +2,24 @@
 	"value": {
 		"synergies": [
 			{
-			"name" : "Dexterity",
-			"amount" : 1,
-			"enable" : false
+			"name" : "Block",
+			"amount" : 2,
+			"enable" : true
 			},
 			{
-			"name" : "Block",
-			"amount" : 1,
-			"enable" : true
+			"name" : "Exhaust",
+			"amount" : 3,
+			"enable" : false
 			}
+			
 		]
 	},
 	
 	"effects": [
 		{
 		"target" : "self",
-		"effect" : "Block",
-		"amount" : 5
+		"effect" : "Feel No Pain",
+		"amount" : 3
 		}
 	]
 }

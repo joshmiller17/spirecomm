@@ -2,12 +2,7 @@
 	"value": {
 		"synergies": [
 			{
-			"name" : "Dexterity",
-			"amount" : 1,
-			"enable" : false
-			},
-			{
-			"name" : "Block",
+			"name" : "Exhaust",
 			"amount" : 1,
 			"enable" : true
 			}
@@ -16,9 +11,14 @@
 	
 	"effects": [
 		{
+		"target" : "one",
+		"effect" : "Strength",
+		"amount" : -2
+		},
+		{
 		"target" : "self",
-		"effect" : "Block",
-		"amount" : 5
+		"effect" : "Exhaust",
+		"amount" : 1
 		}
 	]
 }

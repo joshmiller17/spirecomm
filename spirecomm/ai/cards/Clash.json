@@ -1,0 +1,25 @@
+{
+	"value": {
+		"synergies": [
+			{
+			"name" : "Attacks",
+			"amount" : 0.01,
+			"enable" : false
+			}
+		]
+	},
+	
+	"effects": [
+		{
+		"target" : "one",
+		"effect" : "Is Clash Playable",
+		"amount" : 0
+		},
+		
+		{
+		"target" : "one",
+		"effect" : "Damage",
+		"amount" : 14
+		}
+	]
+}

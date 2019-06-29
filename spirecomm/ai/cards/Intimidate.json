@@ -2,23 +2,24 @@
 	"value": {
 		"synergies": [
 			{
-			"name" : "Dexterity",
-			"amount" : 1,
-			"enable" : false
-			},
-			{
-			"name" : "Block",
+			"name" : "Weak",
 			"amount" : 1,
 			"enable" : true
 			}
+			
 		]
 	},
 	
 	"effects": [
 		{
+		"target" : "all",
+		"effect" : "Weakened",
+		"amount" : 1
+		},
+		{
 		"target" : "self",
-		"effect" : "Block",
-		"amount" : 5
+		"effect" : "Exhaust",
+		"amount" : 1
 		}
 	]
 }

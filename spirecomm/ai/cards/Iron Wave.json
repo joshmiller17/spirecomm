@@ -16,6 +16,12 @@
 	
 	"effects": [
 		{
+		"target" : "one",
+		"effect" : "Damage",
+		"amount" : 5
+		},
+		
+		{
 		"target" : "self",
 		"effect" : "Block",
 		"amount" : 5

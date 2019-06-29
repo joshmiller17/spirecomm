@@ -1,0 +1,40 @@
+{
+	"value": {
+		"synergies": [
+			{
+			"name" : "Exhaust",
+			"amount" : 1,
+			"enable" : true
+			},
+			{
+			"name" : "Weakened",
+			"amount" : 2,
+			"enable" : true
+			},
+			{
+			"name" : "Vulnerable",
+			"amount" : 2,
+			"enable" : true
+			}
+			
+		]
+	},
+	
+	"effects": [
+		{
+		"target" : "all",
+		"effect" : "Weakened",
+		"amount" : 3
+		},
+		{
+		"target" : "all",
+		"effect" : "Vulnerable",
+		"amount" : 3
+		},
+		{
+		"target" : "self",
+		"effect" : "Exhaust",
+		"amount" : 1
+		}
+	]
+}

@@ -1,0 +1,25 @@
+{
+	"value": {
+		"synergies": [
+			{
+			"name" : "Block",
+			"amount" : 1,
+			"enable" : false
+			}
+		]
+	},
+	
+	"effects": [
+		{
+		"target" : "one",
+		"effect" : "Damage",
+		"amount" : 0
+		},
+		
+		{
+		"target" : "one",
+		"effect" : "Block as Damage",
+		"amount" : 0
+		}
+	]
+}

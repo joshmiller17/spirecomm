@@ -2,23 +2,19 @@
 	"value": {
 		"synergies": [
 			{
-			"name" : "Dexterity",
+			"name" : "Attacks",
 			"amount" : 1,
 			"enable" : false
-			},
-			{
-			"name" : "Block",
-			"amount" : 1,
-			"enable" : true
 			}
+			
 		]
 	},
 	
 	"effects": [
 		{
 		"target" : "self",
-		"effect" : "Block",
-		"amount" : 5
+		"effect" : "Fire Breathing",
+		"amount" : 1
 		}
 	]
 }

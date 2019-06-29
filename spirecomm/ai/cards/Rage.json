@@ -2,7 +2,7 @@
 	"value": {
 		"synergies": [
 			{
-			"name" : "Dexterity",
+			"name" : "Attacks",
 			"amount" : 1,
 			"enable" : false
 			},
@@ -11,14 +11,15 @@
 			"amount" : 1,
 			"enable" : true
 			}
+			
 		]
 	},
 	
 	"effects": [
 		{
 		"target" : "self",
-		"effect" : "Block",
-		"amount" : 5
+		"effect" : "Rage",
+		"amount" : 3
 		}
 	]
 }

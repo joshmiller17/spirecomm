@@ -1,0 +1,20 @@
+{
+	"value": {
+		"synergies": [
+			{
+			"name" : "Block",
+			"amount" : 2,
+			"enable" : false
+			}
+			
+		]
+	},
+	
+	"effects": [
+		{
+		"target" : "self",
+		"effect" : "Entrench",
+		"amount" : 1
+		}
+	]
+}

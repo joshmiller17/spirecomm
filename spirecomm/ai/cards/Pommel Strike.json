@@ -2,12 +2,7 @@
 	"value": {
 		"synergies": [
 			{
-			"name" : "Dexterity",
-			"amount" : 1,
-			"enable" : false
-			},
-			{
-			"name" : "Block",
+			"name" : "Perfected Strike",
 			"amount" : 1,
 			"enable" : true
 			}
@@ -16,9 +11,14 @@
 	
 	"effects": [
 		{
+		"target" : "one",
+		"effect" : "Damage",
+		"amount" : 9
+		},
+		{
 		"target" : "self",
-		"effect" : "Block",
-		"amount" : 5
+		"effect" : "Draw",
+		"amount" : 1
 		}
 	]
 }

@@ -1,0 +1,25 @@
+{
+	"value": {
+		"synergies": [
+			{
+			"name" : "Strength",
+			"amount" : 3,
+			"enable" : false
+			}
+		]
+	},
+	
+	"effects": [
+		{
+		"target" : "one",
+		"effect" : "Damage",
+		"amount" : 14
+		},
+		
+		{
+		"target" : "one",
+		"effect" : "Bonus Strength Damage",
+		"amount" : 2
+		}
+	]
+}

@@ -1,0 +1,25 @@
+{
+	"value": {
+		"synergies": [
+			{
+			"name" : "Attacks",
+			"amount" : 1,
+			"enable" : true
+			}
+			
+		]
+	},
+	
+	"effects": [
+		{
+		"target" : "one",
+		"effect" : "Damage",
+		"amount" : 7
+		},
+		{
+		"target" : "self",
+		"effect" : "DazedToDraw",
+		"amount" : 1
+		}
+	]
+}

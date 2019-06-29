@@ -1,0 +1,15 @@
+{
+	"value": {
+		"synergies": [
+			
+		]
+	},
+	
+	"effects": [
+		{
+		"target" : "one",
+		"effect" : "DualWield",
+		"amount" : 1
+		}
+	]
+}

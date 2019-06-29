@@ -1,0 +1,45 @@
+{
+	"value": {
+		"synergies": [
+			{
+			"name" : "Strength",
+			"amount" : 4,
+			"enable" : false
+			},
+			{
+			"name" : "Exhaust",
+			"amount" : 1,
+			"enable" : true
+			}
+			
+		]
+	},
+	
+	"effects": [
+		{
+		"target" : "one",
+		"effect" : "Damage",
+		"amount" : 2
+		},
+		{
+		"target" : "one",
+		"effect" : "Damage",
+		"amount" : 2
+		},
+		{
+		"target" : "one",
+		"effect" : "Damage",
+		"amount" : 2
+		},
+		{
+		"target" : "one",
+		"effect" : "Damage",
+		"amount" : 2
+		},
+		{
+		"target" : "self",
+		"effect" : "Exhaust",
+		"amount" : 1
+		}
+	]
+}

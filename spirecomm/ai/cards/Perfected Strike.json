@@ -1,0 +1,25 @@
+{
+	"value": {
+		"synergies": [
+			{
+			"name" : "Perfected Strike",
+			"amount" : 2,
+			"enable" : false
+			}
+		]
+	},
+	
+	"effects": [
+		{
+		"target" : "one",
+		"effect" : "Damage",
+		"amount" : 6
+		},
+		
+		{
+		"target" : "self",
+		"effect" : "Strike Damage",
+		"amount" : 2
+		}
+	]
+}
