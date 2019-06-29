@@ -7,7 +7,6 @@ This work is built on top of ForgottenArbiter's [spirecomm](https://github.com/F
 * Python 3.5+
     * kivy
     * py_trees
-    * mcts
 * Slay the Spire
     * [ModTheSpire](https://github.com/kiooeht/ModTheSpire), which I believe you can now get straight from the Steam Community
     * BaseMod
