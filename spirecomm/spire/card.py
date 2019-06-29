@@ -111,9 +111,15 @@ class Card:
 			is_playable=json_object.get("is_playable", False),
 			exhausts=json_object.get("exhausts", False)
 		)
+		
+	def __str__(self): # TODO are upgrades handled in the name, or should we convey upgrade?
+		if self.is_playable:
+			return str(self.name) + " (" + str(self.cost) +")"
+		else:
+			return str(self.name) + " (--)"
 
 	def __eq__(self, other):
-		return self.uuid == other.uuid
+		return self.name == other.name and self.cost == other.cost
 		
 	def __hash__(self):
 		return hash(str(self))

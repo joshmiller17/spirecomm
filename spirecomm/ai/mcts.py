@@ -2,14 +2,16 @@ import math
 import random
 import time
 
-def randomPolicy(state):
-    while not state.isTerminal():
-        try:
-            action = random.choice(state.getPossibleActions())
-        except IndexError:
-            raise Exception("Non-terminal state has no possible actions: " + str(state))
-        state = state.takeAction(action)
-    return state.getReward()
+def rolloutPolicy(state):
+	while not state.isTerminal():
+		try:
+			weights = [1] * len(state.getPossibleActions())
+			weights[0] *= 0.5 # weigh End Turn less
+			action = random.choice(state.getPossibleActions())
+		except IndexError:
+			raise Exception("Non-terminal state has no possible actions: " + str(state))
+		state = state.takeAction(action)
+	return state.getReward()
 
 class treeNode():
 	def __init__(self, state, parent):
@@ -36,7 +38,7 @@ class treeNode():
 
 class mcts():
 	def __init__(self, timeLimit=None, iterationLimit=None, explorationConstant=1 / math.sqrt(2),
-				 rolloutPolicy=randomPolicy):
+				 rolloutPolicy=rolloutPolicy):
 		if timeLimit != None:
 			if iterationLimit != None:
 				raise ValueError("Cannot have both a time limit and an iteration limit")

@@ -8,8 +8,7 @@ class Potion:
 		self.requires_target = requires_target
 		self.price = price
 
-	def __eq__(self, other):
-		return other.potion_id == self.potion_id
+	
 
 	@classmethod
 	def from_json(cls, json_object):
@@ -22,8 +21,11 @@ class Potion:
 			price=json_object.get("price", 0)
 		)
 
+	def __str__(self):
+		return str(self.name)
+		
 	def __eq__(self, other):
-		return self.potion_id == other.potion_id # not sure if this is actually correct
+		return other.potion_id == self.potion_id
 		
 	def __hash__(self):
 		return hash(str(self.potion_id))

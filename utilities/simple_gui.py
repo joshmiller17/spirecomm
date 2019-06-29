@@ -176,8 +176,8 @@ class Base(BoxLayout):
 				communication_state = json.load(open(os.path.join(config.SPIRECOMM_PATH, "utilities", "combat_example.json")))
 				game_state = Game.from_json(communication_state.get("game_state"), communication_state.get("available_commands"))
 				game_state.debug_file = "game.log"
-				mcts_timeout = 100 # in ms # eventually set to agent.action_delay * 1000 with debug cmd to adjust
-				monte_carlo = mcts(iterationLimit=mcts_timeout)
+				mcts_timeout = 2000 # in ms # eventually set to agent.action_delay * 1000 with debug cmd to adjust
+				monte_carlo = mcts(timeLimit=mcts_timeout)
 
 				
 				while game_state.current_hp > 0 and game_state.monsters[0].current_hp > 0:
@@ -186,11 +186,12 @@ class Base(BoxLayout):
 					action = monte_carlo.search(initialState=game_state)
 					print("MCTS choosing: " + str(action))
 					game_state = game_state.takeAction(action)
-					return True
 
-									
+				print("")		
 				self.in_history.append("VICTORY" if game_state.current_hp > 0 else "DEFEAT")
+				self.in_history.append("Health left: " + str(game_state.current_hp))
 				self.in_history.append("See game.log for details")
+				
 			except Exception as e:
 				print(str(e))
 				print(traceback.format_exc())

@@ -17,6 +17,7 @@ from spirecomm.communication.action import *
 MCTS_MAX_HP_VALUE = 7
 MCTS_HP_VALUE = 1
 MCTS_POTION_VALUE = 7 # TODO change by potion type
+MCTS_ROUND_COST = 0.5 # penalize long fights
 
 class RoomPhase(Enum):
 	COMBAT = 1,
@@ -219,6 +220,7 @@ class Game:
 		reward += delta_hp * MCTS_HP_VALUE
 		reward += delta_max_hp * MCTS_MAX_HP_VALUE
 		reward += delta_potions * MCTS_POTION_VALUE
+		reward -= self.combat_round * MCTS_ROUND_COST
 		
 		if self.debug_file:
 			with open(self.debug_file, 'a+') as d:
@@ -277,12 +279,14 @@ class Game:
 				d.write(str(action) + "\n\n")
 		
 		new_state = copy.deepcopy(self)
+		new_state.possible_actions = None
 		new_state.original_state = self
 		
 		if action.command.startswith("end"):
 			return new_state.simulate_end_turn(action)
 		elif action.command.startswith("potion"):
-			new_state.potions.remove(action.potion)
+			# assumes we have this potion, will throw an error if we don't I think
+			new_state.potions.remove(action.potion) # fixme? might need to match on name rather than ID
 			return new_state.simulate_potion(action)
 		elif action.command.startswith("play"):
 			return new_state.simulate_play(action)
@@ -345,98 +349,98 @@ class Game:
 	
 		debug_log = []
 		
-		if action.potion == "Artifact Potion":
+		if action.potion.name == "Artifact Potion":
 			self.player.add_power("Artifact", 1)
 		
-		elif action.potion == "Attack Potion":
+		elif action.potion.name == "Attack Potion":
 			# TODO
 			pass
 		
-		elif action.potion == "Block Potion":
+		elif action.potion.name == "Block Potion":
 			self.player.block += 12
 		
-		elif action.potion == "Blood Potion":
+		elif action.potion.name == "Blood Potion":
 			hp_gained = int(math.ceil(self.max_hp * 0.10))
 			new_hp = min(self.max_hp, self.current_hp + hp_gained)
 			self.current_hp = new_hp
 		
-		elif action.potion == "Dexterity Potion":
+		elif action.potion.name == "Dexterity Potion":
 			self.player.add_power("Dexterity", 2)
 		
-		elif action.potion == "Energy Potion":
+		elif action.potion.name == "Energy Potion":
 			self.player.energy += 2
 		
-		elif action.potion == "Entropic Brew":
+		elif action.potion.name == "Entropic Brew":
 			# TODO
 			pass
 		
-		elif action.potion == "Essence of Steel":
+		elif action.potion.name == "Essence of Steel":
 			self.player.add_power("Plated Armor", 4)
 		
-		elif action.potion == "Explosive Potion":
+		elif action.potion.name == "Explosive Potion":
 			# TODO
 			pass
 		
 		# TODO Fairy in a Bottle is not usable but should be considered in game state
 		
-		elif action.potion == "Fear Potion":
+		elif action.potion.name == "Fear Potion":
 			# TODO
 			pass
 		
-		elif action.potion == "Fire Potion":
+		elif action.potion.name == "Fire Potion":
 			# TODO
 			pass
 		
-		elif action.potion == "Focus Potion":
+		elif action.potion.name == "Focus Potion":
 			self.player.add_power("Focus", 2)
 		
-		elif action.potion == "Fruit Juice":
+		elif action.potion.name == "Fruit Juice":
 			self.max_hp += 5
 			self.current_hp += 5
 		
-		elif action.potion == "Gambler's Brew":
+		elif action.potion.name == "Gambler's Brew":
 			# TODO
 			pass
 		
-		elif action.potion == "Liquid Bronze":
+		elif action.potion.name == "Liquid Bronze":
 			self.player.add_power("Thorns", 3)
 		
-		elif action.potion == "Poison Potion":
+		elif action.potion.name == "Poison Potion":
 			# TODO
 			pass
 		
-		elif action.potion == "Power Potion":
+		elif action.potion.name == "Power Potion":
 			# TODO
 			pass
 		
-		elif action.potion == "Skill Potion":
+		elif action.potion.name == "Skill Potion":
 			# TODO
 			pass
 		
-		elif action.potion == "Smoke Bomb":
+		elif action.potion.name == "Smoke Bomb":
 			# TODO
 			pass
 		
-		elif action.potion == "Snecko Oil":
+		elif action.potion.name == "Snecko Oil":
 			# TODO
 			pass
 		
-		elif action.potion == "Speed Potion":
+		elif action.potion.name == "Speed Potion":
 			self.player.add_power("Dexterity", 5)
 			self.player.add_power("Dexterity Down", 5)
 		
-		elif action.potion == "Steroid Potion":
+		elif action.potion.name == "Steroid Potion":
 			self.player.add_power("Strength", 5)
 			self.player.add_power("Strength Down", 5)
 		
-		elif action.potion == "Strength Potion":
+		elif action.potion.name == "Strength Potion":
 			self.player.add_power("Strength", 3)
 		
-		elif action.potion == "Swift Potion":
+		elif action.potion.name == "Swift Potion":
 			# TODO
 			pass
 		
-		elif action.potion == "Weak Potion":
+		elif action.potion.name == "Weak Potion":
 			# TODO
 			pass
 		
@@ -460,6 +464,12 @@ class Game:
 		
 		if not action.card.loadedFromJSON:
 			raise Exception("Card not loaded from JSON: " + str(action.card.name))
+			
+		
+		# Fix for IDs not matching
+		for c in self.hand:
+			if action.card == c:
+				action.card = c
 			
 		# move card to discard
 		self.player.energy -= action.card.cost
