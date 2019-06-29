@@ -67,10 +67,10 @@ class mcts():
 
 		bestChild = self.getBestChild(self.root, 0)
 		#TEST
-		print(self.root.children.keys())
-		for action,child in self.root.children.items():
-			nodeValue = child.totalReward / child.numVisits
-			print("%s: %f"%(action,nodeValue))
+		# print(self.root.children.keys())
+		# for action,child in self.root.children.items():
+		# 	nodeValue = child.totalReward / child.numVisits
+		# 	print("%s: %f"%(action,nodeValue))
 		return self.getAction(self.root, bestChild)
 
 	def executeRound(self):
@@ -88,13 +88,7 @@ class mcts():
 
 	def expand(self, node):
 		actions = node.state.getPossibleActions()
-		if node.parent==None: print(actions)
 		for action in actions:
-			#TEST
-			if node.parent==None:
-				print(action)
-				#print(", ".join([str(a) for a in actions]))
-				#print(", ".join([str(type(a)) for a in actions]))
 			if action not in node.children:
 				newNode = treeNode(node.state.takeAction(action), node)
 				node.children[action] = newNode
