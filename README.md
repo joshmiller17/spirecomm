@@ -7,6 +7,7 @@ This work is built on top of ForgottenArbiter's [spirecomm](https://github.com/F
 * Python 3.5+
     * kivy
     * py_trees
+    * mcts
 * Slay the Spire
     * [ModTheSpire](https://github.com/kiooeht/ModTheSpire), which I believe you can now get straight from the Steam Community
     * BaseMod
@@ -40,8 +41,7 @@ Because CommunicationMod eats all print statements when the program is running, 
 
 ### General Troubleshooting Tips
 - Check all log files for errors
-- Make sure you are using Python 3
-- Make sure you have installed kivy and py_trees
+- Make sure you are using Python 3 with listed dependencies
 - Make sure you never call print() in any code changes you've made to the AI
 - If running through ModTheSpire, check the ModTheSpire output for clues
 - If you made changes and you're not seeing them, did you re-run `python setup.py install` and restart Slay the Spire with mods? If you added files, you may also need to run `python setup.py build` before these steps.
