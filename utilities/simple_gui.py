@@ -6,14 +6,16 @@ import sys
 import time
 import traceback
 import threading
-import json, random
-from mcts import mcts				
+import json
+import random
+import math			
 
 #import spirecomm
 #print(spirecomm.__file__)
 
 import spirecomm.config as config
 import spirecomm.spire.card
+from spirecomm.ai.mcts import *
 
 from spirecomm.spire.game import Game
 import spirecomm.communication.coordinator as coord
@@ -31,6 +33,8 @@ from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.clock import Clock
 from kivy.core.window import Window
+
+		
 
 class Base(BoxLayout):
 
@@ -172,18 +176,18 @@ class Base(BoxLayout):
 				communication_state = json.load(open(os.path.join(config.SPIRECOMM_PATH, "utilities", "combat_example.json")))
 				game_state = Game.from_json(communication_state.get("game_state"), communication_state.get("available_commands"))
 				game_state.debug_file = "game.log"
-				#define the timeout time for the monte carlo tree search, in ms
-				mcts_timeout = 1000
-				monte_carlo = mcts(timeLimit=mcts_timeout)
+				mcts_timeout = 100 # in ms # eventually set to agent.action_delay * 1000 with debug cmd to adjust
+				monte_carlo = mcts(iterationLimit=mcts_timeout)
 
 				
-				# TODO replace this block with MCTS
 				while game_state.current_hp > 0 and game_state.monsters[0].current_hp > 0:
 					#actions = game_state.get_possible_actions(debug_file="game.log")
 					#game_state = game_state.take_action(random.choice(actions), debug_file="game.log")
 					action = monte_carlo.search(initialState=game_state)
 					game_state = game_state.takeAction(action)
 					print("MCTS choosing: " + str(action))
+					return True
+
 									
 				self.in_history.append("VICTORY" if game_state.current_hp > 0 else "DEFEAT")
 				self.in_history.append("See game.log for details")
@@ -230,6 +234,17 @@ class Base(BoxLayout):
 			
 		return False
 		
+	def randomPolicy(state):
+		while not state.isTerminal():
+			try:
+				action = random.choice(state.getPossibleActions())
+			except IndexError:
+				raise Exception("Non-terminal state has no possible actions: " + str(state))
+			state = state.takeAction(action)
+		return state.getReward()
+
+
+
 
 
 class CommunicationApp(App):

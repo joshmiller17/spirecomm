@@ -30,6 +30,9 @@ class Action:
 		
 	def __str__(self):
 		return "[Default Action] {}".format(self.command)
+		
+	def __hash__(self):
+		return hash(str(self))
 
 
 class PlayCardAction(Action):
@@ -60,7 +63,6 @@ class PlayCardAction(Action):
 			return "[Play] {} [{}] on {} [{}]".format(self.card.name, self.card_index, self.target_monster.name, self.target_index)
 		else:
 			return "[Play] {} [{}]".format(self.card.name, self.card_index)
-
 
 class PotionAction(Action):
 	"""An action to use or discard a selected potion"""
