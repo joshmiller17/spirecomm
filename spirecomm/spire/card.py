@@ -77,14 +77,14 @@ class Card:
 		self.effects["amount"] = None
 		
 		try:
-			with open(os.path.join(CARDS_PATH, self.name + ".json"),"r") as f:
+			with open(os.path.join(CARDS_PATH, self.get_clean_name(name) + ".json"),"r") as f:
 				jsonData = json.load(f)
 				self.value = jsonData["value"]
 				self.effects = jsonData["effects"]
 				self.loadedFromJSON = True
 		except Exception as e:
 			with open('err.log', 'a+') as err_file:
-				err_file.write("\nCard Error: " + str(self.name))
+				err_file.write("\nCard Error: " + str(self.get_clean_name(name)))
 				err_file.write(str(e))
 
 			#raise Exception(e)
@@ -93,6 +93,13 @@ class Card:
 		self.value["upgrade value"] = None # How much do we want to upgrade this card?
 		self.value["purge value"] = None # How much do we want to get rid of this card?
 		self.value["synergy value"] = None # How well does this work with our deck?
+		
+	# Strip periods and extra upgrades for cards like J.A.X. and Searing Blow+3
+	def get_clean_name(name):
+		new_name = ''.join(name.split('.'))
+		if new_name.find('+') != -1:
+			new_name = new_name[:new_name.find('+')]
+		return new_name
 		
 
 	@classmethod
