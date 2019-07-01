@@ -10,7 +10,7 @@
 			"name" : "Lose HP",
 			"amount" : 1,
 			"enable" : true
-			},
+			}
 		]
 	},
 	

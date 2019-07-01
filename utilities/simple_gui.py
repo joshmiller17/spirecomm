@@ -7,6 +7,7 @@ import time
 import traceback
 import threading
 import json
+import re
 import random
 import math			
 
@@ -319,6 +320,16 @@ def launch_gui():
 	print("GUI: Starting mainloop", file=f, flush=True)
 	CommunicationApp(communication_coordinator, agent, f).run()
 	
+def verifyJSONFolder(directory,kind):
+	error = ""
+	files = [f for f in os.listdir(directory) if f.endswith(".json")]
+	for f in files:
+		try:
+			loaded = json.load(open(os.path.join(directory,f),"r"))
+		except Exception as e:
+			lineNum = re.search("line (\d+) ",str(e),0).group(1)
+			error += "\nMalformed %s json in %s at line %s"%(kind,f,lineNum)
+	return error
 
 if __name__ == "__main__":	
 	lf = open("err.log", "w")
@@ -328,6 +339,16 @@ if __name__ == "__main__":
 		err_msg = "\nERROR: Please set the path to spirecomm in spirecomm/config.py\n"
 		err_msg += "If you intend to push changes, run this command after editing your path:\n"
 		err_msg += "    git update-index --assume-unchanged spirecomm/config.py"
+		print(err_msg, file=lf, flush=True)
+		print(err_msg)
+		exit(1)
+
+	#checks integrity of json files for cards and monsters
+	err_msg = ""
+	err_msg += verifyJSONFolder(os.path.join(config.SPIRECOMM_PATH,"spirecomm","ai","cards"),"card")
+	err_msg += verifyJSONFolder(os.path.join(config.SPIRECOMM_PATH,"spirecomm","ai","monsters"),"monster")
+
+	if err_msg != "":
 		print(err_msg, file=lf, flush=True)
 		print(err_msg)
 		exit(1)
