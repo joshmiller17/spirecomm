@@ -97,7 +97,7 @@ class Game:
 		string = "\n\n---- Game State ----\n"
 		#string += "Screen: " + str(self.screen) + " (" + str(self.screen_type) + ")\n"
 		#string += "Room: " + str(self.room_type) + "\n"
-		if str(self.room_type) == "MonsterRoom":
+		if self.in_combat:
 			string += "\nHP: " + str(self.current_hp) + "/" + str(self.max_hp)
 			string += "\nBlock: " + str(self.player.block)
 			string += "\nRound: " + str(self.combat_round)
