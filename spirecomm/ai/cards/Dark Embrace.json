@@ -1,0 +1,19 @@
+{
+	"value": {
+		"synergies": [
+			{
+			"name" : "Exhaust",
+			"amount" : 2,
+			"enable" : false
+			}
+		]
+	},
+	
+	"effects": [
+		{
+		"target" : "self",
+		"effect" : "DarkEmbrace",
+		"amount" : 1
+		}
+	]
+}

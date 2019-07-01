@@ -1,0 +1,16 @@
+{
+	"value": {
+		"synergies": [
+
+		]
+	},
+	
+	"effects": [
+		{
+		"target" : "one",
+		"effect" : "Shackles",
+		"amount" : 9
+		}
+		
+	]
+}

@@ -1,11 +1,7 @@
 {
 	"value": {
 		"synergies": [
-			{
-			"name" : "Attacks",
-			"amount" : 1,
-			"enable" : true
-			}
+
 		]
 	},
 	
@@ -13,13 +9,13 @@
 		{
 		"target" : "one",
 		"effect" : "Damage",
-		"amount" : 6
+		"amount" : 15
 		},
-		
 		{
 		"target" : "self",
-		"effect" : "Anger",
-		"amount" : 1
+		"effect" : "RitualDagger",
+		"amount" : 3
 		}
+		
 	]
 }

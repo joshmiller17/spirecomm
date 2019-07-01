@@ -13,13 +13,13 @@
 		{
 		"target" : "one",
 		"effect" : "Damage",
-		"amount" : 6
+		"amount" : 4
 		},
-		
 		{
 		"target" : "self",
-		"effect" : "Anger",
+		"effect" : "Exhaust",
 		"amount" : 1
 		}
+		
 	]
 }

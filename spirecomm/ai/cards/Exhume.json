@@ -2,23 +2,22 @@
 	"value": {
 		"synergies": [
 			{
-			"name" : "Attacks",
+			"name" : "Exhaust",
 			"amount" : 1,
-			"enable" : true
+			"enable" : false
 			}
 		]
 	},
 	
 	"effects": [
 		{
-		"target" : "one",
-		"effect" : "Damage",
-		"amount" : 6
+		"target" : "self",
+		"effect" : "Exhume",
+		"amount" : 1
 		},
-		
 		{
 		"target" : "self",
-		"effect" : "Anger",
+		"effect" : "Exhaust",
 		"amount" : 1
 		}
 	]

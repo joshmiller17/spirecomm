@@ -1,0 +1,24 @@
+{
+	"value": {
+		"synergies": [
+			{
+			"name" : "Strength",
+			"amount" : 3,
+			"enable" : false
+			}
+		]
+	},
+	
+	"effects": [
+		{
+		"target" : "self",
+		"effect" : "LimitBreak",
+		"amount" : 1
+		},
+		{
+		"target" : "self",
+		"effect" : "Exhaust",
+		"amount" : 1
+		}
+	]
+}

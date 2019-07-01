@@ -1,0 +1,34 @@
+{
+	"value": {
+		"synergies": [
+			{
+			"name" : "Lose HP",
+			"amount" : 1,
+			"enable" : true
+			}
+		]
+	},
+	
+	"effects": [
+		{
+		"target" : "self",
+		"effect" : "Lose HP",
+		"amount" : 6
+		},
+		{
+		"target" : "self",
+		"effect" : "Energy",
+		"amount" : 2
+		},
+		{
+		"target" : "self",
+		"effect" : "Draw",
+		"amount" : 3
+		},
+		{
+		"target" : "self",
+		"effect" : "Exhaust",
+		"amount" : 1
+		}
+	]
+}

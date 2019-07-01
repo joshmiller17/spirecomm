@@ -2,8 +2,8 @@
 	"value": {
 		"synergies": [
 			{
-			"name" : "Attacks",
-			"amount" : 1,
+			"name" : "Block",
+			"amount" : 2,
 			"enable" : true
 			}
 		]
@@ -11,14 +11,13 @@
 	
 	"effects": [
 		{
-		"target" : "one",
-		"effect" : "Damage",
-		"amount" : 6
+		"target" : "self",
+		"effect" : "Block",
+		"amount" : 30
 		},
-		
 		{
 		"target" : "self",
-		"effect" : "Anger",
+		"effect" : "Exhaust",
 		"amount" : 1
 		}
 	]

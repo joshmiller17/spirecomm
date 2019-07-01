@@ -1,0 +1,26 @@
+{
+	"value": {
+		"synergies": [
+
+		]
+	},
+	
+	"effects": [
+		{
+		"target" : "self",
+		"effect" : "Ethereal",
+		"amount" : 1
+		},
+		{
+		"target" : "self",
+		"effect" : "Intangible",
+		"amount" : 1
+		},
+		{
+		"target" : "self",
+		"effect" : "Exhaust",
+		"amount" : 1
+		}
+		
+	]
+}

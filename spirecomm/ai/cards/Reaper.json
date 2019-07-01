@@ -1,0 +1,29 @@
+{
+	"value": {
+		"synergies": [
+			{
+			"name" : "Strength",
+			"amount" : 1,
+			"enable" : false
+			},
+			{
+			"name" : "Sustain",
+			"amount" : 1,
+			"enable" : true
+			}
+		]
+	},
+	
+	"effects": [
+		{
+		"target" : "all",
+		"effect" : "Reaper",
+		"amount" : 4
+		},
+		{
+		"target" : "self",
+		"effect" : "Exhaust",
+		"amount" : 1
+		}
+	]
+}
