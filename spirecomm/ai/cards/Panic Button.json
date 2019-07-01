@@ -1,0 +1,25 @@
+{
+	"value": {
+		"synergies": [
+
+		]
+	},
+	
+	"effects": [
+		{
+		"target" : "self",
+		"effect" : "Block",
+		"amount" : 30
+		},
+		{
+		"target" : "self",
+		"effect" : "NoBlock",
+		"amount" : 2
+		},
+		{
+		"target" : "self",
+		"effect" : "Exhaust",
+		"amount" : 1
+		}
+	]
+}

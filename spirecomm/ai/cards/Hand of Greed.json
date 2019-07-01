@@ -1,0 +1,20 @@
+{
+	"value": {
+		"synergies": [
+
+		]
+	},
+	
+	"effects": [
+		{
+		"target" : "one",
+		"effect" : "Damage",
+		"amount" : 20
+		},
+		{
+		"target" : "one",
+		"effect" : "Greed",
+		"amount" : 20
+		}
+	]
+}

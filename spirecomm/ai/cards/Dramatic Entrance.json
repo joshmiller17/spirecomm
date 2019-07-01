@@ -1,0 +1,26 @@
+{
+	"value": {
+		"synergies": [
+
+		]
+	},
+	
+	"effects": [
+		{
+		"target" : "self",
+		"effect" : "Innate",
+		"amount" : 1
+		},
+		{
+		"target" : "all",
+		"effect" : "Damage",
+		"amount" : 6
+		},
+		{
+		"target" : "self",
+		"effect" : "Exhaust",
+		"amount" : 1
+		}
+		
+	]
+}

@@ -1,0 +1,15 @@
+{
+	"value": {
+		"synergies": [
+
+		]
+	},
+	
+	"effects": [
+		{
+		"target" : "self",
+		"effect" : "Normality",
+		"amount" : 3
+		}
+	]
+}
