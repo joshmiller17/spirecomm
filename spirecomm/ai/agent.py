@@ -97,6 +97,10 @@ class SimpleAgent:
 			print(str(time.time()) + ": " + msg, file=self.logfile, flush=True)
 		if self.debug_level >= debug:
 			self.debug_queue.append(msg)
+			
+	# a note is a log that isn't shown to the Kivy window
+	def note(self, msg):
+		print(str(time.time()) + ": " + msg, file=self.logfile, flush=True)
 		
 	def init_behaviour_tree(self, root):
 		choiceContext = SequenceBehaviour("Choice Context")
@@ -215,6 +219,18 @@ class SimpleAgent:
 			self.blackboard.game.combat_round += 1
 		self.log(str(action), debug=5)
 		return action
+		
+	# Check that the simulator predicted this outcome was possible
+	def simulation_sanity_check(original_state, action):
+		simulated_state = original_state.takeAction(action)
+		diff = self.state_diff(self.blackboard.game, simulated_state)
+		if diff != {}:
+			self.log("WARN: simulation discrepency, see log for details", debug=3)
+			self.log(str(diff))
+			self.note("Simulated:")
+			self.note(str(simulated_state))
+			self.note("Actual:")
+			self.note(str(self.blackboard.game))
 		
 	# Returns a dict of what changed between game states
 	def state_diff(self, state1, state2):
