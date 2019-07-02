@@ -82,7 +82,7 @@ class Game:
 		self.visited_shop = False
 		self.previous_floor = 0 # used to recognize floor changes, i.e. when floor != previous_floor
 		self.possible_actions = None
-		
+	
 	# for some reason, pausing the game invalidates the state
 	def is_valid(self):
 		return self.end_available or self.potion_available or self.play_available or self.proceed_available or self.cancel_available
@@ -109,18 +109,18 @@ class Game:
 			string += "\nHand: " + ", ".join([card.name for card in self.hand])
 		if self.choice_list != []:
 			string += "\nChoices: " + str(self.choice_list) + " \n"
-		available_choices = []
+		available_commands = []
 		if self.end_available:
-			available_choices.append("end")
+			available_commands.append("end")
 		if self.potion_available:
-			available_choices.append("potion")
+			available_commands.append("potion")
 		if self.play_available:
-			available_choices.append("play")
+			available_commands.append("play")
 		if self.proceed_available:
-			available_choices.append("proceed")
+			available_commands.append("proceed")
 		if self.cancel_available:
-			available_choices.append("cancel")
-		string += "\n\nAvailable commands: " + ", ".join(available_choices)
+			available_commands.append("cancel")
+		string += "\n\nAvailable commands: " + ", ".join(available_commands)
 		return string
 
 
