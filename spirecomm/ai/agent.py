@@ -221,7 +221,7 @@ class SimpleAgent:
 		return action
 		
 	# Check that the simulator predicted this outcome was possible
-	def simulation_sanity_check(original_state, action):
+	def simulation_sanity_check(self, original_state, action):
 		simulated_state = original_state.takeAction(action)
 		diff = self.state_diff(self.blackboard.game, simulated_state)
 		if diff != {}:
@@ -249,6 +249,8 @@ class SimpleAgent:
 			diff["act"] = state2.act
 		if state1.gold != state2.gold:
 			diff["gold"] = state2.gold - state1.gold
+			
+		# relics
 		if state1.relics != state2.relics:
 			diff["relics"] = []
 			for relic2 in state2.relics:
@@ -262,9 +264,30 @@ class SimpleAgent:
 					diff["relics"].append(relic2.name)
 			if diff["relics"] == []:
 				diff.pop("relics", None)
+				
+		# deck
 		if state1.deck != state2.deck:
+			diff["cards_added"] = []
+			diff["cards_removed"] = []
+			diff["cards_upgraded"] = []
+			cards_changed = set(state2.deck).symmetric_difference(set(state1.deck))
+			for card in cards_changed:
+				if card not in state2.deck:
+					diff["cards_removed"].append(card)
+				elif card not in state1.deck:
+					diff["cards_added"].append(card)
+				else: # assume upgraded or changed in some way
+					diff["cards_upgraded"].append(card)
+			if diff["cards_added"] == []:
+				diff.pop("cards_added", None)
+			if diff["cards_removed"] == []:
+				diff.pop("cards_removed", None)
+			if diff["cards_upgraded"] == []:
+				diff.pop("cards_upgraded", None)
 			diff["deck_added"] = [c.name for c in list(set(state2.deck) - set(state1.deck))]
 			diff["deck_removed"] = [c.name for c in list(set(state1.deck) - set(state2.deck))]
+			
+			
 		if state1.potions != state2.potions:
 			diff["potions_added"] = [p.name for p in list(set(state2.potions) - set(state1.potions))]
 			diff["potions_removed"] = [p.name for p in list(set(state1.potions) - set(state2.potions))]	
@@ -275,19 +298,112 @@ class SimpleAgent:
 		# Combat for both states
 		if state1.player is not None and state2.player is not None:
 		
+			cards_changed_from_hand = set(state2.hand).symmetric_difference(set(state1.hand))
+			cards_changed_from_draw = set(state2.draw_pile).symmetric_difference(set(state1.draw_pile))
+			cards_changed_from_discard = set(state2.discard_pile).symmetric_difference(set(state1.discard_pile))
+			cards_changed_from_exhaust = set(state2.exhaust_pile).symmetric_difference(set(state1.exhaust_pile))
+			cards_changed = cards_changed_from_hand | cards_changed_from_draw | cards_changed_from_discard | cards_changed_from_exhaust
+			cards_changed_outside_hand = cards_changed_from_draw | cards_changed_from_discard | cards_changed_from_exhaust
+			
+			card_actions = ["drawn", "hand_to_deck", "discovered", "exhausted", "exhumed", "discarded",
+							"discard_to_hand", "deck_to_discard", "discard_to_deck", "power_played", "upgraded"]
+			
+			for a in card_actions:
+				diff[a] = []
+				
+			# TODO some checks if none of these cases are true
+			
+			for card in cards_changed:
+				
+				if card in cards_changed_from_draw and card in cards_changed_from_hand:
+					# draw
+					if card in state2.hand:
+						diff["drawn"].append(card)
+						continue
+				
+					# hand to deck
+					elif card in state1.hand:
+						diff["hand_to_deck"].append(card)
+						continue
+						
+				elif card in cards_changed_from_hand and card in cards_changed_from_discard:
+					# discard
+					if card in state1.hand:
+						diff["discarded"].append(card)
+						continue
+					
+					# discard to hand
+					elif card in state2.hand:
+						diff["discard_to_hand"].append(card)
+						continue
+						
+				elif card in cards_changed_from_exhaust and card in cards_changed_from_hand:
+				
+					#exhaust
+					if card in state1.hand:
+						diff["exhausted"].append(card)
+						continue
+						
+					#exhume
+					elif card in state2.hand:
+						diff["exhumed"].append(card)
+						continue
+						
+				elif card in cards_changed_from_discard and card in cards_changed_from_draw:
+					
+					#deck to discard
+					if card in state2.discard_pile:
+						diff["deck_to_discard"].append(card)
+						continue
+						
+					# discard to deck
+					elif card in state1.discard_pile:
+						diff["discard_to_deck"].append(card)
+						continue
+						
+				elif card in cards_changed_from_hand and card in state2.hand and card not in cards_changed_outside_hand:
+					
+					#discover
+					diff["discovered"].append(card)
+					continue
+					
+				elif card in cards_changed_from_hand and card in state1.hand and card not in cards_changed_outside_hand:
+					
+					if card.type is spirecomm.spire.card.CardType.POWER and card not in state2.hand:
+				
+						# power played
+						diff["power_played"].append(card)
+						continue
+						
+					elif card.upgrades > 0: # assume upgrading it was the different thing
+						diff["upgraded"].append(card) # FIXME check this more strongly
+						continue
+				
+				
+				
+			for a in card_actions:
+				if diff[a] == []:
+					diff.pop(a, None)
+		
 			if state1.player.block != state2.player.block:
 				diff["block"] = state2.player.block - state1.player.block
 				
 			if state1.player.powers != state2.player.powers:
-				diff["powers"] = []
-				for power2 in state2.player.powers:
-					found = False
-					for power1 in state1.player.powers:
-						if power1.power_name == power2.power_name:
-							found = True
-							diff["powers"].append((power1.power_name, power2.amount - power1.amount))
-					if not found:
-						diff["powers"].append((power2.power_name, power2.amount))
+				diff["powers_changed"] = []
+				diff["powers_added"] = []
+				diff["powers_removed"] = []
+				powers_changed = set(state2.player.powers).symmetric_difference(set(state1.player.powers))
+				for power in powers_changed:
+					power1 = next(p for p in state1.player.powers if p.name == power.name)
+					power2 = next(p for p in state2.player.powers if p.name == power.name)
+					if power in state1.player.powers and power in state2.player.powers:
+							diff["powers_changed"].append((power.power_name, power2.amount - power1.amount))
+					elif power in state2.player.powers:
+						power2 = next(p for p in state2.player.powers if p.name == power.name)
+						diff["powers_added"].append((power2.power_name, power2.amount))
+					elif power in state1.player.powers:
+						power1 = next(p for p in state1.player.powers if p.name == power.name)
+						diff["powers_removed"].append((power1.power_name, power1.amount))
 		
 		
 		return diff
@@ -356,6 +472,8 @@ class SimpleAgent:
 			self.compute_smart_state()
 			self.log(str(self.blackboard.game), debug=5)
 			self.behaviour_tree.tick() # should add an action to the self.cmd_queue
+			if self.blackboard.game.in_combat:
+				self.simulation_sanity_check(self.blackboard.game, self.cmd_queue[0]) # check if we predicted this
 		except Exception as e:
 			self.log("Agent encountered error", debug=2)
 			self.log(str(e), debug=2)

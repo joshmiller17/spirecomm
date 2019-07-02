@@ -77,7 +77,7 @@ class Card:
 		self.effects["amount"] = None
 		
 		try:
-			with open(os.path.join(CARDS_PATH, self.get_clean_name(name) + ".json"),"r") as f:
+			with open(os.path.join(CARDS_PATH, self.get_clean_name() + ".json"),"r") as f:
 				jsonData = json.load(f)
 				self.value = jsonData["value"]
 				self.effects = jsonData["effects"]
@@ -95,8 +95,8 @@ class Card:
 		self.value["synergy value"] = None # How well does this work with our deck?
 		
 	# Strip periods and extra upgrades for cards like J.A.X. and Searing Blow+3
-	def get_clean_name(name):
-		new_name = ''.join(name.split('.'))
+	def get_clean_name(self):
+		new_name = ''.join(self.name.split('.'))
 		if new_name.find('+') != -1:
 			new_name = new_name[:new_name.find('+')]
 		return new_name
@@ -120,13 +120,18 @@ class Card:
 		)
 		
 	def __str__(self): # TODO are upgrades handled in the name, or should we convey upgrade?
-		if self.is_playable:
-			return str(self.name) + " (" + str(self.cost) +")"
-		else:
-			return str(self.name) + " (--)"
-
+		name = str(self.name)
+		if self.upgrades > 1:
+			name += str(self.upgrades)
+		playcost = str(self.cost) if self.is_playable else "--"
+		misc = ""
+		if self.misc != 0:
+			misc = " [" + str(self.misc) + "]"
+		return name + misc + " (" + playcost +")"
+			
+	
 	def __eq__(self, other):
-		return self.name == other.name and self.cost == other.cost
+		return self.name == other.name and self.cost == other.cost and self.upgrades == other.upgrades # FIXME and self.misc == other.misc ?
 		
 	def __hash__(self):
 		return hash(str(self))

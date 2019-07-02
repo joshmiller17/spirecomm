@@ -25,7 +25,7 @@ class Potion:
 		return str(self.name)
 		
 	def __eq__(self, other):
-		return other.potion_id == self.potion_id
+		return other.name == self.name
 		
 	def __hash__(self):
-		return hash(str(self.potion_id))
+		return hash(str(self))
