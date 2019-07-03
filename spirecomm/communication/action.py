@@ -141,7 +141,7 @@ class ChooseAction(Action):
 			coordinator.send_message("{} {}".format(self.command, self.choice_index))
 
 	def __str__(self):
-		return "[Choose] {} {}".format(self.choice_index, self.name)
+		return "[Choose] [{}] {}".format(self.choice_index, self.name if self.name is not None else "(text unknown)")
 
 class ChooseShopkeeperAction(ChooseAction):
 	"""An action to open the shop on a shop screen"""
@@ -333,7 +333,7 @@ class CardSelectAction(Action):
 		coordinator.add_action_to_queue(OptionalCardSelectConfirmAction())
 		
 	def __str__(self):
-		return "[Card Select]"
+		return "[Card Select] " + ", ".join([str(card) for card in self.cards])
 
 
 class ChooseMapNodeAction(ChooseAction):

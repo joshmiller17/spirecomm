@@ -309,6 +309,12 @@ class SimpleAgent:
 
 		# Combat for both states
 		if state1.player is not None and state2.player is not None:
+			
+			monsters1 = [monster for monster in state1.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+			monsters2 = [monster for monster in state2.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+
+			# TODO get status differences in monsters: health, powers, is_dead, etc
+			# general TODO: better record linking between state1 and state2? right now most record linking is by name or ID (which might not be the same necessarily)
 		
 			cards_changed_from_hand = set(state2.hand).symmetric_difference(set(state1.hand))
 			cards_changed_from_draw = set(state2.draw_pile).symmetric_difference(set(state1.draw_pile))
@@ -318,7 +324,8 @@ class SimpleAgent:
 			cards_changed_outside_hand = cards_changed_from_draw | cards_changed_from_discard | cards_changed_from_exhaust
 			
 			card_actions = ["drawn", "hand_to_deck", "discovered", "exhausted", "exhumed", "discarded",
-							"discard_to_hand", "deck_to_discard", "discard_to_deck", "power_played", "upgraded"]
+							"discard_to_hand", "deck_to_discard", "discard_to_deck", 
+							"playability_changed", "power_played", "upgraded"]
 			
 			for a in card_actions:
 				diff[a] = []
@@ -375,9 +382,16 @@ class SimpleAgent:
 						
 				elif card in cards_changed_from_hand and card in state2.hand and card not in cards_changed_outside_hand:
 					
-					#discover
-					diff["discovered"].append(str(card))
-					continue
+					#discovered
+					if card not in state1.hand:
+						diff["discovered"].append(str(card))
+						continue
+					
+					# became unplayable
+					# TODO probably better handle the typical case where it's unplayable just because we don't have enough energy
+					else: # FIXME, this is an assumption, need to check
+						diff["playability_changed"].append(str(card)) # TODO maybe split into became playable / became unplayable
+					
 					
 				elif card in cards_changed_from_hand and card in state1.hand and card not in cards_changed_outside_hand:
 					
@@ -411,7 +425,7 @@ class SimpleAgent:
 					if power in state1.player.powers and power in state2.player.powers:
 							diff["powers_changed"].append((power.power_name, power2.amount - power1.amount))
 					elif power in state2.player.powers:
-						for p2 in state2.player.players:
+						for p2 in state2.player.powers:
 							if p2.name == power.name:
 								diff["powers_added"].append((p2.power_name, p2.amount))
 								continue
@@ -474,22 +488,26 @@ class SimpleAgent:
 		return Action()
 
 	def get_next_action_in_game(self, game_state):
+		self.last_game_state = self.blackboard.game
+		self.blackboard.game = game_state
+		
+		# Check difference from last state
+		self.log("Diff: " + str(self.state_diff(self.last_game_state, self.blackboard.game)), debug=7)
+		if self.blackboard.game.in_combat and len(self.cmd_queue) > 0:
+				self.simulation_sanity_check(self.last_game_state, self.cmd_queue[0]) # check if we predicted this
+		
+		# Sleep if needed
 		time.sleep(self.action_delay)
 		while (self.paused):
 			time.sleep(1)
 			self.think('z')
-		self.last_game_state = self.blackboard.game
-		self.blackboard.game = game_state
+		
 	
-		self.log("Diff: " + str(self.state_diff(self.last_game_state, self.blackboard.game)), debug=7)
-		
-		if self.blackboard.game.in_combat and len(self.cmd_queue) > 0:
-				self.simulation_sanity_check(self.last_game_state, self.cmd_queue[0]) # check if we predicted this
-		
 		try:
 			self.compute_smart_state()
 			self.log(str(self.blackboard.game), debug=5)
 			self.behaviour_tree.tick() # should add an action to the self.cmd_queue
+			
 		except Exception as e:
 			self.log("Agent encountered error", debug=2)
 			self.log(str(e), debug=2)
@@ -521,10 +539,14 @@ class SimpleAgent:
 			#if monster.is_gone:
 			#	self.think("{} ({}) is gone!".format(monster.name, monster.monster_index))
 			if monster.intent.is_attack():
+				if len(self.blackboard.game.monsters) > 1:
+					index_str = str(monster.monster_index + 1)
+				else:
+					index_str = ""
 				if monster.move_adjusted_damage is not None:
-					self.think("{} ({}) is hitting me for {}x{} damage".format(monster.name, monster.monster_index, monster.move_adjusted_damage, monster.move_hits))
+					self.think("{} ({}) is hitting me for {}x{} damage".format(monster.name, index_str, monster.move_adjusted_damage, monster.move_hits))
 				else: 
-					self.think("{} ({}) is hitting me for {} damage".format(monster.name, monster.monster_index, monster.incoming_damage))
+					self.think("{} ({}) is hitting me for {} damage".format(monster.name, index_str, monster.incoming_damage))
 		
 		# FIXME map_route isn't actually nodes, but a set of X coords
 		#upcoming_rooms = collections.defaultdict(int)
