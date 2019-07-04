@@ -152,7 +152,7 @@ class Monster(Character):
 			#raise Exception(e)
 			
 		def __eq__(self, other):
-			if self.monster_id == other.monster_id and self.monster_index == other.monster_index:
+			if self.monster_id == other.monster_id and self.name == other.name and self.monster_index == other.monster_index:
 				return True
 			return False
 			

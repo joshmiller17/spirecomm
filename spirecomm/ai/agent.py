@@ -309,12 +309,51 @@ class SimpleAgent:
 
 		# Combat for both states
 		if state1.player is not None and state2.player is not None:
+		
+			monster_changes = {}
 			
 			monsters1 = [monster for monster in state1.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
 			monsters2 = [monster for monster in state2.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
 
-			# TODO get status differences in monsters: health, powers, is_dead, etc
-			# general TODO: better record linking between state1 and state2? right now most record linking is by name or ID (which might not be the same necessarily)
+			for monster1 in monsters1:
+				for monster2 in monsters2:
+					if monster1 == monster2:
+							m_id = monster1.name + str(monster1.monster_index)
+							if monster1.current_hp != monster2.current_hp:
+								monster_changes[m_id + "_hp"] = monster2.current_hp - monster1.current_hp
+							if monster1.block != monster2.block:
+									monster_changes[m_id + "_block"] = monster2.block - monster1.block
+								
+							if monster1.powers != monster2.powers:
+								monster_changes[m_id + "_powers_changed"] = []
+								monster_changes[m_id + "_powers_added"] = []
+								monster_changes[m_id + "_powers_removed"] = []
+								powers_changed = set(monster2.powers).symmetric_difference(set(monster1.powers))
+								for power in powers_changed:
+									if power in monster1.powers and power in monster2.powers:
+											monster_changes[m_id + "_powers_changed"].append((power.power_name, power2.amount - power1.amount))
+									elif power in monster2.powers:
+										for p2 in monster2.powers:
+											if p2.name == power.name:
+												monster_changes[m_id + "_powers_added"].append((p2.power_name, p2.amount))
+												continue
+									elif power in monster1.powers:
+										for p1 in monster1.powers:
+											if p1.name == power.name:
+												monster_changes[m_id + "_powers_removed"].append((p1.power_name, p1.amount))
+												continue
+													
+								if monster_changes[m_id + "_powers_added"] == []:
+									monster_changes.pop(m_id + "_powers_added", None)
+								if monster_changes[m_id + "_powers_removed"] == []:
+									monster_changes.pop(m_id + "_powers_removed", None)
+								if monster_changes[m_id + "_powers_changed"] == []:
+									monster_changes.pop(m_id + "_powers_changed", None)
+			
+			if monster_changes != {}:
+				diff["monsters"] = monster_changes
+			
+			# general fixme?: better record linking between state1 and state2? right now most record linking is by name or ID (which might not be the same necessarily)
 		
 			cards_changed_from_hand = set(state2.hand).symmetric_difference(set(state1.hand))
 			cards_changed_from_draw = set(state2.draw_pile).symmetric_difference(set(state1.draw_pile))
@@ -430,10 +469,17 @@ class SimpleAgent:
 								diff["powers_added"].append((p2.power_name, p2.amount))
 								continue
 					elif power in state1.player.powers:
-							for p1 in state1.player.players:
-								if p1.name == power.name:
-									diff["powers_added"].append((p1.power_name, p1.amount))
-									continue
+						for p1 in state1.player.powers:
+							if p1.name == power.name:
+								diff["powers_added"].append((p1.power_name, p1.amount))
+								continue
+									
+				if diff["powers_added"] == []:
+					diff.pop("powers_added", None)
+				if diff["powers_removed"] == []:
+					diff.pop("powers_removed", None)
+				if diff["powers_changed"] == []:
+					diff.pop("powers_changed", None)
 		
 		return diff
 		
