@@ -123,7 +123,7 @@ class Card:
 		name = str(self.name)
 		if self.upgrades > 1:
 			name += str(self.upgrades)
-		playcost = str(self.cost) if self.is_playable else "--"
+		playcost = str(self.cost) if self.is_playable else "-" + str(self.cost) + "-"
 		misc = ""
 		if self.misc != 0:
 			misc = " [" + str(self.misc) + "]"
