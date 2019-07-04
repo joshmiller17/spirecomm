@@ -318,37 +318,37 @@ class SimpleAgent:
 			for monster1 in monsters1:
 				for monster2 in monsters2:
 					if monster1 == monster2:
-							m_id = monster1.name + str(monster1.monster_index)
-							if monster1.current_hp != monster2.current_hp:
-								monster_changes[m_id + "_hp"] = monster2.current_hp - monster1.current_hp
-							if monster1.block != monster2.block:
-									monster_changes[m_id + "_block"] = monster2.block - monster1.block
-								
-							if monster1.powers != monster2.powers:
-								monster_changes[m_id + "_powers_changed"] = []
-								monster_changes[m_id + "_powers_added"] = []
-								monster_changes[m_id + "_powers_removed"] = []
-								powers_changed = set(monster2.powers).symmetric_difference(set(monster1.powers))
-								for power in powers_changed:
-									if power in monster1.powers and power in monster2.powers:
-											monster_changes[m_id + "_powers_changed"].append((power.power_name, power2.amount - power1.amount))
-									elif power in monster2.powers:
-										for p2 in monster2.powers:
-											if p2.name == power.name:
-												monster_changes[m_id + "_powers_added"].append((p2.power_name, p2.amount))
-												continue
-									elif power in monster1.powers:
-										for p1 in monster1.powers:
-											if p1.name == power.name:
-												monster_changes[m_id + "_powers_removed"].append((p1.power_name, p1.amount))
-												continue
-													
-								if monster_changes[m_id + "_powers_added"] == []:
-									monster_changes.pop(m_id + "_powers_added", None)
-								if monster_changes[m_id + "_powers_removed"] == []:
-									monster_changes.pop(m_id + "_powers_removed", None)
-								if monster_changes[m_id + "_powers_changed"] == []:
-									monster_changes.pop(m_id + "_powers_changed", None)
+						m_id = monster1.name + str(monster1.monster_index)
+						if monster1.current_hp != monster2.current_hp:
+							monster_changes[m_id + "_hp"] = monster2.current_hp - monster1.current_hp
+						if monster1.block != monster2.block:
+								monster_changes[m_id + "_block"] = monster2.block - monster1.block
+							
+						if monster1.powers != monster2.powers:
+							monster_changes[m_id + "_powers_changed"] = []
+							monster_changes[m_id + "_powers_added"] = []
+							monster_changes[m_id + "_powers_removed"] = []
+							powers_changed = set(monster2.powers).symmetric_difference(set(monster1.powers))
+							for power in powers_changed:
+								if power in monster1.powers and power in monster2.powers:
+										monster_changes[m_id + "_powers_changed"].append((power.power_name, power2.amount - power1.amount))
+								elif power in monster2.powers:
+									for p2 in monster2.powers:
+										if p2.name == power.name:
+											monster_changes[m_id + "_powers_added"].append((p2.power_name, p2.amount))
+											continue
+								elif power in monster1.powers:
+									for p1 in monster1.powers:
+										if p1.name == power.name:
+											monster_changes[m_id + "_powers_removed"].append((p1.power_name, p1.amount))
+											continue
+												
+							if monster_changes[m_id + "_powers_added"] == []:
+								monster_changes.pop(m_id + "_powers_added", None)
+							if monster_changes[m_id + "_powers_removed"] == []:
+								monster_changes.pop(m_id + "_powers_removed", None)
+							if monster_changes[m_id + "_powers_changed"] == []:
+								monster_changes.pop(m_id + "_powers_changed", None)
 			
 			if monster_changes != {}:
 				diff["monsters"] = monster_changes
@@ -364,7 +364,7 @@ class SimpleAgent:
 			
 			card_actions = ["drawn", "hand_to_deck", "discovered", "exhausted", "exhumed", "discarded",
 							"discard_to_hand", "deck_to_discard", "discard_to_deck", 
-							"playability_changed", "power_played", "upgraded"]
+							"playability_changed", "power_played", "upgraded", "unknown_change"]
 			
 			for a in card_actions:
 				diff[a] = []
@@ -443,9 +443,9 @@ class SimpleAgent:
 					elif card.upgrades > 0: # assume upgrading it was the different thing
 						diff["upgraded"].append(str(card)) # FIXME check this more strongly
 						continue
-				
-				
-				
+				else:
+					diff["unknown_change"].append(str(card))
+			
 			for a in card_actions:
 				if diff[a] == []:
 					diff.pop(a, None)
