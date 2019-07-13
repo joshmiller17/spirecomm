@@ -27,6 +27,7 @@ class SimpleAgent:
 		self.ascension = 0
 		self.debug_queue = ["AI Initialized.", "Delay timer set to " + str(self.action_delay)]
 		self.cmd_queue = []
+		self.last_action = None
 		self.logfile = logfile
 		self.skipping_card = False
 		self.paused = False
@@ -231,6 +232,8 @@ class SimpleAgent:
 			self.note(str(simulated_state))
 			self.note("Actual:")
 			self.note(str(self.blackboard.game))
+		else:
+			self.log("Sanity check success!")
 		
 	# Returns a dict of what changed between game states
 	def state_diff(self, state1, state2):
@@ -363,8 +366,8 @@ class SimpleAgent:
 			cards_changed_outside_hand = cards_changed_from_draw | cards_changed_from_discard | cards_changed_from_exhaust
 			
 			card_actions = ["drawn", "hand_to_deck", "discovered", "exhausted", "exhumed", "discarded",
-							"discard_to_hand", "deck_to_discard", "discard_to_deck", 
-							"playability_changed", "power_played", "upgraded", "unknown_change"]
+							"discard_to_hand", "deck_to_discard", "discard_to_deck", # "playability_changed", <- deprecated
+							 "power_played", "upgraded", "unknown_change", "err_pc"]
 			
 			for a in card_actions:
 				diff[a] = []
@@ -420,14 +423,16 @@ class SimpleAgent:
 				elif card in cards_changed_from_hand and card in state2.hand and card not in cards_changed_outside_hand:
 					
 					#discovered
+					# FIXME drawing is considered discovering
 					if card not in state1.hand:
 						diff["discovered"].append(str(card))
 						continue
 					
-					# became unplayable
+					# became unplayable; ignoring for now
 					# TODO probably better handle the typical case where it's unplayable just because we don't have enough energy
 					else: # FIXME, this is an assumption, need to check
-						diff["playability_changed"].append(str(card)) # TODO maybe split into became playable / became unplayable
+						diff["err_pc"].append(str(card))
+						#diff["playability_changed"].append(str(card)) # TODO maybe split into became playable / became unplayable
 					
 					
 				elif card in cards_changed_from_hand and card in state1.hand and card not in cards_changed_outside_hand:
@@ -441,6 +446,14 @@ class SimpleAgent:
 					elif card.upgrades > 0: # assume upgrading it was the different thing
 						diff["upgraded"].append(str(card)) # FIXME check this more strongly
 						continue
+						
+				
+				elif card in cards_changed_from_discard and card in state1.discard_pile and card in state2.discard_pile:
+					
+					# might just be playability that changed
+					diff["err_pc"].append(str(card))
+				
+				
 				else:
 					diff["unknown_change"].append(str(card))
 			
@@ -463,12 +476,12 @@ class SimpleAgent:
 							diff["powers_changed"].append((power.power_name, power2.amount - power1.amount))
 					elif power in state2.player.powers:
 						for p2 in state2.player.powers:
-							if p2.name == power.name:
+							if p2.power_name == power.power_name:
 								diff["powers_added"].append((p2.power_name, p2.amount))
 								continue
 					elif power in state1.player.powers:
 						for p1 in state1.player.powers:
-							if p1.name == power.name:
+							if p1.power_name == power.power_name:
 								diff["powers_added"].append((p1.power_name, p1.amount))
 								continue
 									
@@ -537,8 +550,8 @@ class SimpleAgent:
 		
 		# Check difference from last state
 		self.log("Diff: " + str(self.state_diff(self.last_game_state, self.blackboard.game)), debug=7)
-		if self.blackboard.game.in_combat and len(self.cmd_queue) > 0:
-				self.simulation_sanity_check(self.last_game_state, self.cmd_queue[0]) # check if we predicted this
+		if self.blackboard.game.in_combat and self.last_game_state.in_combat and self.last_action is not None:
+			self.simulation_sanity_check(self.last_game_state, self.last_action) # check if we predicted this
 		
 		# Sleep if needed
 		time.sleep(self.action_delay)
@@ -563,6 +576,7 @@ class SimpleAgent:
 			self.step = False
 		
 		cmd = self.get_next_cmd()
+		self.last_action = cmd
 		self.log("> " + str(cmd), debug=5)
 		return cmd
 		
@@ -584,13 +598,13 @@ class SimpleAgent:
 			#	self.think("{} ({}) is gone!".format(monster.name, monster.monster_index))
 			if monster.intent.is_attack():
 				if len(self.blackboard.game.monsters) > 1:
-					index_str = str(monster.monster_index + 1)
+					index_str = " [" + str(monster.monster_index + 1) + "]"
 				else:
 					index_str = ""
 				if monster.move_adjusted_damage is not None:
-					self.think("{} ({}) is hitting me for {}x{} damage".format(monster.name, index_str, monster.move_adjusted_damage, monster.move_hits))
+					self.think("{}{} is hitting me for {}x{} damage".format(monster.name, index_str, monster.move_adjusted_damage, monster.move_hits))
 				else: 
-					self.think("{} ({}) is hitting me for {} damage".format(monster.name, index_str, monster.incoming_damage))
+					self.think("{}{} is hitting me for {} damage".format(monster.name, index_str, monster.incoming_damage))
 		
 		# FIXME map_route isn't actually nodes, but a set of X coords
 		#upcoming_rooms = collections.defaultdict(int)

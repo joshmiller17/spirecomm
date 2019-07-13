@@ -103,7 +103,7 @@ class Game:
 			string += "\nRound: " + str(self.combat_round)
 			string += "\nEnergy: " + str(self.player.energy)
 			string += "\nMonsters: "
-			string += "\n    ".join([str(monster.name) + "(" + str(monster.current_hp) + \
+			string += "\n    ".join([str(monster.name) + " (" + str(monster.current_hp) + \
 						"/" + str(monster.max_hp) + ") using {} {}".format(str(monster.intent), 
 						"" if not monster.intent.is_attack() else "for {}x{}".format(monster.move_adjusted_damage, monster.move_hits)) for monster in self.monsters])
 			string += "\nHand: " + ", ".join([card.name for card in self.hand])
