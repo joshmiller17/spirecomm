@@ -1,49 +1,28 @@
 {
-	"startswith" : "Chomp",
+	"startswith" : "Tackle",
 	"moveset" : {
-				"Chomp" :
+				"Tackle" :
 					{
-					"probability" : 0.25,
+					"probability" : 0.5,
 					"effects" : [
 						{
 							"name" : "Damage",
-							"amount" : 11
+							"amount" : 3
 						}
 					]
 					},
-				"Thrash" :
+				"Lick" :
 					{
-					"probability" : 0.30,
+					"probability" : 0.5,
 					"effects" :[
 						{
-							"name" : "Damage",
-							"amount" : 7
-						},
-						{
-							"name" : "Block",
-							"amount" : 5
+							"name" : "Weak",
+							"amount" : 1
 						}
 					]
-					},
-				"Bellow" :
-				{
-					"probability" : 0.45,
-					"effects" : [
-						{
-							"name" : "Strength",
-							"amount" : 3
-						},
-						{
-							"name" : "Block",
-							"amount" : 6
-						}
-					]
-				}
+					}
 			},
 	"limits" : {
-			"Bellow" : 2,
-			"Thrash" : 3,
-			"Chomp" : 2
 	}
 	
 }
