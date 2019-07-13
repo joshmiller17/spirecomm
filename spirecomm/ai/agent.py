@@ -424,7 +424,7 @@ class SimpleAgent:
 					
 					#discovered
 					# FIXME drawing is considered discovering
-					if card not in state1.hand:
+					if card not in state1.hand and card not in state1.draw_pile and card not in state1.discard_pile and card not in state1.exhaust_pile:
 						diff["discovered"].append(str(card))
 						continue
 					
