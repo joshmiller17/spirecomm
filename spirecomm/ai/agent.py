@@ -370,9 +370,7 @@ class SimpleAgent:
 				diff[a] = []
 				
 			# TODO some checks if none of these cases are true
-			
 			for card in cards_changed:
-				
 				if card in cards_changed_from_draw and card in cards_changed_from_hand:
 					# draw
 					if card in state2.hand:

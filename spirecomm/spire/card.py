@@ -131,7 +131,7 @@ class Card:
 			
 	
 	def __eq__(self, other):
-		return self.name == other.name and self.cost == other.cost and self.upgrades == other.upgrades # FIXME and self.misc == other.misc ?
+		return self.uuid == other.uuid
 		
 	def __hash__(self):
 		return hash(str(self))
