@@ -1,0 +1,36 @@
+{
+	"powers" :
+		[
+			{
+				"name" : "Spore Cloud",
+				"amount" : 2
+			}
+		],
+	"moveset" : {
+				"Bite" :
+					{
+					"probability" : 0.60,
+					"effects" : [
+						{
+							"name" : "Damage",
+							"amount" : 6
+						}
+					]
+					},
+				"Grow" :
+					{
+					"probability" : 0.40,
+					"effects" :[
+						{
+							"name" : "Strength",
+							"amount" : 3
+						}
+					]
+					}
+			},
+	"limits" : {
+			"Bite" : 3,
+			"Grow" : 2
+	}
+	
+}

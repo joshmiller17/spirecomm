@@ -1,0 +1,36 @@
+{
+	"powers" : 
+		[
+			{
+				"name" : "Curl Up",
+				"amount" : 5
+			}
+		],
+	"moveset" : {
+				"Bite" :
+					{
+					"probability" : 0.75,
+					"effects" : [
+						{
+							"name" : "Damage",
+							"amount" : 6
+						}
+					]
+					},
+				"Spit Web" :
+					{
+					"probability" : 0.25,
+					"effects" :[
+						{
+							"name" : "Weak",
+							"amount" : 2
+						}
+					]
+					}
+			},
+	"limits" : {
+			"Bite" : 3,
+			"Spit Web" : 3
+	}
+	
+}
