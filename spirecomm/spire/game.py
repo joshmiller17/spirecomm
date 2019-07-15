@@ -102,10 +102,11 @@ class Game:
 			string += "\nBlock: " + str(self.player.block)
 			string += "\nRound: " + str(self.combat_round)
 			string += "\nEnergy: " + str(self.player.energy)
-			string += "\nMonsters: "
+			string += "\nMonsters:\n    "
+			available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
 			string += "\n    ".join([str(monster.name) + " (" + str(monster.current_hp) + \
 						"/" + str(monster.max_hp) + ") using {} {}".format(str(monster.intent), 
-						"" if not monster.intent.is_attack() else "for {}x{}".format(monster.move_adjusted_damage, monster.move_hits)) for monster in self.monsters])
+						"" if not monster.intent.is_attack() else "for {}x{}".format(monster.move_adjusted_damage, monster.move_hits)) for monster in available_monsters])
 			string += "\nHand: " + ", ".join([card.name for card in self.hand])
 		if self.choice_list != []:
 			string += "\nChoices: " + str(self.choice_list) + " \n"
@@ -290,6 +291,8 @@ class Game:
 			return new_state.simulate_potion(action)
 		elif action.command.startswith("play"):
 			return new_state.simulate_play(action)
+		elif action.command.startswith("state"):
+			return new_state
 		else:
 			raise Exception("Chosen simulated action is not a valid combat action.")
 		

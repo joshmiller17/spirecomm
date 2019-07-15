@@ -6,7 +6,7 @@ def rolloutPolicy(state):
 	while not state.isTerminal():
 		try:
 			weights = [1] * len(state.getPossibleActions())
-			weights[0] *= 0.5 # weigh End Turn less
+			weights[0] *= 0.15 # weigh End Turn less, this is usually not the right action if there's something else we can do
 			action = random.choice(state.getPossibleActions())
 		except IndexError:
 			raise Exception("Non-terminal state has no possible actions: " + str(state))

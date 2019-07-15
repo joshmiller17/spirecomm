@@ -23,16 +23,17 @@ class SimpleAgent:
 		self.chosen_class = chosen_class
 		self.change_class(chosen_class)
 		self.action_delay = 2.0 # seconds delay per action, useful for actually seeing what's going on.
+		self.debug_level = 5
 		# high delay will steal mouse focus??
 		self.ascension = 0
-		self.debug_queue = ["AI Initialized.", "Delay timer set to " + str(self.action_delay)]
+		self.debug_queue = ["AI Initialized.", "Delay timer set to " + str(self.action_delay), "Debug level set to " + str(self.debug_level)]
 		self.cmd_queue = []
 		self.last_action = None
 		self.logfile = logfile
 		self.skipping_card = False
 		self.paused = False
 		self.step = False
-		self.debug_level = 7
+		self.combat_round = 1
 		self.root = SelectorBehaviour("Root Context Selector")
 		self.init_behaviour_tree(self.root) # Warning: uses British spelling
 		self.behaviour_tree = py_trees.trees.BehaviourTree(self.root)
@@ -217,8 +218,11 @@ class SimpleAgent:
 			
 	def decide(self, action):
 		if action.command.startswith("end"):
-			self.blackboard.game.combat_round += 1
-		self.log(str(action), debug=5)
+			self.combat_round += 1
+			self.blackboard.game.combat_round = self.combat_round
+		if action.command.startswith("proceed"):
+			self.combat_round = 1
+		self.log("> " + str(action), debug=5)
 		return action
 		
 	# Check that the simulator predicted this outcome was possible
@@ -236,7 +240,7 @@ class SimpleAgent:
 			self.log("Sanity check success!")
 		
 	# Returns a dict of what changed between game states
-	def state_diff(self, state1, state2):
+	def state_diff(self, state1, state2):	
 		diff = {}
 		if state1.room_phase != state2.room_phase:
 			diff["room_phase"] = str(state2.room_phase)
@@ -366,7 +370,8 @@ class SimpleAgent:
 			cards_changed_outside_hand = cards_changed_from_draw | cards_changed_from_discard | cards_changed_from_exhaust
 			
 			card_actions = ["drawn", "hand_to_deck", "discovered", "exhausted", "exhumed", "discarded",
-							"discard_to_hand", "deck_to_discard", "discard_to_deck", # "playability_changed", <- deprecated
+							"discard_to_hand", "deck_to_discard", "discard_to_deck",
+							"discovered_to_deck", "discovered_to_discard", # "playability_changed", <- deprecated
 							 "power_played", "upgraded", "unknown_change", "err_pc"]
 			
 			for a in card_actions:
@@ -377,85 +382,63 @@ class SimpleAgent:
 				if card in cards_changed_from_draw and card in cards_changed_from_hand:
 					# draw
 					if card in state2.hand:
-						diff["drawn"].append(str(card))
+						diff["drawn"].append(card.get_id_str())
 						continue
-				
 					# hand to deck
 					elif card in state1.hand:
-						diff["hand_to_deck"].append(str(card))
-						continue
-						
+						diff["hand_to_deck"].append(card.get_id_str())
+						continue	
 				elif card in cards_changed_from_hand and card in cards_changed_from_discard:
 					# discard
 					if card in state1.hand:
-						diff["discarded"].append(str(card))
+						diff["discarded"].append(card.get_id_str())
 						continue
-					
 					# discard to hand
 					elif card in state2.hand:
-						diff["discard_to_hand"].append(str(card))
-						continue
-						
+						diff["discard_to_hand"].append(card.get_id_str())
+						continue	
 				elif card in cards_changed_from_exhaust and card in cards_changed_from_hand:
-				
 					#exhaust
 					if card in state1.hand:
-						diff["exhausted"].append(str(card))
+						diff["exhausted"].append(card.get_id_str())
 						continue
-						
 					#exhume
 					elif card in state2.hand:
-						diff["exhumed"].append(str(card))
+						diff["exhumed"].append(card.get_id_str())
 						continue
-						
 				elif card in cards_changed_from_discard and card in cards_changed_from_draw:
-					
 					#deck to discard
 					if card in state2.discard_pile:
-						diff["deck_to_discard"].append(str(card))
+						diff["deck_to_discard"].append(card.get_id_str())
 						continue
-						
 					# discard to deck
 					elif card in state1.discard_pile:
-						diff["discard_to_deck"].append(str(card))
+						diff["discard_to_deck"].append(card.get_id_str())
 						continue
-						
 				elif card in cards_changed_from_hand and card in state2.hand and card not in cards_changed_outside_hand:
-					
 					#discovered
-					# FIXME drawing is considered discovering
 					if card not in state1.hand and card not in state1.draw_pile and card not in state1.discard_pile and card not in state1.exhaust_pile:
-						diff["discovered"].append(str(card))
+						diff["discovered"].append(card.get_id_str())
 						continue
-					
-					# became unplayable; ignoring for now
-					# TODO probably better handle the typical case where it's unplayable just because we don't have enough energy
-					else: # FIXME, this is an assumption, need to check
-						diff["err_pc"].append(str(card))
-						#diff["playability_changed"].append(str(card)) # TODO maybe split into became playable / became unplayable
-					
-					
 				elif card in cards_changed_from_hand and card in state1.hand and card not in cards_changed_outside_hand:
-					
 					if card.type is spirecomm.spire.card.CardType.POWER and card not in state2.hand:
-				
 						# power played
-						diff["power_played"].append(str(card))
+						diff["power_played"].append(card.get_id_str())
 						continue
-						
 					elif card.upgrades > 0: # assume upgrading it was the different thing
-						diff["upgraded"].append(str(card)) # FIXME check this more strongly
-						continue
-						
-				
-				elif card in cards_changed_from_discard and card in state1.discard_pile and card in state2.discard_pile:
-					
-					# might just be playability that changed
-					diff["err_pc"].append(str(card))
-				
-				
+						diff["upgraded"].append(card.get_id_str()) # FIXME check this more strongly
+						continue	
+				elif card in state2.deck and card not in state1.hand and card not in state1.discard_pile and card not in state1.exhaust_pile:
+					# discovered to deck, e.g. status effect
+					diff["discovered_to_deck"].append(card.get_id_str())
+					continue
+				elif card in state2.discard_pile and card not in state1.hand and card not in state1.deck and card not in state1.exhaust_pile:
+					# discovered to discard, e.g. status effect
+					diff["discovered_to_discard"].append(card.get_id_str())
+					continue
 				else:
-					diff["unknown_change"].append(str(card))
+					self.log("WARN: unknown card change " + card.get_id_str(), debug=3)
+					diff["unknown_change"].append(card.get_id_str())
 			
 			for a in card_actions:
 				if diff[a] == []:
@@ -491,7 +474,38 @@ class SimpleAgent:
 					diff.pop("powers_removed", None)
 				if diff["powers_changed"] == []:
 					diff.pop("powers_changed", None)
+					
+
+		if diff != {}:
+			# TEST ONLY
+			self.log("Our deck (state1):")
+			for card in state1.deck:
+				self.log(card.get_id_str())
+			self.log("Our hand (state1):")
+			for card in state1.hand:
+				self.log(card.get_id_str())
+			self.log("Our draw pile (state1):")
+			for card in state1.draw_pile:
+				self.log(card.get_id_str())
+			self.log("Our discard pile (state1):")
+			for card in state1.discard_pile:
+				self.log(card.get_id_str())
+			
+			self.log("Our deck (state2):")
+			for card in state2.deck:
+				self.log(card.get_id_str())
+			self.log("Our hand (state2):")
+			for card in state2.hand:
+				self.log(card.get_id_str())
+			self.log("Our draw pile (state2):")
+			for card in state2.draw_pile:
+				self.log(card.get_id_str())
+			self.log("Our discard pile (state2):")
+			for card in state2.discard_pile:
+				self.log(card.get_id_str())
 		
+			
+			
 		return diff
 		
 		
@@ -577,8 +591,7 @@ class SimpleAgent:
 		
 		cmd = self.get_next_cmd()
 		self.last_action = cmd
-		self.log("> " + str(cmd), debug=5)
-		return cmd
+		return self.decide(cmd) # FIXME, after phasing out the default logic, should only get one decide - right now, decide is called twice
 		
 
 	def get_next_action_out_of_game(self):

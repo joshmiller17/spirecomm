@@ -119,8 +119,11 @@ class Card:
 			exhausts=json_object.get("exhausts", False)
 		)
 		
-	def __str__(self): # TODO are upgrades handled in the name, or should we convey upgrade?
-		name = str(self.name)
+	def get_id_str(self):
+		return str(self) + " <" + str(self.uuid) + ">"
+		
+	def __str__(self):
+		name = self.get_clean_name()
 		if self.upgrades > 1:
 			name += str(self.upgrades)
 		playcost = str(self.cost) if self.is_playable else "-" + str(self.cost) + "-"
@@ -128,10 +131,10 @@ class Card:
 		if self.misc != 0:
 			misc = " [" + str(self.misc) + "]"
 		return name + misc + " (" + playcost +")"
-			
+		
 	
 	def __eq__(self, other):
 		return self.uuid == other.uuid
 		
 	def __hash__(self):
-		return hash(str(self))
+		return hash(str(self.uuid))
