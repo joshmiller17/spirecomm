@@ -5,9 +5,9 @@ import time
 def rolloutPolicy(state):
 	while not state.isTerminal():
 		try:
-			weights = [1] * len(state.getPossibleActions())
-			weights[0] *= 0.15 # weigh End Turn less, this is usually not the right action if there's something else we can do
-			action = random.choice(state.getPossibleActions())
+			action_weights = [1] * len(state.getPossibleActions())
+			action_weights[0] *= 0.2 # weigh End Turn less, this is usually not the right action if there's something else we can do
+			action = random.choices(population=state.getPossibleActions(), weights=action_weights)
 		except IndexError:
 			raise Exception("Non-terminal state has no possible actions: " + str(state))
 		state = state.takeAction(action)

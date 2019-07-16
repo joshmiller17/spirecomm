@@ -59,7 +59,7 @@ class PlayCardAction(Action):
 			coordinator.send_message("{} {} {}".format(self.command, hand_card_index, self.target_index))
 
 	def __str__(self):
-		if self.target_index is not None and self.monster is not None:
+		if self.target_index is not None and self.target_monster is not None:
 			return "[Play] {} ({}){} on {} [{}]".format(self.card.name, self.card.cost, " [{}]".format(self.card_index) if self.card_index != -1 else "", self.target_monster.name, self.target_index)
 		else:
 			return "[Play] {} ({}){}".format(self.card.name, self.card.cost, " [{}]".format(self.card_index) if self.card_index != -1 else "")

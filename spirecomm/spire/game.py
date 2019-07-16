@@ -32,7 +32,7 @@ class Game:
 
 		# General state
 
-		self.current_action = None
+		self.current_action = None # "The class name of the action in the action manager queue, if not empty"
 		self.act_boss = None
 		self.current_hp = 0
 		self.max_hp = 0
@@ -78,10 +78,11 @@ class Game:
 		
 		# Added state info
 		self.original_state = None # For MCTS simulations; FIXME might be a huge memory storage for in-depth simulations? Consider only storing values important for reward func
-		self.debug_file = None
+		self.debug_file = "game.log"
 		self.visited_shop = False
 		self.previous_floor = 0 # used to recognize floor changes, i.e. when floor != previous_floor
 		self.possible_actions = None
+		self.monsters_last_attacks = {} # monster : [move name, times in a row]
 	
 	# for some reason, pausing the game invalidates the state
 	def is_valid(self):
@@ -107,7 +108,7 @@ class Game:
 			string += "\n    ".join([str(monster.name) + " (" + str(monster.current_hp) + \
 						"/" + str(monster.max_hp) + ") using {} {}".format(str(monster.intent), 
 						"" if not monster.intent.is_attack() else "for {}x{}".format(monster.move_adjusted_damage, monster.move_hits)) for monster in available_monsters])
-			string += "\nHand: " + ", ".join([card.name for card in self.hand])
+			string += "\nHand: " + ", ".join([str(card) for card in self.hand])
 		if self.choice_list != []:
 			string += "\nChoices: " + str(self.choice_list) + " \n"
 		available_commands = []
@@ -302,10 +303,6 @@ class Game:
 		
 		debug_log = []
 		
-		self.combat_round += 1
-		self.player.energy = 3 # hard coded energy per turn. TODO energy relics; if icecream, += 3
-		# TODO this technically happens at the start of turn
-		
 		# TODO consider retaining cards (well-laid plans) or runic pyramid
 		
 		# Hand discarded
@@ -316,13 +313,55 @@ class Game:
 		# TODO consider known intent rotation with more nuance
 		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
 		for monster in available_monsters:
-			#if monster.intents != {}: # we have correctly loaded intents JSON
+			if monster.intents != {}: # we have correctly loaded intents JSON
+			
+				# TODO/FIXME for now, this is only a test of the JSON
+				# eventually, this should replace the default logic whenever we have intents available
+				# notably, this logic is simulating the current intent, which we actually know
+				# what it should be doing instead is using the known intent and then simulating what the next one might be, then updating that when we have more information
+				# which will need some notion of whether we are simulating the current round or not
+				
+				if self.combat_round == 1 and "startswith" in monster.intents:
+					selected_move = monster.intents["startswith"]
+				else:
+				
+					# make sure the attack we pick is not limited
+					while True: # do-while
+						move_weights = []
+						moves = []
+						moveset = monster.intents["moveset"]
+						for move, details in moveset.items():
+							moves.append(move)
+							move_weights.append(details["probability"])
+						selected_move = random.choices(population=moves, weights=move_weights)[0] # choices returns as a list of size 1
+						
+						# check limits
+						if "limits" not in monster.intents or str(monster) not in self.monsters_last_attacks:
+							# don't worry about limits, choose a random attack
+							break
+						else:
+							exceeds_limit = False
+							for limited_move, limited_times in monster.intents["limits"]:
+								if selected_move == limited_move and selected_move == self.monsters_last_attacks[0]:
+									if self.monsters_last_attacks[1] + 1 >= limited_times: # selecting this would exceed limit:
+										exceeds_limit = True
+							if not exceeds_limit:
+								break
+					
+				# increment count of moves in a row
+				if str(monster) in self.monsters_last_attacks:
+					self.monsters_last_attacks[str(monster)][1] += 1
+				else:
+					self.monsters_last_attacks[str(monster)] = [selected_move, 1]
+
+				debug_log.append("Simulated attack for " + str(monster) + " is " + selected_move)
+			
 			#	
 			#else:
 			# default behaviour: just assume the same move as the first turn of simulation
 			if monster.intent.is_attack():
 				if monster.move_adjusted_damage is not None:
-					# are weak and vulnerable accounted for?
+					# are weak and vulnerable accounted for in default logic?
 					incoming_damage = monster.move_adjusted_damage * monster.move_hits
 					damage_after_block = incoming_damage - self.player.block
 					if damage_after_block > 0:
@@ -331,6 +370,13 @@ class Game:
 					else:
 						self.player.block -= incoming_damage
 
+		# if we have any block left, get rid of it - TODO barricade, calipers
+		self.player.block = 0
+		
+		self.player.energy = 3 # hard coded energy per turn. TODO energy relics; if icecream, += 3
+
+		self.combat_round += 1
+
 		# Draw new hand - TODO consider relic modifiers and known information
 		while len(self.hand) < 5:
 			if len(self.draw_pile) == 0:
@@ -338,7 +384,7 @@ class Game:
 				self.discard_pile = []
 			self.hand.append(self.draw_pile.pop(random.randrange(len(self.draw_pile))))
 			
-		if self.debug_file:
+		if self.debug_file and debug_log != []:
 			with open(self.debug_file, 'a+') as d:
 				d.write('\n'.join(debug_log))
 				#d.write("\nNew State:\n")
@@ -450,7 +496,7 @@ class Game:
 		else:
 			raise Exception("No handler for potion: " + str(action.potion))
 		
-		if self.debug_file:
+		if self.debug_file and debug_log != []:
 			with open(self.debug_file, 'a+') as d:
 				d.write('\n'.join(debug_log))
 				#d.write("\nNew State:\n")
@@ -516,7 +562,7 @@ class Game:
 						real_amount = int(math.floor(real_amount + (0.50 * real_amount)))
 					target.current_hp = max(target.current_hp - real_amount, 0)
 			
-		if self.debug_file:
+		if self.debug_file and debug_log != []:
 			with open(self.debug_file, 'a+') as d:
 				d.write('\n'.join(debug_log))
 				#d.write("\nNew State:\n")

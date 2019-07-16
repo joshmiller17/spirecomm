@@ -26,7 +26,7 @@ class SimpleAgent:
 		self.debug_level = 5
 		# high delay will steal mouse focus??
 		self.ascension = 0
-		self.debug_queue = ["AI Initialized.", "Delay timer set to " + str(self.action_delay), "Debug level set to " + str(self.debug_level)]
+		self.debug_queue = ["AI initialized.", "Delay timer set to " + str(self.action_delay), "Debug level set to " + str(self.debug_level)]
 		self.cmd_queue = []
 		self.last_action = None
 		self.logfile = logfile
@@ -191,8 +191,8 @@ class SimpleAgent:
 		cancelContext.add_children([cancelAvail, ActionBehaviour("Cancel", agent=self, action="CancelAction")])
 		
 		root.add_children([choiceContext, proceedContext, combatContext, cancelContext])
-		self.log("Behaviour Tree initialized.")
-		self.log(py_trees.display.ascii_tree(root))
+		self.log("Behaviour tree initialized.")
+		self.note(py_trees.display.ascii_tree(root))
 		#py_trees.display.render_dot_tree(root) # FIXME can't render dot tree: FileNotFoundError: [WinError 2] "dot" not found in path.
 		
 	# For this to get plugged in, need to set pre_tick_handler = this func at some point
@@ -202,7 +202,7 @@ class SimpleAgent:
 		
 	def get_next_msg(self):
 		try:
-			return self.debug_queue.pop()
+			return self.debug_queue.pop(0)
 		except:
 			return ""
 		
@@ -230,8 +230,11 @@ class SimpleAgent:
 		simulated_state = original_state.takeAction(action)
 		diff = self.state_diff(self.blackboard.game, simulated_state)
 		if diff != {}:
-			self.log("WARN: simulation discrepency, see log for details", debug=3)
-			self.log(str(diff))
+			if len(diff) == 2 and "drawn" in diff and "hand_to_deck" in diff and len(diff["drawn"]) == len(diff["hand_to_deck"]):
+				self.log("minor warning: hand drawn different than simulated, see log for details", debug=4)
+			else:
+				self.log("WARN: simulation discrepency, see log for details", debug=3)
+			self.log("actual/sim diff: " + str(diff), debug=4)
 			self.note("Simulated:")
 			self.note(str(simulated_state))
 			self.note("Actual:")
@@ -341,12 +344,12 @@ class SimpleAgent:
 										monster_changes[m_id + "_powers_changed"].append((power.power_name, power2.amount - power1.amount))
 								elif power in monster2.powers:
 									for p2 in monster2.powers:
-										if p2.name == power.name:
+										if p2.power_name == power.power_name:
 											monster_changes[m_id + "_powers_added"].append((p2.power_name, p2.amount))
 											continue
 								elif power in monster1.powers:
 									for p1 in monster1.powers:
-										if p1.name == power.name:
+										if p1.power_name == power.power_name:
 											monster_changes[m_id + "_powers_removed"].append((p1.power_name, p1.amount))
 											continue
 												
@@ -428,17 +431,33 @@ class SimpleAgent:
 					elif card.upgrades > 0: # assume upgrading it was the different thing
 						diff["upgraded"].append(card.get_id_str()) # FIXME check this more strongly
 						continue	
-				elif card in state2.deck and card not in state1.hand and card not in state1.discard_pile and card not in state1.exhaust_pile:
+				elif card in state2.deck and card not in state1.deck and card not in state1.hand and card not in state1.discard_pile and card not in state1.exhaust_pile:
 					# discovered to deck, e.g. status effect
 					diff["discovered_to_deck"].append(card.get_id_str())
 					continue
-				elif card in state2.discard_pile and card not in state1.hand and card not in state1.deck and card not in state1.exhaust_pile:
+				elif card in state2.discard_pile and card not in state1.discard_pile and card not in state1.hand and card not in state1.deck and card not in state1.exhaust_pile:
 					# discovered to discard, e.g. status effect
 					diff["discovered_to_discard"].append(card.get_id_str())
 					continue
 				else:
 					self.log("WARN: unknown card change " + card.get_id_str(), debug=3)
 					diff["unknown_change"].append(card.get_id_str())
+					if card in state1.deck:
+						self.log("card was in state1 deck")
+					if card in state2.deck:
+						self.log("card is in state2 deck")
+					if card in state1.discard_pile:
+						self.log("card was in state1 discard")
+					if card in state2.discard_pile:
+						self.log("card is in state2 discard")
+					if card in state1.hand:
+						self.log("card was in state1 hand")
+					if card in state2.hand:
+						self.log("card is in state2 hand")
+					if card in state1.exhaust_pile:
+						self.log("card was in state1 exhaust")
+					if card in state2.exhaust_pile:
+						self.log("card is in state2 exhaust")
 			
 			for a in card_actions:
 				if diff[a] == []:
@@ -476,33 +495,33 @@ class SimpleAgent:
 					diff.pop("powers_changed", None)
 					
 
-		if diff != {}:
-			# TEST ONLY
-			self.log("Our deck (state1):")
-			for card in state1.deck:
-				self.log(card.get_id_str())
-			self.log("Our hand (state1):")
-			for card in state1.hand:
-				self.log(card.get_id_str())
-			self.log("Our draw pile (state1):")
-			for card in state1.draw_pile:
-				self.log(card.get_id_str())
-			self.log("Our discard pile (state1):")
-			for card in state1.discard_pile:
-				self.log(card.get_id_str())
+		# if diff != {}:
+			# # TEST ONLY
+			# self.log("Our deck (state1):")
+			# for card in state1.deck:
+				# self.log(card.get_id_str())
+			# self.log("Our hand (state1):")
+			# for card in state1.hand:
+				# self.log(card.get_id_str())
+			# self.log("Our draw pile (state1):")
+			# for card in state1.draw_pile:
+				# self.log(card.get_id_str())
+			# self.log("Our discard pile (state1):")
+			# for card in state1.discard_pile:
+				# self.log(card.get_id_str())
 			
-			self.log("Our deck (state2):")
-			for card in state2.deck:
-				self.log(card.get_id_str())
-			self.log("Our hand (state2):")
-			for card in state2.hand:
-				self.log(card.get_id_str())
-			self.log("Our draw pile (state2):")
-			for card in state2.draw_pile:
-				self.log(card.get_id_str())
-			self.log("Our discard pile (state2):")
-			for card in state2.discard_pile:
-				self.log(card.get_id_str())
+			# self.log("Our deck (state2):")
+			# for card in state2.deck:
+				# self.log(card.get_id_str())
+			# self.log("Our hand (state2):")
+			# for card in state2.hand:
+				# self.log(card.get_id_str())
+			# self.log("Our draw pile (state2):")
+			# for card in state2.draw_pile:
+				# self.log(card.get_id_str())
+			# self.log("Our discard pile (state2):")
+			# for card in state2.discard_pile:
+				# self.log(card.get_id_str())
 		
 			
 			

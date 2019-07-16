@@ -83,6 +83,9 @@ class Character:
 			if power.power_name == power_name:
 				return power.amount
 		return 0
+		
+	def __str__(self):
+		return "[Character] " + str(self.current_hp) + "/" + str(self.max_hp) + ", Block " + str(self.block)
 
 class Player(Character):
 
@@ -151,10 +154,6 @@ class Monster(Character):
 				err_file.write(str(e))
 			#raise Exception(e)
 			
-		def __eq__(self, other):
-			if self.monster_id == other.monster_id and self.name == other.name and self.monster_index == other.monster_index:
-				return True
-			return False
 			
 	# try to load more information about attacks from JSON
 	def recognize_intents(self):
@@ -188,12 +187,23 @@ class Monster(Character):
 		monster = cls(name, monster_id, max_hp, current_hp, block, intent, half_dead, is_gone, move_id, move_base_damage, move_adjusted_damage, move_hits)
 		monster.powers = [Power.from_json(json_power) for json_power in json_object["powers"]]
 		return monster
+		
+	def __str__(self):
+		return self.name + " <" + str(self.monster_index) + "> "
 
+
+	# FIXME, which __eq__ do we want?
+	
 	def __eq__(self, other):
-		if self.name == other.name and self.current_hp == other.current_hp and self.max_hp == other.max_hp and self.block == other.block:
-			if len(self.powers) == len(other.powers):
-				for i in range(len(self.powers)):
-					if self.powers[i] != other.powers[i]:
-						return False
+			if self.monster_id == other.monster_id and self.name == other.name and self.monster_index == other.monster_index:
 				return True
-		return False
+			return False
+
+	# def __eq__(self, other):
+		# if self.name == other.name and self.current_hp == other.current_hp and self.max_hp == other.max_hp and self.block == other.block:
+			# if len(self.powers) == len(other.powers):
+				# for i in range(len(self.powers)):
+					# if self.powers[i] != other.powers[i]:
+						# return False
+				# return True
+		# return False
