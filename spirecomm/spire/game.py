@@ -16,8 +16,10 @@ from spirecomm.communication.action import *
 # MCTS values for changes to game state
 MCTS_MAX_HP_VALUE = 7
 MCTS_HP_VALUE = 1
-MCTS_POTION_VALUE = 7 # TODO change by potion type
+MCTS_POTION_VALUE = 7 # TODO change by potion type, evolved by behaviour tree
 MCTS_ROUND_COST = 0.5 # penalize long fights
+# TODO eventually add: value for deck changes (e.g. cost for gaining parasite)
+# TODO eventually add: value for card misc changes (e.g., genetic algorithm, ritual dagger)
 
 class RoomPhase(Enum):
 	COMBAT = 1,
@@ -83,6 +85,7 @@ class Game:
 		self.previous_floor = 0 # used to recognize floor changes, i.e. when floor != previous_floor
 		self.possible_actions = None
 		self.monsters_last_attacks = {} # monster : [move name, times in a row]
+		self.is_simulation = False
 	
 	# for some reason, pausing the game invalidates the state
 	def is_valid(self):
@@ -240,7 +243,8 @@ class Game:
 			possible_actions = [EndTurnAction()]
 			available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
 			for monster in available_monsters:
-				monster.recognize_intents()
+				pass
+				#monster.recognize_intents() # FIXME
 			
 			for potion in self.get_real_potions():
 				if potion.requires_target:
@@ -297,6 +301,34 @@ class Game:
 		else:
 			raise Exception("Chosen simulated action is not a valid combat action.")
 		
+	def choose_move(self, monster):
+		if self.combat_round == 1 and "startswith" in monster.intents:
+			selected_move = monster.intents["startswith"]
+		else:
+			# make sure the attack we pick is not limited
+			while True: # do-while
+				move_weights = []
+				moves = []
+				moveset = monster.intents["moveset"]
+				for move, details in moveset.items():
+					moves.append(move)
+					move_weights.append(details["probability"])
+				selected_move = random.choices(population=moves, weights=move_weights)[0] # choices returns as a list of size 1
+				
+				# check limits
+				if "limits" not in monster.intents or str(monster) not in self.monsters_last_attacks:
+					# don't worry about limits, choose a random attack
+					break
+				else:
+					exceeds_limit = False
+					for limited_move, limited_times in monster.intents["limits"]:
+						if selected_move == limited_move and selected_move == self.monsters_last_attacks[0]:
+							if self.monsters_last_attacks[1] + 1 >= limited_times: # selecting this would exceed limit:
+								exceeds_limit = True
+					if not exceeds_limit:
+						break
+		return selected_move
+		
 		
 	# Returns a new state
 	def simulate_end_turn(self, action):
@@ -315,46 +347,25 @@ class Game:
 		for monster in available_monsters:
 			if monster.intents != {}: # we have correctly loaded intents JSON
 			
-				# TODO/FIXME for now, this is only a test of the JSON
-				# eventually, this should replace the default logic whenever we have intents available
-				# notably, this logic is simulating the current intent, which we actually know
-				# what it should be doing instead is using the known intent and then simulating what the next one might be, then updating that when we have more information
-				# which will need some notion of whether we are simulating the current round or not
+				if monster.current_move is None:
+					if self.combat_round == 1 and "startswith" in monster.intents:
+						monster.current_move = monster.intents["startswith"]
+					elif self.is_simulation: # generate random move
+						monster.current_move = self.choose_move(monster)
+					else: # figure out move from what we know about it
+						# TODO add intent types to JSONs
+						# 1. check intent
+						# 2. check damage
+						pass
 				
-				if self.combat_round == 1 and "startswith" in monster.intents:
-					selected_move = monster.intents["startswith"]
-				else:
-				
-					# make sure the attack we pick is not limited
-					while True: # do-while
-						move_weights = []
-						moves = []
-						moveset = monster.intents["moveset"]
-						for move, details in moveset.items():
-							moves.append(move)
-							move_weights.append(details["probability"])
-						selected_move = random.choices(population=moves, weights=move_weights)[0] # choices returns as a list of size 1
-						
-						# check limits
-						if "limits" not in monster.intents or str(monster) not in self.monsters_last_attacks:
-							# don't worry about limits, choose a random attack
-							break
-						else:
-							exceeds_limit = False
-							for limited_move, limited_times in monster.intents["limits"]:
-								if selected_move == limited_move and selected_move == self.monsters_last_attacks[0]:
-									if self.monsters_last_attacks[1] + 1 >= limited_times: # selecting this would exceed limit:
-										exceeds_limit = True
-							if not exceeds_limit:
-								break
 					
 				# increment count of moves in a row
 				if str(monster) in self.monsters_last_attacks:
 					self.monsters_last_attacks[str(monster)][1] += 1
 				else:
-					self.monsters_last_attacks[str(monster)] = [selected_move, 1]
+					self.monsters_last_attacks[str(monster)] = [monster.current_move, 1]
 
-				debug_log.append("Simulated attack for " + str(monster) + " is " + selected_move)
+				debug_log.append("Simulated attack for " + str(monster) + " is " + monster.current_move)
 			
 			#	
 			#else:
@@ -390,6 +401,8 @@ class Game:
 				#d.write("\nNew State:\n")
 				#d.write(str(self))
 			
+		self.is_simulation = True
+		
 		return self
 		
 		
@@ -502,6 +515,8 @@ class Game:
 				#d.write("\nNew State:\n")
 				#d.write(str(self))
 		
+		self.is_simulation = True
+		
 		return self
 		
 		
@@ -568,7 +583,8 @@ class Game:
 				#d.write("\nNew State:\n")
 				#d.write(str(self))
 			
-	
+		self.is_simulation = True
+			
 		return self
 		
 		

@@ -140,10 +140,8 @@ class Monster(Character):
 		#TODO some enemies transition on trigger condition, like half health
 
 		self.intents = {}
-		self.second_last_move = None
-		self.last_move = None
 		self.current_move = None
-		self.expected_next_move = None
+		self.expected_next_move = None # not used yet
 		
 		try:
 			with open(os.path.join(MONSTERS_PATH, self.name + ".json"),"r") as f:
@@ -153,22 +151,8 @@ class Monster(Character):
 				err_file.write("\nMonster Error: " + str(self.name))
 				err_file.write(str(e))
 			#raise Exception(e)
-			
-			
-	# try to load more information about attacks from JSON
-	def recognize_intents(self):
-		if self.intents != {}:
-			return # TODO: figure out what move corresponds with the move currently being made
-			# then set expected next move
-			
-			moveset = self.intents["moveset"]
-			moves = []
-			probabilities = []
-			for move in moveset.keys():
-				moves.append(move)
-				probabilities.append(moveset[move]["probability"])
-			selected_move = random.choices(moves, weights=probabilities)
-			self.expected_next_move = selected_move
+
+
 
 	@classmethod
 	def from_json(cls, json_object):
@@ -195,8 +179,9 @@ class Monster(Character):
 	# FIXME, which __eq__ do we want?
 	
 	def __eq__(self, other):
-			if self.monster_id == other.monster_id and self.name == other.name and self.monster_index == other.monster_index:
-				return True
+			if self.monster_id == other.monster_id and self.name == other.name:
+				if (self.monster_index is None and other.monster_index is None) or (self.monster_index == other.monster_index):
+					return True
 			return False
 
 	# def __eq__(self, other):
