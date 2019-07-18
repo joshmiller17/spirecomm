@@ -184,11 +184,10 @@ class Base(BoxLayout):
 
 				
 				while game_state.current_hp > 0 and game_state.monsters[0].current_hp > 0:
-					#actions = game_state.get_possible_actions(debug_file="game.log")
-					#game_state = game_state.take_action(random.choice(actions), debug_file="game.log")
 					action = monte_carlo.search(initialState=game_state)
 					print("MCTS choosing: " + str(action))
 					game_state = game_state.takeAction(action)
+				print("Done.")
 
 				print("")		
 				self.in_history.append("VICTORY" if game_state.current_hp > 0 else "DEFEAT")

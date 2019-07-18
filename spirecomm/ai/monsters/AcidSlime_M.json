@@ -11,7 +11,7 @@
 							"amount" : 7
 						},
 						{
-							"name" : "Add Slimed",
+							"name" : "AddSlimedToDiscard",
 							"amount" : 1
 						}
 					]

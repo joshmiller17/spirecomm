@@ -116,9 +116,14 @@ class Game:
 			string += "\nEnergy: " + str(self.player.energy)
 			string += "\nMonsters:\n    "
 			available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
-			string += "\n    ".join([str(monster.monster_id) + " (" + str(monster.current_hp) + \
-						"/" + str(monster.max_hp) + ") using {} {}".format(str(monster.intent), 
-						"" if not monster.intent.is_attack() else "for {}x{}".format(monster.move_adjusted_damage, monster.move_hits)) for monster in available_monsters])
+			if self.is_simulation:
+				# FIXME when this gets called, we haven't simulated the attack yet, and we also don't calculate adjusted dmg
+				string += "\n    ".join([str(monster.monster_id) + " (" + str(monster.current_hp) + \
+						"/" + str(monster.max_hp) + ") using {}".format(str(monster.current_move)) for monster in available_monsters])
+			else:
+				string += "\n    ".join([str(monster.monster_id) + " (" + str(monster.current_hp) + \
+							"/" + str(monster.max_hp) + ") using {} {}".format(str(monster.intent), 
+							"" if not monster.intent.is_attack() else "for {}x{}".format(monster.move_adjusted_damage, monster.move_hits)) for monster in available_monsters])
 			string += "\nHand: " + ", ".join([str(card) for card in self.hand])
 		if self.choice_list != []:
 			string += "\nChoices: " + str(self.choice_list) + " \n"
@@ -329,13 +334,29 @@ class Game:
 					break
 				else:
 					exceeds_limit = False
-					for limited_move, limited_times in monster.intents["limits"]:
-						if selected_move == limited_move and selected_move == self.monsters_last_attacks[0]:
-							if self.monsters_last_attacks[1] + 1 >= limited_times: # selecting this would exceed limit:
+					for limited_move, limited_times in monster.intents["limits"].items():
+						if selected_move == limited_move and selected_move == self.monsters_last_attacks[str(monster)][0]:
+							if self.monsters_last_attacks[str(monster)][1] + 1 >= limited_times: # selecting this would exceed limit:
 								exceeds_limit = True
 					if not exceeds_limit:
 						break
 		return selected_move
+		
+	# helper function to calculate damage
+	def calculate_real_damage(self, base_damage, attacker, target):
+		damage = base_damage
+		damage += attacker.get_power_amount("Strength")
+		if attacker.has_power("Weakened"):
+			if attacker is not self.player and self.get_relic("paper krane") is not None:
+				damage = int(math.floor(damage - (0.40 * damage)))
+			else:
+				damage = int(math.floor(damage - (0.25 * damage)))
+		if target.has_power("Vulnerable"):
+			if target is not self.player and self.get_relic("paper phrog") is not None:
+				damage = int(math.floor(damage + (0.75 * damage)))
+			else:
+				damage = int(math.floor(damage + (0.50 * damage)))
+		return damage
 		
 		
 	# Returns a new state
@@ -360,8 +381,11 @@ class Game:
 				if monster.current_move is None:
 					if self.combat_round == 1 and "startswith" in monster.intents:
 						monster.current_move = monster.intents["startswith"]
+						debug_log.append("Known initial intent for " + str(monster) + " is " + str(monster.current_move))
+
 					elif self.is_simulation: # generate random move
 						monster.current_move = self.choose_move(monster)
+						debug_log.append("Simulated intent for " + str(monster) + " is " + str(monster.current_move))
 					else: # figure out move from what we know about it
 					
 						timeout = 100 # assume trying 100 times will be enough unless there's a problem
@@ -386,18 +410,51 @@ class Game:
 							if monster.current_move is not None:
 								break
 							timeout -= 1
+							
+						debug_log.append("Recognized intent for " + str(monster) + " is " + str(monster.current_move))
 								
 				if monster.current_move is None:
 					raise Exception("Could not determine monster's intent")
-				
-				
+				else:
+					# Finally, apply the intended move
+					effects = monster.intents["moveset"][monster.current_move]["effects"]
+					buffs = ["Strength"]
+					debuffs = ["Vulnerable", "Weakened"]
+					for effect in effects:
+						
+						if effect["name"] == "Damage":
+							base_damage = effect["amount"]
+							adjusted_damage = self.calculate_real_damage(base_damage, monster, self.player)
+							damage_after_block = adjusted_damage - self.player.block
+							if damage_after_block > 0:
+								self.current_hp -= damage_after_block
+								self.player.block = 0
+							else:
+								self.player.block -= adjusted_damage
+								
+						elif effect["name"] == "Block":
+							monster.block += effect["amount"]
+							
+						elif effect["name"] in buffs:
+							monster.add_power(effect["name"], effect["amount"])
+							
+						elif effect["name"] in debuffs:
+							self.player.add_power(effect["name"], effect["amount"])
+							
+						elif effect["name"] == "AddSlimedToDiscard":
+							# TODO, create a Slimed card, add effect["amount"] of them to discard
+							pass
+							#self.discard_pile.append(...)
+								
 				# increment count of moves in a row
 				if str(monster) in self.monsters_last_attacks:
 					self.monsters_last_attacks[str(monster)][1] += 1
 				else:
 					self.monsters_last_attacks[str(monster)] = [monster.current_move, 1]
 
-				debug_log.append("Simulated attack for " + str(monster) + " is " + str(monster.current_move))
+					
+				monster.current_move = None # now that we used the move, clear it
+
 			
 			else:
 				debug_log.append("WARN: did not load intents for " + str(monster))
@@ -426,6 +483,10 @@ class Game:
 				self.draw_pile = self.discard_pile
 				self.discard_pile = []
 			self.hand.append(self.draw_pile.pop(random.randrange(len(self.draw_pile))))
+			
+			
+		# TODO check if any enemies died and if anything happens when they do
+		
 			
 		if self.debug_file and debug_log != []:
 			with open(self.debug_file, 'a+') as d:
@@ -541,6 +602,10 @@ class Game:
 		
 		else:
 			raise Exception("No handler for potion: " + str(action.potion))
+			
+			
+		# TODO check if any enemies died and if anything happens when they do
+			
 		
 		if self.debug_file and debug_log != []:
 			with open(self.debug_file, 'a+') as d:
@@ -575,7 +640,7 @@ class Game:
 		self.discard_pile.append(action.card)
 		
 		
-		if card.type == spirecomm.spire.card.CardType.ATTACK:
+		if action.card.type == spirecomm.spire.card.CardType.ATTACK:
 		
 			# ornamental fan
 			fan = self.get_relic("ornamental fan")
@@ -624,18 +689,16 @@ class Game:
 					target.block += real_amount
 					
 				if effect["effect"] == "Damage":
-					real_amount = effect["amount"]
-					real_amount += self.player.get_power_amount("Strength")
-					if self.player.has_power("Weakened"):
-						real_amount = int(math.floor(real_amount - (0.25 * real_amount)))
-					if target.has_power("Vulnerable"):
-						real_amount = int(math.floor(real_amount + (0.50 * real_amount)))
-					target.current_hp = max(target.current_hp - real_amount, 0)
+					base_damage = effect["amount"]
+					adjusted_damage = self.calculate_real_damage(base_damage, self.player, target)
+					target.current_hp = max(target.current_hp - adjusted_damage, 0)
 					
 				power_effects = ["Vulnerable", "Weakened"]
 				for e in power_effects:
 					if effect["effect"] == e:
 						target.add_power(e, effect["amount"])
+						
+		# TODO check if any enemies died and if anything happens when they do
 					
 			
 		if self.debug_file and debug_log != []:

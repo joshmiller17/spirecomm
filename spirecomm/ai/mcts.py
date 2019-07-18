@@ -7,7 +7,7 @@ def rolloutPolicy(state):
 		try:
 			action_weights = [1] * len(state.getPossibleActions())
 			action_weights[0] *= 0.2 # weigh End Turn less, this is usually not the right action if there's something else we can do
-			action = random.choices(population=state.getPossibleActions(), weights=action_weights)
+			action = random.choices(population=state.getPossibleActions(), weights=action_weights)[0] # returns a list of len 1, extract the choice
 		except IndexError:
 			raise Exception("Non-terminal state has no possible actions: " + str(state))
 		state = state.takeAction(action)

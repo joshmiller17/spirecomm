@@ -22,7 +22,7 @@
 							"amount" : 16
 						},
 						{
-							"name" : "Add Slimed",
+							"name" : "AddSlimedToDiscard",
 							"amount" : 2
 						}
 					]
