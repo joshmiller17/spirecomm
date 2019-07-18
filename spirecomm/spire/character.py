@@ -78,6 +78,12 @@ class Character:
 				return True
 		return False
 		
+	def get_power(self, power_name):
+		for power in self.powers:
+			if power.power_name == power_name:
+				return power
+		return None
+		
 	def get_power_amount(self, power_name):
 		for power in self.powers:
 			if power.power_name == power_name:

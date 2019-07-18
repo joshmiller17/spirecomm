@@ -87,6 +87,8 @@ class Game:
 		self.possible_actions = None
 		self.monsters_last_attacks = {} # monster : [move name, times in a row]
 		self.is_simulation = False
+		self.known_top_cards = [] # cards which we know we will be drawing first go here
+		self.just_reshuffled = False
 	
 	# for some reason, pausing the game invalidates the state
 	def is_valid(self):
@@ -97,6 +99,7 @@ class Game:
 		self.visited_shop = False
 		self.combat_round = 1
 		self.original_state = None
+		self.just_reshuffled = False
 		
 	# returns relic or None
 	def get_relic(self, name):
@@ -301,6 +304,8 @@ class Game:
 		new_state.possible_actions = None
 		new_state.original_state = self
 		
+		new_state.just_reshuffled = False
+		
 		if action.command.startswith("end"):
 			return new_state.simulate_end_turn(action)
 		elif action.command.startswith("potion"):
@@ -376,6 +381,9 @@ class Game:
 			if monster is None:
 				debug_log.append("WARN: Monster is None")
 				continue
+				
+			monster.block = 0 # remove old block
+				
 			if monster.intents != {}: # we have correctly loaded intents JSON
 			
 				if monster.current_move is None:
@@ -482,6 +490,7 @@ class Game:
 			if len(self.draw_pile) == 0:
 				self.draw_pile = self.discard_pile
 				self.discard_pile = []
+				self.just_reshuffled = True
 			self.hand.append(self.draw_pile.pop(random.randrange(len(self.draw_pile))))
 			
 			
@@ -691,7 +700,13 @@ class Game:
 				if effect["effect"] == "Damage":
 					base_damage = effect["amount"]
 					adjusted_damage = self.calculate_real_damage(base_damage, self.player, target)
-					target.current_hp = max(target.current_hp - adjusted_damage, 0)
+					damage_after_block = adjusted_damage - target.block
+					if damage_after_block > 0:
+						target.current_hp = max(target.current_hp - adjusted_damage, 0)
+						target.block = 0
+					else:
+						target.block -= adjusted_damage
+					
 					
 				power_effects = ["Vulnerable", "Weakened"]
 				for e in power_effects:

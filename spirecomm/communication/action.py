@@ -153,7 +153,7 @@ class ChooseShopkeeperAction(ChooseAction):
 		super().__init__(name="shop")
 		
 	def __str__(self):
-		return "[Shop]" + super().__str__()
+		return "[Enter Shop]"
 
 
 class OpenChestAction(ChooseAction):
@@ -163,7 +163,7 @@ class OpenChestAction(ChooseAction):
 		super().__init__(name="open")
 		
 	def __str__(self):
-		return "[Open Chest]" + super().__str__()
+		return "[Open Chest]"
 
 
 class BuyCardAction(ChooseAction):
@@ -173,7 +173,7 @@ class BuyCardAction(ChooseAction):
 		super().__init__(name=card.name)
 		
 	def __str__(self):
-		return "[Buy Card]" + super().__str__()
+		return "[Buy Card] " + self.name
 
 
 class BuyPotionAction(ChooseAction):
@@ -188,7 +188,7 @@ class BuyPotionAction(ChooseAction):
 		super().execute(coordinator)
 		
 	def __str__(self):
-		return "[Buy Potion]" + super().__str__()
+		return "[Buy Potion] " + self.name
 
 
 class BuyRelicAction(ChooseAction):
@@ -198,7 +198,7 @@ class BuyRelicAction(ChooseAction):
 		super().__init__(name=relic.name)
 		
 	def __str__(self):
-		return "[Buy Relic]" + super().__str__()
+		return "[Buy Relic] " + self.name
 
 
 class BuyPurgeAction(Action):
@@ -216,7 +216,7 @@ class BuyPurgeAction(Action):
 			coordinator.add_action_to_queue(CardSelectAction([self.card_to_purge]))
 			
 	def __str__(self):
-		return "[Buy Purge]" + super().__str__()
+		return "[Buy Purge] " + str(self.name)
 
 
 class EventOptionAction(ChooseAction):
@@ -226,7 +226,7 @@ class EventOptionAction(ChooseAction):
 		super().__init__(choice_index=option.choice_index)
 		
 	def __str__(self):
-		return "[Event Option]" + super().__str__()
+		return "[Event Option] " + super().__str__()
 
 
 class RestAction(ChooseAction):
@@ -236,7 +236,7 @@ class RestAction(ChooseAction):
 		super().__init__(name=rest_option.name)
 		
 	def __str__(self):
-		return "[Rest Action]" + super().__str__()
+		return "[Rest Action] " + self.name
 
 
 class CardRewardAction(ChooseAction):
@@ -252,7 +252,7 @@ class CardRewardAction(ChooseAction):
 		super().__init__(name=name)
 		
 	def __str__(self):
-		return "[Card Reward]" + super().__str__()
+		return "[Card Reward] " + self.name
 
 
 class CombatRewardAction(ChooseAction):
@@ -274,7 +274,7 @@ class CombatRewardAction(ChooseAction):
 		super().execute(coordinator)
 		
 	def __str__(self):
-		return "[Combat Reward]" + super().__str__()
+		return "[Combat Reward] " + str(self.name)
 
 
 class BossRewardAction(ChooseAction):
@@ -284,7 +284,7 @@ class BossRewardAction(ChooseAction):
 		super().__init__(name=relic.name)
 		
 	def __str__(self):
-		return "[Boss Reward]" + super().__str__()
+		return "[Boss Reward] " + self.name
 
 
 class OptionalCardSelectConfirmAction(Action):
@@ -356,7 +356,7 @@ class ChooseMapNodeAction(ChooseAction):
 		super().execute(coordinator)
 		
 	def __str__(self):
-		return "[Choose Map] {}".format(self.node) + super().__str__()
+		return "[Choose Map] {} {}".format(self.node, self.node.symbol)
 
 
 class ChooseMapBossAction(ChooseAction):

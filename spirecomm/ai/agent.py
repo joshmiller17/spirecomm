@@ -231,17 +231,40 @@ class SimpleAgent:
 	# Check that the simulator predicted this outcome was possible
 	def simulation_sanity_check(self, original_state, action):
 		simulated_state = original_state.takeAction(action)
-		diff = self.state_diff(self.blackboard.game, simulated_state)
-		if diff != {}:
-			# TODO check for just drawing different cards
-			self.log("WARN: simulation discrepency, see log for details", debug=3)
-			self.log("actual/sim diff: " + str(diff), debug=4)
-			self.note("Simulated:")
-			self.note(str(simulated_state))
-			self.note("Actual:")
-			self.note(str(self.blackboard.game))
+		real_diff = self.state_diff(original_state, self.blackboard.game)
+		sim_diff = self.state_diff(original_state, simulated_state)
+		diff_diff = {}
+		skip_warn = False
+		for key, value in real_diff.items():
+			if key not in sim_diff:
+				diff_diff["sim_missing_" + key] = value
+			elif value != sim_diff[key]:
+				diff_diff["sims_val_" + key] = sim_diff[key]
+				diff_diff["real_val_" + key] = value
+		for key, value in sim_diff.items():
+			if key not in real_diff:
+				diff_diff["sim_added_" + key] = value
+		#diff = self.state_diff(self.blackboard.game, simulated_state)
+		if diff_diff != {}:
+			# check for just drawing different cards
+			if simulated_state.just_reshuffled:
+				if len(simulated_state.hand) == len(self.blackboard.game.hand) and len(simulated_state.discard_pile) == len(self.blackboard.game.discard_pile) and original_state.known_top_cards == []:
+					self.log("minor warning: reshuffled different cards in simulation")
+			elif "sims_val_drawn" in diff_diff and "real_val_drawn" in diff_diff:
+				if len(simulated_state.hand) == len(self.blackboard.game.hand) and original_state.known_top_cards == []:
+					self.log("minor warning: drew different cards in simulation")
+					if len(diff_diff) == 2:
+						skip_warn = True
+					
+			if not skip_warn:
+				self.log("WARN: simulation discrepency, see log for details", debug=3)
+				self.log("actual/sim diff: " + str(diff_diff), debug=4)
+				self.note("Simulated:")
+				self.note(str(simulated_state))
+				self.note("Actual:")
+				self.note(str(self.blackboard.game))
 		else:
-			self.log("Sanity check success!")
+			self.log("Simulation sanity check success!")
 		
 	# Returns a dict of what changed between game states
 	def state_diff(self, state1, state2):	
@@ -329,7 +352,7 @@ class SimpleAgent:
 			for monster1 in monsters1:
 				for monster2 in monsters2:
 					if monster1 == monster2:
-						m_id = monster1.name + str(monster1.monster_index)
+						m_id = monster1.monster_id + str(monster1.monster_index)
 						if monster1.current_hp != monster2.current_hp:
 							monster_changes[m_id + "_hp"] = monster2.current_hp - monster1.current_hp
 						if monster1.block != monster2.block:
@@ -341,25 +364,27 @@ class SimpleAgent:
 							monster_changes[m_id + "_powers_removed"] = []
 							powers_changed = set(monster2.powers).symmetric_difference(set(monster1.powers))
 							for power in powers_changed:
-								if power in monster1.powers and power in monster2.powers:
-										monster_changes[m_id + "_powers_changed"].append((power.power_name, power2.amount - power1.amount))
-								elif power in monster2.powers:
-									for p2 in monster2.powers:
-										if p2.power_name == power.power_name:
-											monster_changes[m_id + "_powers_added"].append((p2.power_name, p2.amount))
-											continue
-								elif power in monster1.powers:
-									for p1 in monster1.powers:
-										if p1.power_name == power.power_name:
-											monster_changes[m_id + "_powers_removed"].append((p1.power_name, p1.amount))
-											continue
-												
+								name = power.power_name
+								powers1 = [p.power_name for p in monster1.powers]
+								powers2 = [p.power_name for p in monster2.powers]
+								if name in powers1 and name in powers2:
+										monster_changes[m_id + "_powers_changed"].append((name, monster2.get_power(name).amount - monster1.get_power(name).amount))
+										continue
+								elif name in powers2:
+									monster_changes[m_id + "_powers_added"].append((name, monster2.get_power(name).amount))
+									continue
+								elif name in powers1:
+									monster_changes[m_id + "_powers_removed"].append((name, monster1.get_power(name).amount))
+									continue
+								
 							if monster_changes[m_id + "_powers_added"] == []:
 								monster_changes.pop(m_id + "_powers_added", None)
 							if monster_changes[m_id + "_powers_removed"] == []:
 								monster_changes.pop(m_id + "_powers_removed", None)
 							if monster_changes[m_id + "_powers_changed"] == []:
 								monster_changes.pop(m_id + "_powers_changed", None)
+						break
+						
 			
 			if monster_changes != {}:
 				diff["monsters"] = monster_changes
@@ -473,8 +498,8 @@ class SimpleAgent:
 				diff["powers_removed"] = []
 				powers_changed = set(state2.player.powers).symmetric_difference(set(state1.player.powers))
 				for power in powers_changed:
-					#power1 = next(p for p in state1.player.powers if p.name == power.name)
-					#power2 = next(p for p in state2.player.powers if p.name == power.name)
+					#power1 = next(p for p in state1.player.powers if p.power_name == power.power_name)
+					#power2 = next(p for p in state2.player.powers if p.power_name == power.power_name)
 					if power in state1.player.powers and power in state2.player.powers:
 							diff["powers_changed"].append((power.power_name, power2.amount - power1.amount))
 					elif power in state2.player.powers:

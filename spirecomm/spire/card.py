@@ -120,7 +120,7 @@ class Card:
 		)
 		
 	def get_id_str(self):
-		return str(self) + " <" + str(self.uuid) + ">"
+		return str(self) + " <" + str(self.uuid)[:4] + "...>"
 		
 	def __str__(self):
 		name = self.get_clean_name()
