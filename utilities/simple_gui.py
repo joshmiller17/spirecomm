@@ -47,6 +47,7 @@ class Base(BoxLayout):
 		self.last_comm = ""
 		self.step = False # whether to Run or Step when pressing Resume
 		self.sleeping = False
+		self.z_pause = False
 		self.z_count = 0
 		print("Base: Init", file=self.log, flush=True)
 
@@ -106,16 +107,25 @@ class Base(BoxLayout):
 				
 		
 		self.input_text.text = "\n".join(self.in_history)
-		if self.sleeping:
+		if self.sleeping and not self.z_pause:
 			self.input_text.text += "\n" + 'z' * (1 + self.z_count % 3)
 		
 		action_msg = self.coordinator.get_action_played()
 			
 
 	def do_pause(self, instance=None):
-		self.agent.pause()
+		if not self.agent.paused:
+			self.agent.pause()
+		else:
+			self.z_pause = not self.z_pause
+		if not self.z_pause:
+			self.pause.text = "Paused (Press again to unlock scrolling)"
+		else:
+			self.pause.text = "Paused (Press again to scroll to bottom and lock)"
 	
 	def do_resume(self, instance=None):
+		self.z_pause = False
+		self.pause.text = "Pause"
 		if not self.step:
 			self.agent.resume()
 		else:
