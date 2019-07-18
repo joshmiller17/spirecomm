@@ -22,8 +22,8 @@ class SimpleAgent:
 	def __init__(self, logfile, chosen_class=PlayerClass.IRONCLAD):
 		self.chosen_class = chosen_class
 		self.change_class(chosen_class)
-		self.action_delay = 2.0 # seconds delay per action, useful for actually seeing what's going on.
-		self.debug_level = 5
+		self.action_delay = 1.0 # seconds delay per action, useful for actually seeing what's going on.
+		self.debug_level = 4
 		# high delay will steal mouse focus??
 		self.ascension = 0
 		self.debug_queue = ["AI initialized.", "Delay timer set to " + str(self.action_delay), "Debug level set to " + str(self.debug_level)]
@@ -222,7 +222,10 @@ class SimpleAgent:
 			self.blackboard.game.combat_round = self.combat_round
 		if action.command.startswith("proceed"):
 			self.combat_round = 1
-		self.log("> " + str(action), debug=5)
+		if self.step:
+			self.log("> " + str(action), debug=3)
+		else:
+			self.log("> " + str(action), debug=5)
 		return action
 		
 	# Check that the simulator predicted this outcome was possible
@@ -230,10 +233,8 @@ class SimpleAgent:
 		simulated_state = original_state.takeAction(action)
 		diff = self.state_diff(self.blackboard.game, simulated_state)
 		if diff != {}:
-			if len(diff) == 2 and "drawn" in diff and "hand_to_deck" in diff and len(diff["drawn"]) == len(diff["hand_to_deck"]):
-				self.log("minor warning: hand drawn different than simulated, see log for details", debug=4)
-			else:
-				self.log("WARN: simulation discrepency, see log for details", debug=3)
+			# TODO check for just drawing different cards
+			self.log("WARN: simulation discrepency, see log for details", debug=3)
 			self.log("actual/sim diff: " + str(diff), debug=4)
 			self.note("Simulated:")
 			self.note(str(simulated_state))
@@ -634,9 +635,11 @@ class SimpleAgent:
 				else:
 					index_str = ""
 				if monster.move_adjusted_damage is not None:
-					self.think("{}{} is hitting me for {}x{} damage".format(monster.name, index_str, monster.move_adjusted_damage, monster.move_hits))
-				else: 
-					self.think("{}{} is hitting me for {} damage".format(monster.name, index_str, monster.incoming_damage))
+					if monster.move_hits > 1:
+						self.think("{}{} is hitting me for {}x{} damage".format(monster.monster_id, index_str, monster.move_adjusted_damage, monster.move_hits))
+					else:
+						self.think("{}{} is hitting me for {} damage".format(monster.monster_id, index_str, monster.move_adjusted_damage))
+					#self.think("    adjusted: {}, base: {}".format(monster.move_adjusted_damage, monster.move_base_damage))
 		
 		# FIXME map_route isn't actually nodes, but a set of X coords
 		#upcoming_rooms = collections.defaultdict(int)

@@ -93,7 +93,10 @@ class PotionAction(Action):
 		coordinator.send_message(" ".join(arguments))
 		
 	def __str__(self):
-		return "[Potion] use {} potion {} {} on {} {}".format(self.use, self.potion.name, self.potion_index, self.target_monster.name, self.target_index)
+		ret = "[Potion] use {} potion {}[{}]".format(self.use, self.potion.name, self.potion_index)
+		if self.target_monster and self.target_index:
+			ret += "on {} {}".format(self.target_monster.name, self.target_index)
+		return ret
 
 
 class EndTurnAction(Action):

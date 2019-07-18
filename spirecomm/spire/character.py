@@ -115,8 +115,8 @@ class Monster(Character):
 		self.half_dead = half_dead
 		self.is_gone = is_gone # dead or out of combat
 		self.move_id = move_id
-		self.move_base_damage = move_base_damage
-		self.move_adjusted_damage = move_adjusted_damage
+		self.move_base_damage = move_base_damage # the base attack amount
+		self.move_adjusted_damage = move_adjusted_damage # the damage number the player sees
 		self.move_hits = move_hits
 		self.monster_index = 0
 
@@ -144,11 +144,11 @@ class Monster(Character):
 		self.expected_next_move = None # not used yet
 		
 		try:
-			with open(os.path.join(MONSTERS_PATH, self.name + ".json"),"r") as f:
+			with open(os.path.join(MONSTERS_PATH, self.monster_id + ".json"),"r") as f:
 				self.intents = json.load(f)
 		except Exception as e:
 			with open('err.log', 'a+') as err_file:
-				err_file.write("\nMonster Error: " + str(self.name))
+				err_file.write("\nMonster Error: " + str(self.monster_id))
 				err_file.write(str(e))
 			#raise Exception(e)
 
@@ -173,7 +173,7 @@ class Monster(Character):
 		return monster
 		
 	def __str__(self):
-		return self.name + " <" + str(self.monster_index) + "> "
+		return str(self.monster_id) + " <" + str(self.monster_index) + "> "
 
 
 	# FIXME, which __eq__ do we want?

@@ -55,7 +55,7 @@ class Base(BoxLayout):
 		self.input_text.foreground_color = (1, 1, 1, 1)
 		self.input_text.background_color = (.1, .1, .1, 1)
 		self.input_text.readonly = True
-		self.max_in_history_lines = 15
+		self.max_in_history_lines = 500
 		self.in_history = collections.deque(maxlen=self.max_in_history_lines)
 		self.add_widget(self.input_text)
 
@@ -101,7 +101,9 @@ class Base(BoxLayout):
 				msgs = new_msg.split('\n')
 				for m in msgs:
 					self.in_history.append(m)
-					
+			if len(threading.enumerate()) != 4:
+				self.in_history.append("[ERR] A thread has crashed, likely the agent.")
+				
 		
 		self.input_text.text = "\n".join(self.in_history)
 		if self.sleeping:

@@ -3,6 +3,7 @@
 	"moveset" : {
 				"Corrosive Spit" :
 					{
+					"intent_type": "ATTACK_DEBUFF",
 					"probability" : 0.30,
 					"effects" : [
 						{
@@ -17,16 +18,18 @@
 					},
 				"Lick" :
 					{
+					"intent_type": "DEBUFF",
 					"probability" : 0.30,
 					"effects" :[
 						{
-							"name" : "Weak",
+							"name" : "Weakened",
 							"amount" : 1
 						}
 					]
 					},
 				"Tackle" :
 				{
+				"intent_type": "ATTACK",
 					"probability" : 0.40,
 					"effects" : [
 						{

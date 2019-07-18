@@ -1,5 +1,5 @@
 {
-	"powers" :
+	"powers" : 
 		[
 			{
 				"name" : "Curl Up",
@@ -9,6 +9,7 @@
 	"moveset" : {
 				"Bite" :
 					{
+					"intent_type": "ATTACK",
 					"probability" : 0.75,
 					"effects" : [
 						{
@@ -17,20 +18,21 @@
 						}
 					]
 					},
-				"Grow" :
+				"Spit Web" :
 					{
+					"intent_type": "DEBUFF",
 					"probability" : 0.25,
 					"effects" :[
 						{
-							"name" : "Strength",
-							"amount" : 3
+							"name" : "Weakened",
+							"amount" : 2
 						}
 					]
 					}
 			},
 	"limits" : {
 			"Bite" : 3,
-			"Grow" : 3
+			"Spit Web" : 3
 	}
 	
 }

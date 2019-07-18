@@ -2,6 +2,7 @@
 	"moveset" : {
 				"Tackle" :
 					{
+					"intent_type": "ATTACK",
 					"probability" : 0.5,
 					"effects" : [
 						{
@@ -12,10 +13,11 @@
 					},
 				"Lick" :
 					{
+					"intent_type": "DEBUFF",
 					"probability" : 0.5,
 					"effects" :[
 						{
-							"name" : "Weak",
+							"name" : "Weakened",
 							"amount" : 1
 						}
 					]

@@ -2,6 +2,7 @@
 	"moveset" : {
 				"Tackle" :
 					{
+					"intent_type": "ATTACK",
 					"probability" : 1.0,
 					"effects" : [
 						{

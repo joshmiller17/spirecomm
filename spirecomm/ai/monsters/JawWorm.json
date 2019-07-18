@@ -3,6 +3,7 @@
 	"moveset" : {
 				"Chomp" :
 					{
+					"intent_type": "ATTACK",
 					"probability" : 0.25,
 					"effects" : [
 						{
@@ -13,6 +14,7 @@
 					},
 				"Thrash" :
 					{
+					"intent_type": "ATTACK_DEFEND",
 					"probability" : 0.30,
 					"effects" :[
 						{
@@ -27,6 +29,7 @@
 					},
 				"Bellow" :
 				{
+					"intent_type": "DEFEND_BUFF",
 					"probability" : 0.45,
 					"effects" : [
 						{

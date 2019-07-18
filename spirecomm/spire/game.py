@@ -13,6 +13,7 @@ import spirecomm.spire.screen
 
 from spirecomm.communication.action import *
 
+
 # MCTS values for changes to game state
 MCTS_MAX_HP_VALUE = 7
 MCTS_HP_VALUE = 1
@@ -96,6 +97,13 @@ class Game:
 		self.visited_shop = False
 		self.combat_round = 1
 		self.original_state = None
+		
+	# returns relic or None
+	def get_relic(self, name):
+		for relic in self.relics:
+			if relic.name == name:
+				return relic
+		return None
 	
 	def __str__(self):
 		string = "\n\n---- Game State ----\n"
@@ -108,7 +116,7 @@ class Game:
 			string += "\nEnergy: " + str(self.player.energy)
 			string += "\nMonsters:\n    "
 			available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
-			string += "\n    ".join([str(monster.name) + " (" + str(monster.current_hp) + \
+			string += "\n    ".join([str(monster.monster_id) + " (" + str(monster.current_hp) + \
 						"/" + str(monster.max_hp) + ") using {} {}".format(str(monster.intent), 
 						"" if not monster.intent.is_attack() else "for {}x{}".format(monster.move_adjusted_damage, monster.move_hits)) for monster in available_monsters])
 			string += "\nHand: " + ", ".join([str(card) for card in self.hand])
@@ -281,8 +289,8 @@ class Game:
 	
 		if self.debug_file:
 			with open(self.debug_file, 'a+') as d:
-				d.write("\n\nTaking Action: ")
-				d.write(str(action) + "\n\n")
+				d.write("\nTaking Action: ")
+				d.write(str(action) + "\n")
 		
 		new_state = copy.deepcopy(self)
 		new_state.possible_actions = None
@@ -342,9 +350,11 @@ class Game:
 		self.hand = []
 		
 		# MONSTER TURN / MONSTERS ATTACK
-		# TODO consider known intent rotation with more nuance
 		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
 		for monster in available_monsters:
+			if monster is None:
+				debug_log.append("WARN: Monster is None")
+				continue
 			if monster.intents != {}: # we have correctly loaded intents JSON
 			
 				if monster.current_move is None:
@@ -353,33 +363,55 @@ class Game:
 					elif self.is_simulation: # generate random move
 						monster.current_move = self.choose_move(monster)
 					else: # figure out move from what we know about it
-						# TODO add intent types to JSONs
-						# 1. check intent
-						# 2. check damage
-						pass
-				
 					
+						timeout = 100 # assume trying 100 times will be enough unless there's a problem
+						while timeout > 0:
+							# continue to randomly sample moves until we find one that fits
+							move = self.choose_move(monster)
+							details = monster.intents["moveset"][move]
+							intent_str = details["intent_type"]
+							if spirecomm.spire.character.Intent[intent_str] == monster.intent:
+								# if it's an attack, check the number of hits also
+								if monster.intent.is_attack():
+									hits = 0
+									effects = details["effects"]
+									for effect in effects:
+										if effect["name"] == "Damage":
+											hits += 1
+									if hits == monster.move_hits:
+										monster.current_move = move
+								else:
+									monster.current_move = move
+									
+							if monster.current_move is not None:
+								break
+							timeout -= 1
+								
+				if monster.current_move is None:
+					raise Exception("Could not determine monster's intent")
+				
+				
 				# increment count of moves in a row
 				if str(monster) in self.monsters_last_attacks:
 					self.monsters_last_attacks[str(monster)][1] += 1
 				else:
 					self.monsters_last_attacks[str(monster)] = [monster.current_move, 1]
 
-				debug_log.append("Simulated attack for " + str(monster) + " is " + monster.current_move)
+				debug_log.append("Simulated attack for " + str(monster) + " is " + str(monster.current_move))
 			
-			#	
-			#else:
-			# default behaviour: just assume the same move as the first turn of simulation
-			if monster.intent.is_attack():
-				if monster.move_adjusted_damage is not None:
-					# are weak and vulnerable accounted for in default logic?
-					incoming_damage = monster.move_adjusted_damage * monster.move_hits
-					damage_after_block = incoming_damage - self.player.block
-					if damage_after_block > 0:
-						self.current_hp -= damage_after_block
-						self.player.block = 0
-					else:
-						self.player.block -= incoming_damage
+			else:
+				debug_log.append("WARN: did not load intents for " + str(monster))
+				# default behaviour: just assume the same move as the first turn of simulation
+				if monster.intent.is_attack():
+					if monster.move_adjusted_damage is not None:
+						# are weak and vulnerable accounted for in default logic?
+						incoming_damage = monster.move_adjusted_damage * monster.move_hits
+						damage_after_block = incoming_damage - self.player.block
+						if damage_after_block > 0:
+							self.current_hp -= damage_after_block
+							self.player.block = 0
+						else:
+							self.player.block -= incoming_damage
 
 		# if we have any block left, get rid of it - TODO barricade, calipers
 		self.player.block = 0
@@ -397,6 +429,7 @@ class Game:
 			
 		if self.debug_file and debug_log != []:
 			with open(self.debug_file, 'a+') as d:
+				d.write('\n')
 				d.write('\n'.join(debug_log))
 				#d.write("\nNew State:\n")
 				#d.write(str(self))
@@ -511,6 +544,7 @@ class Game:
 		
 		if self.debug_file and debug_log != []:
 			with open(self.debug_file, 'a+') as d:
+				d.write('\n')
 				d.write('\n'.join(debug_log))
 				#d.write("\nNew State:\n")
 				#d.write(str(self))
@@ -539,6 +573,25 @@ class Game:
 		self.player.energy -= action.card.cost
 		self.hand.remove(action.card)
 		self.discard_pile.append(action.card)
+		
+		
+		if card.type == spirecomm.spire.card.CardType.ATTACK:
+		
+			# ornamental fan
+			fan = self.get_relic("ornamental fan")
+			if fan:
+				fan.counter += 1
+				if fan.counter == 3:
+					fan.counter = 0
+					self.player.block += 4
+					
+			# TODO kunai
+			
+			# TODO shuriken
+			
+			# TODO pen nib
+				
+		
 			
 		effect_targets = []
 		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
@@ -549,6 +602,8 @@ class Game:
 				effect_targets = [self.player]
 			elif effect["target"] == "one":
 				for monster in available_monsters:
+					if action.target_monster is None:
+						raise Exception("Action expects a target; check " + str(action.card) + ".json for potential error.")
 					if action.target_monster == monster:
 						effect_targets = [monster]
 						break
@@ -576,9 +631,16 @@ class Game:
 					if target.has_power("Vulnerable"):
 						real_amount = int(math.floor(real_amount + (0.50 * real_amount)))
 					target.current_hp = max(target.current_hp - real_amount, 0)
+					
+				power_effects = ["Vulnerable", "Weakened"]
+				for e in power_effects:
+					if effect["effect"] == e:
+						target.add_power(e, effect["amount"])
+					
 			
 		if self.debug_file and debug_log != []:
 			with open(self.debug_file, 'a+') as d:
+				d.write('\n')
 				d.write('\n'.join(debug_log))
 				#d.write("\nNew State:\n")
 				#d.write(str(self))

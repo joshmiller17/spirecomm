@@ -16,7 +16,7 @@
 	
 	"effects": [
 		{
-		"target" : "one",
+		"target" : "self",
 		"effect" : "Block",
 		"amount" : 8
 		},

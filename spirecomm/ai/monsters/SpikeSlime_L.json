@@ -3,16 +3,18 @@
 	"moveset" : {
 				"Lick" :
 					{
+					"intent_type": "DEBUFF",
 					"probability" : 0.70,
 					"effects" : [
 						{
-							"name" : "Weak",
+							"name" : "Weakened",
 							"amount" : 1
 						}
 					]
 					},
 				"Flame Tackle" :
 					{
+					"intent_type": "ATTACK_DEBUFF",
 					"probability" : 0.30,
 					"effects" :[
 						{

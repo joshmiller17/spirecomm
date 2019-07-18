@@ -9,6 +9,7 @@
 	"moveset" : {
 				"Bite" :
 					{
+					"intent_type": "ATTACK",
 					"probability" : 0.60,
 					"effects" : [
 						{
@@ -19,6 +20,7 @@
 					},
 				"Grow" :
 					{
+					"intent_type": "BUFF",
 					"probability" : 0.40,
 					"effects" :[
 						{
