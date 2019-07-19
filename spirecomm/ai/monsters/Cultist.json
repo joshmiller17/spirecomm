@@ -1,0 +1,28 @@
+{
+	"startswith" : "Incantation",
+	"moveset" : {
+				"Incantation" :
+					{
+					"intent_type": "BUFF",
+					"probability" : 0.0,
+					"effects" : [
+						{
+							"name" : "Ritual",
+							"amount" : 3
+						}
+					]
+					},
+				"Dark Strike" :
+					{
+					"intent_type": "ATTACK",
+					"probability" : 1.0,
+					"effects" :[
+						{
+							"name" : "Damage",
+							"amount" : 6
+						}
+					]
+					}
+			}
+	
+}

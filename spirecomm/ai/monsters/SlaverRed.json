@@ -1,0 +1,117 @@
+{
+	"startswith": "Stab_pre_entangle",
+	"moveset" : {
+				"Stab_pre_entangle" :
+					{
+					"intent_type": "ATTACK",
+					"probability" : 0.0,
+					"effects" :[
+						{
+							"name" : "Damage",
+							"amount" : 13
+						}
+					],
+					"next_move" :[
+						{
+							"name" : "Scrape_1_pre_entangle",
+							"probability" : 0.75
+						},
+						{
+							"name" : "Entangle",
+							"amount" : 0.25
+						}
+					]
+					},
+				"Scrape_1_pre_entangle" :
+					{
+					"intent_type": "ATTACK_DEBUFF",
+					"probability" : 0.0,
+					"effects" :[
+						{
+							"name" : "Damage",
+							"amount" : 8
+						},
+						{
+							"name" : "Vulnerable",
+							"amount" : 1
+						}
+					],
+					"next_move" :[
+						{
+							"name" : "Scrape_2_pre_entangle",
+							"probability" : 0.75
+						},
+						{
+							"name" : "Entangle",
+							"amount" : 0.25
+						}
+					]
+					},
+				"Scrape_2_pre_entangle" :
+					{
+					"intent_type": "ATTACK_DEBUFF",
+					"probability" : 0.0,
+					"effects" :[
+						{
+							"name" : "Damage",
+							"amount" : 8
+						},
+						{
+							"name" : "Vulnerable",
+							"amount" : 1
+						}
+					],
+					"next_move" :[
+						{
+							"name" : "Stab_pre_entangle",
+							"probability" : 0.75
+						},
+						{
+							"name" : "Entangle",
+							"amount" : 0.25
+						}
+					]
+					},
+				"Entangle" :
+					{
+					"intent_type": "DEBUFF",
+					"probability" : 0.0,
+					"effects" : [
+						{
+							"name" : "Entangle",
+							"amount" : 1
+						}
+					]
+					},
+				"Stab" :
+					{
+					"intent_type": "ATTACK",
+					"probability" : 0.45,
+					"effects" :[
+						{
+							"name" : "Damage",
+							"amount" : 13
+						}
+					],
+					},
+				"Scrape" :
+					{
+					"intent_type": "ATTACK_DEBUFF",
+					"probability" : 0.55,
+					"effects" :[
+						{
+							"name" : "Damage",
+							"amount" : 8
+						},
+						{
+							"name" : "Vulnerable",
+							"amount" : 1
+						}
+					]
+			},
+	"limits" : {
+			"Scrape" : 3,
+			"Stab" : 3
+	}
+	
+}
