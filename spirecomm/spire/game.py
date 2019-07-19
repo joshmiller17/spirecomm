@@ -428,7 +428,7 @@ class Game:
 					# Finally, apply the intended move
 					effects = monster.intents["moveset"][monster.current_move]["effects"]
 					buffs = ["Strength"]
-					debuffs = ["Vulnerable", "Weakened"]
+					debuffs = ["Frail", "Vulnerable", "Weakened"]
 					for effect in effects:
 						
 						if effect["name"] == "Damage":
@@ -718,7 +718,7 @@ class Game:
 					target.add_power(effect["effect"], effect["amount"])
 					
 				else:
-					debug_log.append("WARN: Unknown effect " + effect["name"])
+					debug_log.append("WARN: Unknown effect " + effect["effect"])
 						
 		# TODO check if any enemies died and if anything happens when they do
 					

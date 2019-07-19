@@ -7,8 +7,8 @@
 					"probability" : 0.70,
 					"effects" : [
 						{
-							"name" : "Weakened",
-							"amount" : 1
+							"name" : "Frail",
+							"amount" : 2
 						}
 					]
 					},
