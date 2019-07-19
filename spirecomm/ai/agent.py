@@ -19,7 +19,7 @@ import py_trees
 
 class SimpleAgent:
 
-	def __init__(self, logfile, chosen_class=PlayerClass.IRONCLAD):
+	def __init__(self, logfile_name, chosen_class=PlayerClass.IRONCLAD):
 		self.chosen_class = chosen_class
 		self.change_class(chosen_class)
 		self.action_delay = 1.0 # seconds delay per action, useful for actually seeing what's going on.
@@ -29,7 +29,8 @@ class SimpleAgent:
 		self.debug_queue = ["AI initialized.", "Delay timer set to " + str(self.action_delay), "Debug level set to " + str(self.debug_level)]
 		self.cmd_queue = []
 		self.last_action = None
-		self.logfile = logfile
+		self.logfile_name = logfile_name
+		self.logfile = open(self.logfile_name, 'a+')
 		self.skipping_card = False
 		self.paused = False
 		self.step = False
@@ -230,6 +231,7 @@ class SimpleAgent:
 		
 	# Check that the simulator predicted this outcome was possible
 	def simulation_sanity_check(self, original_state, action):
+		original_state.debug_file = self.logfile_name
 		simulated_state = original_state.takeAction(action)
 		real_diff = self.state_diff(original_state, self.blackboard.game)
 		sim_diff = self.state_diff(original_state, simulated_state)
@@ -250,6 +252,7 @@ class SimpleAgent:
 			if simulated_state.just_reshuffled:
 				if len(simulated_state.hand) == len(self.blackboard.game.hand) and len(simulated_state.discard_pile) == len(self.blackboard.game.discard_pile) and original_state.known_top_cards == []:
 					self.log("minor warning: reshuffled different cards in simulation")
+					skip_warn = True
 			elif "sims_val_drawn" in diff_diff and "real_val_drawn" in diff_diff:
 				if len(simulated_state.hand) == len(self.blackboard.game.hand) and original_state.known_top_cards == []:
 					self.log("minor warning: drew different cards in simulation")
@@ -258,11 +261,11 @@ class SimpleAgent:
 					
 			if not skip_warn:
 				self.log("WARN: simulation discrepency, see log for details", debug=3)
-				self.log("actual/sim diff: " + str(diff_diff), debug=4)
-				self.note("Simulated:")
-				self.note(str(simulated_state))
-				self.note("Actual:")
-				self.note(str(self.blackboard.game))
+			self.log("actual/sim diff: " + str(diff_diff), debug=4)
+			self.note("Simulated:")
+			self.note(str(simulated_state))
+			self.note("Actual:")
+			self.note(str(self.blackboard.game))
 		else:
 			self.log("Simulation sanity check success!")
 		
@@ -368,8 +371,8 @@ class SimpleAgent:
 								powers1 = [p.power_name for p in monster1.powers]
 								powers2 = [p.power_name for p in monster2.powers]
 								if name in powers1 and name in powers2:
-										monster_changes[m_id + "_powers_changed"].append((name, monster2.get_power(name).amount - monster1.get_power(name).amount))
-										continue
+									monster_changes[m_id + "_powers_changed"].append((name, monster2.get_power(name).amount - monster1.get_power(name).amount))
+									continue
 								elif name in powers2:
 									monster_changes[m_id + "_powers_added"].append((name, monster2.get_power(name).amount))
 									continue

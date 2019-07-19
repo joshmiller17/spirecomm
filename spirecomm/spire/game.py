@@ -286,6 +286,7 @@ class Game:
 					d.write("\n-----------------------------\n")
 					d.write("Possible Actions:\n")
 					d.write("\n".join([str(a) for a in possible_actions]))
+					d.write('\n')
 
 			self.possible_actions = possible_actions
 				
@@ -297,7 +298,7 @@ class Game:
 	
 		if self.debug_file:
 			with open(self.debug_file, 'a+') as d:
-				d.write("\nTaking Action: ")
+				d.write("\nSimulating taking action: ")
 				d.write(str(action) + "\n")
 		
 		new_state = copy.deepcopy(self)
@@ -453,7 +454,10 @@ class Game:
 							# TODO, create a Slimed card, add effect["amount"] of them to discard
 							pass
 							#self.discard_pile.append(...)
-								
+						
+						else:
+							debug_log.append("WARN: Unknown effect " + effect["name"])
+							
 				# increment count of moves in a row
 				if str(monster) in self.monsters_last_attacks:
 					self.monsters_last_attacks[str(monster)][1] += 1
@@ -501,6 +505,7 @@ class Game:
 			with open(self.debug_file, 'a+') as d:
 				d.write('\n')
 				d.write('\n'.join(debug_log))
+				d.write('\n')
 				#d.write("\nNew State:\n")
 				#d.write(str(self))
 			
@@ -620,6 +625,7 @@ class Game:
 			with open(self.debug_file, 'a+') as d:
 				d.write('\n')
 				d.write('\n'.join(debug_log))
+				d.write('\n')
 				#d.write("\nNew State:\n")
 				#d.write(str(self))
 		
@@ -633,6 +639,7 @@ class Game:
 		# TODO
 		
 		debug_log = []
+		power_effects = ["Vulnerable", "Weakened"]
 		
 		if not action.card.loadedFromJSON:
 			raise Exception("Card not loaded from JSON: " + str(action.card.name))
@@ -697,7 +704,7 @@ class Game:
 						real_amount = int(math.floor(real_amount - (0.25 * real_amount)))
 					target.block += real_amount
 					
-				if effect["effect"] == "Damage":
+				elif effect["effect"] == "Damage":
 					base_damage = effect["amount"]
 					adjusted_damage = self.calculate_real_damage(base_damage, self.player, target)
 					damage_after_block = adjusted_damage - target.block
@@ -706,12 +713,12 @@ class Game:
 						target.block = 0
 					else:
 						target.block -= adjusted_damage
+						
+				elif effect["effect"] in power_effects:
+					target.add_power(effect["effect"], effect["amount"])
 					
-					
-				power_effects = ["Vulnerable", "Weakened"]
-				for e in power_effects:
-					if effect["effect"] == e:
-						target.add_power(e, effect["amount"])
+				else:
+					debug_log.append("WARN: Unknown effect " + effect["name"])
 						
 		# TODO check if any enemies died and if anything happens when they do
 					
@@ -720,6 +727,7 @@ class Game:
 			with open(self.debug_file, 'a+') as d:
 				d.write('\n')
 				d.write('\n'.join(debug_log))
+				d.write('\n')
 				#d.write("\nNew State:\n")
 				#d.write(str(self))
 			

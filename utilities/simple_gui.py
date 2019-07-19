@@ -188,7 +188,6 @@ class Base(BoxLayout):
 				open("game.log", "w").close()
 				communication_state = json.load(open(os.path.join(config.SPIRECOMM_PATH, "utilities", "combat_example.json")))
 				game_state = Game.from_json(communication_state.get("game_state"), communication_state.get("available_commands"))
-				game_state.debug_file = "game.log"
 				mcts_timeout = 2000 # in ms # eventually set to agent.action_delay * 1000 with debug cmd to adjust
 				monte_carlo = mcts(timeLimit=mcts_timeout)
 
@@ -312,7 +311,7 @@ def run_agent(f, communication_coordinator):
 def launch_gui():
 	f=open("ai.log","w")
 	print("GUI: Init " + str(time.time()), file=f, flush=True)
-	agent = SimpleAgent(f)
+	agent = SimpleAgent("ai.log")
 	print("GUI: Register agent", file=f, flush=True)
 	communication_coordinator = coord.Coordinator()
 	print("GUI: Register coordinator", file=f, flush=True)
@@ -339,10 +338,10 @@ def verifyJSONFolder(directory,kind):
 			loaded = json.load(open(os.path.join(directory,f),"r"))
 		except Exception as e:
 			lineNum = re.search("line (\d+) ",str(e),0).group(1)
-			error += "\nMalformed %s json in %s at line %s"%(kind,f,lineNum)
+			error += "\nMalformed %s JSON in %s at line %s"%(kind,f,lineNum)
 	return error
 
-if __name__ == "__main__":	
+if __name__ == "__main__":
 	lf = open("err.log", "w")
 	open("game.log", "w").close()
 		
