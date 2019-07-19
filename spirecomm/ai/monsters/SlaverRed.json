@@ -92,7 +92,7 @@
 							"name" : "Damage",
 							"amount" : 13
 						}
-					],
+					]
 					},
 				"Scrape" :
 					{
@@ -108,10 +108,10 @@
 							"amount" : 1
 						}
 					]
+					}
 			},
 	"limits" : {
 			"Scrape" : 3,
 			"Stab" : 3
 	}
-	
 }
