@@ -90,8 +90,10 @@ class Base(BoxLayout):
 
 	def do_communication(self, dt):
 	
-		
-		new_msg = str(self.agent.get_next_msg())
+		try:
+			new_msg = self.agent.debug_queue.pop(0)
+		except:
+			new_msg = ""
 		if new_msg != "":
 			if new_msg == 'z':
 				self.sleeping = True

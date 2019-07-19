@@ -98,7 +98,7 @@ class Card:
 	def get_clean_name(self):
 		new_name = ''.join(self.name.split('.'))
 		if new_name.find('+') != -1:
-			new_name = new_name[:new_name.find('+')]
+			new_name = new_name[:new_name.find('+')+1]
 		return new_name
 		
 

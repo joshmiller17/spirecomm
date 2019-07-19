@@ -201,12 +201,6 @@ class SimpleAgent:
 	#def pre_tick_handler(self.behaviour_tree):
 	#	pass
 		
-	def get_next_msg(self):
-		try:
-			return self.debug_queue.pop(0)
-		except:
-			return ""
-		
 	# equivalent to self.log(msg, debug=-1)
 	def think(self, msg):
 		self.debug_queue.append(msg)
