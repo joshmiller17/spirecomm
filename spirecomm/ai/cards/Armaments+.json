@@ -23,7 +23,7 @@
 		
 		{
 		"target" : "one",
-		"effect" : "Armaments",
+		"effect" : "Armaments+",
 		"amount" : 1
 		}
 	]

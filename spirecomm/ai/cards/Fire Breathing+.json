@@ -1,0 +1,20 @@
+{
+	"value": {
+		"synergies": [
+			{
+			"name" : "Attacks",
+			"amount" : 1,
+			"enable" : false
+			}
+			
+		]
+	},
+	
+	"effects": [
+		{
+		"target" : "self",
+		"effect" : "Fire Breathing",
+		"amount" : 1
+		}
+	]
+}

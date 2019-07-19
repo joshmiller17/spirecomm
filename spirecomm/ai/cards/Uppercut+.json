@@ -1,0 +1,35 @@
+{
+	"value": {
+		"synergies": [
+			{
+			"name" : "Weakened",
+			"amount" : 1,
+			"enable" : true
+			},
+			{
+			"name" : "Vulnerable",
+			"amount" : 1,
+			"enable" : true
+			}
+			
+		]
+	},
+	
+	"effects": [
+		{
+		"target" : "one",
+		"effect" : "Damage",
+		"amount" : 13
+		},
+		{
+		"target" : "one",
+		"effect" : "Weakened",
+		"amount" : 2
+		},
+		{
+		"target" : "one",
+		"effect" : "Vulnerable",
+		"amount" : 2
+		}
+	]
+}

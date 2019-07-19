@@ -1,8 +1,8 @@
 {
 	"value": {
 		"synergies": [
-		{
-			"name" : "Weakened",
+			{
+			"name" : "Lose HP",
 			"amount" : 2,
 			"enable" : true
 			}
@@ -11,10 +11,9 @@
 	
 	"effects": [
 		{
-		"target" : "one",
-		"effect" : "Weakened",
-		"amount" : 2
+		"target" : "self",
+		"effect" : "Combust",
+		"amount" : 7
 		}
-		
 	]
 }

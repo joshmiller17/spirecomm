@@ -1,0 +1,25 @@
+{
+	"value": {
+		"synergies": [
+			{
+			"name" : "Lose HP",
+			"amount" : 1,
+			"enable" : true
+			}
+			
+		]
+	},
+	
+	"effects": [
+		{
+		"target" : "self",
+		"effect" : "Lose HP",
+		"amount" : 2
+		},
+		{
+		"target" : "one",
+		"effect" : "Damage",
+		"amount" : 18
+		}
+	]
+}

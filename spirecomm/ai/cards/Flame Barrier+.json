@@ -2,15 +2,11 @@
 	"value": {
 		"synergies": [
 			{
-			"name" : "Upgrade",
-			"amount" : 1,
-			"enable" : true
-			},
-			{
 			"name" : "Block",
 			"amount" : 1,
 			"enable" : true
 			}
+			
 		]
 	},
 	
@@ -18,13 +14,12 @@
 		{
 		"target" : "self",
 		"effect" : "Block",
-		"amount" : 5
+		"amount" : 16
 		},
-		
 		{
-		"target" : "one",
-		"effect" : "Armaments",
-		"amount" : 1
+		"target" : "self",
+		"effect" : "Flame Barrier",
+		"amount" : 6
 		}
 	]
 }

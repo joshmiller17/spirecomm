@@ -1,9 +1,9 @@
 {
 	"value": {
 		"synergies": [
-		{
-			"name" : "Weakened",
-			"amount" : 2,
+			{
+			"name" : "Attacks",
+			"amount" : 1,
 			"enable" : true
 			}
 		]
@@ -11,10 +11,9 @@
 	
 	"effects": [
 		{
-		"target" : "one",
-		"effect" : "Weakened",
+		"target" : "self",
+		"effect" : "DoubleTap",
 		"amount" : 2
 		}
-		
 	]
 }

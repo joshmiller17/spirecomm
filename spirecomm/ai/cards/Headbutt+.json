@@ -1,0 +1,25 @@
+{
+	"value": {
+		"synergies": [
+			{
+			"name" : "Select",
+			"amount" : 1,
+			"enable" : true
+			}
+		]
+	},
+	
+	"effects": [
+		{
+		"target" : "one",
+		"effect" : "Damage",
+		"amount" : 12
+		},
+		
+		{
+		"target" : "one",
+		"effect" : "Headbutt",
+		"amount" : 1
+		}
+	]
+}

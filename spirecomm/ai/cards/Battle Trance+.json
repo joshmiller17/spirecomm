@@ -1,0 +1,24 @@
+{
+	"value": {
+		"synergies": [
+			{
+			"name" : "Draw",
+			"amount" : 3,
+			"enable" : true
+			}
+		]
+	},
+	
+	"effects": [
+		{
+		"target" : "self",
+		"effect" : "Draw",
+		"amount" : 4
+		},
+		{
+		"target" : "self",
+		"effect" : "No Draw",
+		"amount" : 1
+		}
+	]
+}

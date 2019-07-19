@@ -1,0 +1,19 @@
+{
+	"value": {
+		"synergies": [
+		]
+	},
+	
+	"effects": [
+		{
+		"target" : "all",
+		"effect" : "Damage",
+		"amount" : 28
+		},
+		{
+		"target" : "all",
+		"effect" : "GainBurnToDiscard",
+		"amount" : 1
+		}
+	]
+}

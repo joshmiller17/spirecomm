@@ -1,0 +1,21 @@
+{
+	"value": {
+		"synergies": [
+
+		]
+	},
+	
+	"effects": [
+		{
+		"target" : "one",
+		"effect" : "Damage",
+		"amount" : 15
+		},
+		{
+		"target" : "self",
+		"effect" : "RitualDagger",
+		"amount" : 5
+		}
+		
+	]
+}

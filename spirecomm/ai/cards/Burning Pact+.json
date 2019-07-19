@@ -2,13 +2,13 @@
 	"value": {
 		"synergies": [
 			{
-			"name" : "Upgrade",
+			"name" : "Exhaust",
 			"amount" : 1,
 			"enable" : true
 			},
 			{
-			"name" : "Block",
-			"amount" : 1,
+			"name" : "Draw",
+			"amount" : 2,
 			"enable" : true
 			}
 		]
@@ -17,14 +17,13 @@
 	"effects": [
 		{
 		"target" : "self",
-		"effect" : "Block",
-		"amount" : 5
-		},
-		
-		{
-		"target" : "one",
-		"effect" : "Armaments",
+		"effect" : "ExhaustSelect",
 		"amount" : 1
+		},
+		{
+		"target" : "self",
+		"effect" : "Draw",
+		"amount" : 3
 		}
 	]
 }

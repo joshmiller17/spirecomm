@@ -1,0 +1,25 @@
+{
+	"value": {
+		"synergies": [
+			{
+			"name" : "Block",
+			"amount" : 1,
+			"enable" : true
+			}
+			
+		]
+	},
+	
+	"effects": [
+		{
+		"target" : "self",
+		"effect" : "Ethereal",
+		"amount" : 1
+		},
+		{
+		"target" : "self",
+		"effect" : "Block",
+		"amount" : 13
+		}
+	]
+}

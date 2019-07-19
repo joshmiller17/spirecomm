@@ -1,0 +1,25 @@
+{
+	"value": {
+		"synergies": [
+			{
+			"name" : "Weak",
+			"amount" : 1,
+			"enable" : true
+			}
+			
+		]
+	},
+	
+	"effects": [
+		{
+		"target" : "all",
+		"effect" : "Weakened",
+		"amount" : 2
+		},
+		{
+		"target" : "self",
+		"effect" : "Exhaust",
+		"amount" : 1
+		}
+	]
+}

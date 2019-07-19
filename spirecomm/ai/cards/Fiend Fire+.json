@@ -1,0 +1,24 @@
+{
+	"value": {
+		"synergies": [
+		{
+			"name" : "Exhaust",
+			"amount" : 2,
+			"enable" : true
+			}
+		]
+	},
+	
+	"effects": [
+		{
+		"target" : "one",
+		"effect" : "FiendFire",
+		"amount" : 10
+		},
+		{
+		"target" : "self",
+		"effect" : "Exhaust",
+		"amount" : 1
+		}
+	]
+}

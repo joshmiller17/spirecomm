@@ -1,0 +1,19 @@
+{
+	"value": {
+		"synergies": [
+			{
+			"name" : "AoE",
+			"amount" : 1,
+			"enable" : false
+			}
+		]
+	},
+	
+	"effects": [
+		{
+		"target" : "all",
+		"effect" : "Damage",
+		"amount" : 11
+		}
+	]
+}

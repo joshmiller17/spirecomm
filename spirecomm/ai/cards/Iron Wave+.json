@@ -2,9 +2,9 @@
 	"value": {
 		"synergies": [
 			{
-			"name" : "Upgrade",
+			"name" : "Dexterity",
 			"amount" : 1,
-			"enable" : true
+			"enable" : false
 			},
 			{
 			"name" : "Block",
@@ -16,15 +16,15 @@
 	
 	"effects": [
 		{
-		"target" : "self",
-		"effect" : "Block",
-		"amount" : 5
+		"target" : "one",
+		"effect" : "Damage",
+		"amount" : 7
 		},
 		
 		{
-		"target" : "one",
-		"effect" : "Armaments",
-		"amount" : 1
+		"target" : "self",
+		"effect" : "Block",
+		"amount" : 7
 		}
 	]
 }

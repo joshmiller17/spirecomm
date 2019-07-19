@@ -1,0 +1,20 @@
+{
+	"value": {
+		"synergies": [
+
+		]
+	},
+	
+	"effects": [
+		{
+		"target" : "self",
+		"effect" : "Draw",
+		"amount" : 4
+		},
+		{
+		"target" : "self",
+		"effect" : "Exhaust",
+		"amount" : 1
+		}
+	]
+}

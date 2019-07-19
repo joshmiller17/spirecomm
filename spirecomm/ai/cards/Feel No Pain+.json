@@ -1,0 +1,25 @@
+{
+	"value": {
+		"synergies": [
+			{
+			"name" : "Block",
+			"amount" : 2,
+			"enable" : true
+			},
+			{
+			"name" : "Exhaust",
+			"amount" : 3,
+			"enable" : false
+			}
+			
+		]
+	},
+	
+	"effects": [
+		{
+		"target" : "self",
+		"effect" : "Feel No Pain",
+		"amount" : 4
+		}
+	]
+}

@@ -1,0 +1,19 @@
+{
+	"value": {
+		"synergies": [
+			{
+			"name" : "Strength",
+			"amount" : 3,
+			"enable" : true
+			}
+		]
+	},
+	
+	"effects": [
+		{
+		"target" : "self",
+		"effect" : "DemonForm",
+		"amount" : 3
+		}
+	]
+}

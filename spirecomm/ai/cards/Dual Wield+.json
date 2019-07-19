@@ -1,20 +1,15 @@
 {
 	"value": {
 		"synergies": [
-		{
-			"name" : "Weakened",
-			"amount" : 2,
-			"enable" : true
-			}
+			
 		]
 	},
 	
 	"effects": [
 		{
 		"target" : "one",
-		"effect" : "Weakened",
+		"effect" : "DualWield",
 		"amount" : 2
 		}
-		
 	]
 }

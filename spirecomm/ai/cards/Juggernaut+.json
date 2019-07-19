@@ -1,0 +1,19 @@
+{
+	"value": {
+		"synergies": [
+			{
+			"name" : "Block",
+			"amount" : 2,
+			"enable" : false
+			}
+		]
+	},
+	
+	"effects": [
+		{
+		"target" : "self",
+		"effect" : "Juggernaut",
+		"amount" : 7
+		}
+	]
+}

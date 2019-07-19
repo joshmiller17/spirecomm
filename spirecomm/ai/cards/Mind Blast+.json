@@ -1,0 +1,20 @@
+{
+	"value": {
+		"synergies": [
+
+		]
+	},
+	
+	"effects": [
+		{
+		"target" : "self",
+		"effect" : "Innate",
+		"amount" : 1
+		},
+		{
+		"target" : "one",
+		"effect" : "MindBlast",
+		"amount" : 1
+		}
+	]
+}

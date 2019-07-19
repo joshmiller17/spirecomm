@@ -2,12 +2,12 @@
 	"value": {
 		"synergies": [
 			{
-			"name" : "Upgrade",
+			"name" : "Strength",
 			"amount" : 1,
-			"enable" : true
+			"enable" : false
 			},
 			{
-			"name" : "Block",
+			"name" : "Sustain",
 			"amount" : 1,
 			"enable" : true
 			}
@@ -16,14 +16,13 @@
 	
 	"effects": [
 		{
-		"target" : "self",
-		"effect" : "Block",
+		"target" : "all",
+		"effect" : "Reaper",
 		"amount" : 5
 		},
-		
 		{
-		"target" : "one",
-		"effect" : "Armaments",
+		"target" : "self",
+		"effect" : "Exhaust",
 		"amount" : 1
 		}
 	]

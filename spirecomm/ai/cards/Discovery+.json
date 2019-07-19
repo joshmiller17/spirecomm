@@ -1,0 +1,16 @@
+{
+	"value": {
+		"synergies": [
+
+		]
+	},
+	
+	"effects": [
+		{
+		"target" : "self",
+		"effect" : "Discover",
+		"amount" : 1
+		}
+		
+	]
+}

@@ -1,0 +1,24 @@
+{
+	"value": {
+		"synergies": [
+			{
+			"name" : "Vulnerable",
+			"amount" : 1,
+			"enable" : false
+			}
+		]
+	},
+	
+	"effects": [
+		{
+		"target" : "one",
+		"effect" : "Damage",
+		"amount" : 8
+		},
+		{
+		"target" : "one",
+		"effect" : "Dropkick",
+		"amount" : 1
+		}
+	]
+}

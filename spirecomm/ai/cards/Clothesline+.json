@@ -1,8 +1,8 @@
 {
 	"value": {
 		"synergies": [
-		{
-			"name" : "Weakened",
+			{
+			"name" : "Weak",
 			"amount" : 2,
 			"enable" : true
 			}
@@ -12,9 +12,14 @@
 	"effects": [
 		{
 		"target" : "one",
-		"effect" : "Weakened",
-		"amount" : 2
-		}
+		"effect" : "Damage",
+		"amount" : 14
+		},
 		
+		{
+		"target" : "one",
+		"effect" : "Weakened",
+		"amount" : 3
+		}
 	]
 }

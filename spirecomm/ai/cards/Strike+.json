@@ -1,9 +1,9 @@
 {
 	"value": {
 		"synergies": [
-		{
-			"name" : "Weakened",
-			"amount" : 2,
+			{
+			"name" : "Perfected Strike",
+			"amount" : 1,
 			"enable" : true
 			}
 		]
@@ -12,9 +12,8 @@
 	"effects": [
 		{
 		"target" : "one",
-		"effect" : "Weakened",
-		"amount" : 2
+		"effect" : "Damage",
+		"amount" : 9
 		}
-		
 	]
 }

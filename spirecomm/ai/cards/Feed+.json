@@ -1,0 +1,24 @@
+{
+	"value": {
+		"synergies": [
+		]
+	},
+	
+	"effects": [
+		{
+		"target" : "one",
+		"effect" : "Damage",
+		"amount" : 12
+		},
+		{
+		"target" : "one",
+		"effect" : "Feed",
+		"amount" : 4
+		},
+		{
+		"target" : "self",
+		"effect" : "Exhaust",
+		"amount" : 1
+		}
+	]
+}
