@@ -369,9 +369,8 @@ class SimpleAgent:
 							monster_changes[m_id + "_powers_changed"] = []
 							monster_changes[m_id + "_powers_added"] = []
 							monster_changes[m_id + "_powers_removed"] = []
-							powers_changed = set(monster2.powers).symmetric_difference(set(monster1.powers))
-							for power in powers_changed:
-								name = power.power_name
+							powers_changed = set([p.power_name for p in set(monster2.powers).symmetric_difference(set(monster1.powers))])
+							for name in powers_changed:
 								powers1 = [p.power_name for p in monster1.powers]
 								powers2 = [p.power_name for p in monster2.powers]
 								if name in powers1 and name in powers2:

@@ -375,22 +375,13 @@ class Game:
 	
 		for power in character.powers:
 			if power.power_name == "Strength Down":
-				if not character.has_power("Artifact"):
-					character.add_power("Strength", -1 * power.amount)
-				else:
-					character.decrement_power("Artifact")
+				self.apply_debuff(character, "Strength Down", -1 * power.amount)
 				character.remove_power("Strength Down")
 			elif power.power_name == "Dexterity Down":
-				if not character.has_power("Artifact"):
-					character.add_power("Dexterity", -1 * power.amount)
-				else:
-					character.decrement_power("Artifact")
+				self.apply_debuff(character, "Dexterity Down", -1 * power.amount)
 				character.remove_power("Dexterity Down")
 			elif power.power_name == "Focus Down":
-				if not character.has_power("Artifact"):
-					character.add_power("Focus", -1 * power.amount)
-				else:
-					character.decrement_power("Artifact")
+				self.apply_debuff(character, "Focus Down", -1 * power.amount)
 				character.remove_power("Focus Down")
 			elif power.power_name == "Combust":
 				character.current_hp -= 1 # TODO "on lose HP" effects
@@ -410,6 +401,24 @@ class Game:
 				character.decrement_power(power.power_name)				
 				
 	# TODO apply_start_of_turn_effects
+	
+	def apply_debuff(self, target, debuff, amount):
+		if debuff in spirecomm.spire.power.DEBUFFS and target.has_power("Artifact"):
+			target.decrement_power("Artifact")
+		else:
+			target.add_power(debuff, amount)
+		
+	# applies Damage attack and returns unblocked damage
+	def apply_damage(self, base_damage, attacker, target):
+		# Note attacker may be None, e.g. from Burn card
+		adjusted_damage = self.calculate_real_damage(base_damage, attacker, target)
+		unblocked_damage = adjusted_damage - target.block
+		if unblocked_damage > 0:
+			target.current_hp = max(target.current_hp - unblocked_damage, 0)
+			target.block = 0
+		else:
+			target.block -= adjusted_damage
+		return max(unblocked_damage, 0)
 		
 		
 	# Returns a new state
@@ -419,13 +428,20 @@ class Game:
 		# TODO consider retaining cards (well-laid plans) or runic pyramid
 		
 		# Hand discarded
+		self.discard_pile += self.hand
 		for card in self.hand:
 			for effect in card.effects:
 				if effect["effect"] == "Ethereal":
 					self.exhaust_pile.append(card)
 					self.hand.remove(card)
 					continue
-		self.discard_pile += self.hand
+				elif effect["effect"] == "SelfWeakened":
+					self.apply_debuff(self.player, "Weakened", effect["amount"])
+				elif effect["effect"] == "SelfFrail":
+					self.apply_debuff(self.player, "Frail", effect["amount"])
+				elif effect["effect"] == "SelfDamage":
+					self.apply_damage(None, self.player, effect["amount"])
+					
 		self.hand = []
 		
 		# end player's turn
@@ -447,7 +463,7 @@ class Game:
 					if self.combat_round == 1 and "startswith" in monster.intents:
 						monster.current_move = monster.intents["startswith"]
 						self.debug_log.append("Known initial intent for " + str(monster) + " is " + str(monster.current_move))
-						if monster.name == "FuzzyLouseNormal" or monster.name == "FuzzyLouseDefensive":
+						if monster.monster_id == "FuzzyLouseNormal" or monster.monster_id == "FuzzyLouseDefensive":
 							# louses have a variable base attack
 							effs = monster.intents["moveset"][move]["effects"]
 							json_base = None
@@ -502,13 +518,9 @@ class Game:
 							base_damage = effect["amount"]
 							if monster.name == "FuzzyLouseNormal" or monster.name == "FuzzyLouseDefensive":
 								base_damage += monster.misc # adjustment because louses are variable
-							adjusted_damage = self.calculate_real_damage(base_damage, monster, self.player)
-							damage_after_block = adjusted_damage - self.player.block
-							if damage_after_block > 0:
-								self.current_hp -= damage_after_block
-								self.player.block = 0
-							else:
-								self.player.block -= adjusted_damage
+								self.debug_log.append("Adjusted damage for louse: " + str(monster.misc))
+							unblocked_damage = self.apply_damage(base_damage, monster, self.player)
+							self.debug_log.append("Taking " + str(unblocked_damage) + " damage from " + str(monster))
 								
 						elif effect["name"] == "Block":
 							monster.block += effect["amount"]
@@ -517,10 +529,7 @@ class Game:
 							monster.add_power(effect["name"], effect["amount"])
 							
 						elif effect["name"] in debuffs:
-							if effect["name"] in spirecomm.spire.power.DEBUFFS and self.player.has_power("Artifact"):
-								self.player.decrement_power("Artifact")
-							else:
-								self.player.add_power(effect["name"], effect["amount"])
+							self.apply_debuff(self.player, effect["name"], effect["amount"])
 							
 						elif effect["name"] == "AddSlimedToDiscard":
 							# TODO, create a Slimed card, add effect["amount"] of them to discard
@@ -543,13 +552,9 @@ class Game:
 				if monster.intent.is_attack():
 					if monster.move_adjusted_damage is not None:
 						# are weak and vulnerable accounted for in default logic?
-						incoming_damage = monster.move_adjusted_damage * monster.move_hits
-						damage_after_block = incoming_damage - self.player.block
-						if damage_after_block > 0:
-							self.current_hp -= damage_after_block
-							self.player.block = 0
-						else:
-							self.player.block -= incoming_damage
+						for _ in range(monster.move_hits):
+							unblocked_damage = self.apply_damage(monster.move_base_damage, monster, self.player)
+							self.debug_log.append("Taking " + str(unblocked_damage) + " damage from " + str(monster))						
 							
 			monster.current_move = None # now that we used the move, clear it
 							
@@ -798,6 +803,10 @@ class Game:
 				elif effect["effect"] == "Exhaust":
 					self.exhaust_pile.append(action.card)
 					self.discard_pile.remove(action.card)
+				elif effect["effect"] == "ExhaustRandom":
+					exhausted_card = random.choice(self.hand)
+					self.exhaust_pile.append(exhausted_card)
+					self.hand.remove(exhausted_card)
 					
 				elif effect["effect"] == "Draw":
 					self.hand.append(self.draw_pile.pop(0))
