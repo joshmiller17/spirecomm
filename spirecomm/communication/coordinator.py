@@ -200,7 +200,7 @@ class Coordinator:
 				if self.in_game:
 					self.last_game_state = Game.from_json(communication_state.get("game_state"), communication_state.get("available_commands"))
 			else:
-				print("Communicator detected error", file=self.logfile, flush=True)
+				print("Communicator detected error: " + str(self.last_error), file=self.logfile, flush=True)
 			if perform_callbacks:
 				if self.last_error is not None:
 					self.action_queue.clear()

@@ -10,6 +10,7 @@ import spirecomm.spire.character
 import spirecomm.spire.map
 import spirecomm.spire.potion
 import spirecomm.spire.screen
+import spirecomm.spire.power
 
 from spirecomm.communication.action import *
 
@@ -364,6 +365,43 @@ class Game:
 				damage = int(math.floor(damage + (0.50 * damage)))
 		return damage
 		
+	def apply_end_of_turn_effects(self, character):
+		turn_based_powers = ["Vulnerable", "Frail", "Weakened", "No Block"]
+	
+		for power in character.powers:
+			if power.power_name == "Strength Down":
+				if not character.has_power("Artifact"):
+					character.add_power("Strength", -1 * power.amount)
+				else:
+					character.decrement_power("Artifact")
+				character.remove_power("Strength Down")
+			elif power.power_name == "Dexterity Down":
+				if not character.has_power("Artifact"):
+					character.add_power("Dexterity", -1 * power.amount)
+				else:
+					character.decrement_power("Artifact")
+				character.remove_power("Dexterity Down")
+			elif power.power_name == "Focus Down":
+				if not character.has_power("Artifact"):
+					character.add_power("Focus", -1 * power.amount)
+				else:
+					character.decrement_power("Artifact")
+				character.remove_power("Focus Down")
+			elif power.power_name == "Combust":
+				character.current_hp -= 1 # TODO "on lose HP" effects
+				available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+				for monster in available_monsters:
+					monster.current_hp = max(monster.current_hp - power.amount, 0)
+			elif power.power_name == "Ritual":
+				character.add_power("Strength", power.amount)
+			elif power.power_name in turn_based_powers:
+				character.decrement_power(power.power_name)
+			elif power.power_name == "Regen":
+				character.current_hp = min(character.current_hp + power.amount, character.max_hp)
+				character.decrement_power(power.power_name)
+				
+	# TODO apply_start_of_turn_effects
+		
 		
 	# Returns a new state
 	def simulate_end_turn(self, action):
@@ -373,6 +411,12 @@ class Game:
 		# TODO consider retaining cards (well-laid plans) or runic pyramid
 		
 		# Hand discarded
+		for card in self.hand:
+			for effect in card.effects:
+				if effect["effect"] == "Ethereal":
+					self.exhaust_pile.append(card)
+					self.hand.remove(card)
+					continue
 		self.discard_pile += self.hand
 		self.hand = []
 		
@@ -423,11 +467,11 @@ class Game:
 						debug_log.append("Recognized intent for " + str(monster) + " is " + str(monster.current_move))
 								
 				if monster.current_move is None:
-					raise Exception("Could not determine monster's intent")
+					debug_log.append("ERROR: Could not determine " + monster.name + "\'s intent of " + str(monster.intent))
 				else:
 					# Finally, apply the intended move
 					effects = monster.intents["moveset"][monster.current_move]["effects"]
-					buffs = ["Strength"]
+					buffs = ["Ritual", "Strength"]
 					debuffs = ["Frail", "Vulnerable", "Weakened"]
 					for effect in effects:
 						
@@ -448,7 +492,10 @@ class Game:
 							monster.add_power(effect["name"], effect["amount"])
 							
 						elif effect["name"] in debuffs:
-							self.player.add_power(effect["name"], effect["amount"])
+							if effect["name"] in spirecomm.spire.power.DEBUFFS and self.player.has_power("Artifact"):
+								self.player.decrement_power("Artifact")
+							else:
+								self.player.add_power(effect["name"], effect["amount"])
 							
 						elif effect["name"] == "AddSlimedToDiscard":
 							# TODO, create a Slimed card, add effect["amount"] of them to discard
@@ -457,18 +504,18 @@ class Game:
 						
 						else:
 							debug_log.append("WARN: Unknown effect " + effect["name"])
-							
-				# increment count of moves in a row
-				if str(monster) in self.monsters_last_attacks:
-					self.monsters_last_attacks[str(monster)][1] += 1
-				else:
-					self.monsters_last_attacks[str(monster)] = [monster.current_move, 1]
+						
+					# increment count of moves in a row
+					if str(monster) in self.monsters_last_attacks:
+						self.monsters_last_attacks[str(monster)][1] += 1
+					else:
+						self.monsters_last_attacks[str(monster)] = [monster.current_move, 1]
 
-					
-				monster.current_move = None # now that we used the move, clear it
+						
+					monster.current_move = None # now that we used the move, clear it
 
 			
-			else:
+			if monster.intents == {} or monster.current_move is None:
 				debug_log.append("WARN: did not load intents for " + str(monster))
 				# default behaviour: just assume the same move as the first turn of simulation
 				if monster.intent.is_attack():
@@ -481,6 +528,9 @@ class Game:
 							self.player.block = 0
 						else:
 							self.player.block -= incoming_damage
+							
+		for monster in available_monsters:
+			self.apply_end_of_turn_effects(monster)
 
 		# if we have any block left, get rid of it - TODO barricade, calipers
 		self.player.block = 0
@@ -709,18 +759,33 @@ class Game:
 					adjusted_damage = self.calculate_real_damage(base_damage, self.player, target)
 					damage_after_block = adjusted_damage - target.block
 					if damage_after_block > 0:
-						target.current_hp = max(target.current_hp - adjusted_damage, 0)
+						target.current_hp = max(target.current_hp - damage_after_block, 0)
 						target.block = 0
 					else:
 						target.block -= adjusted_damage
+					if target.has_power("Curl Up"):
+						curl = target.get_power_amount("Curl Up")
+						target.block += curl
+						target.remove_power("Curl Up")
 						
 				elif effect["effect"] in power_effects:
 					target.add_power(effect["effect"], effect["amount"])
+					
+				elif effect["effect"] == "Exhaust":
+					self.exhaust_pile.append(action.card)
+					self.discard_pile.remove(action.card)
+					
+				elif effect["effect"] == "Draw":
+					self.hand.append(self.draw_pile.pop(0))
+					while len(self.hand) > 10:
+						self.discard_pile.append(self.hand.pop())
 					
 				else:
 					debug_log.append("WARN: Unknown effect " + effect["effect"])
 						
 		# TODO check if any enemies died and if anything happens when they do
+		
+		self.apply_end_of_turn_effects(self.player)
 					
 			
 		if self.debug_file and debug_log != []:

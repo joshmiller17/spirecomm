@@ -22,9 +22,8 @@ class SimpleAgent:
 	def __init__(self, logfile_name, chosen_class=PlayerClass.IRONCLAD):
 		self.chosen_class = chosen_class
 		self.change_class(chosen_class)
-		self.action_delay = 1.0 # seconds delay per action, useful for actually seeing what's going on.
-		self.debug_level = 4
-		# high delay will steal mouse focus??
+		self.action_delay = 0.5 # seconds delay per action, useful for actually seeing what's going on.
+		self.debug_level = 3
 		self.ascension = 0
 		self.debug_queue = ["AI initialized.", "Delay timer set to " + str(self.action_delay), "Debug level set to " + str(self.debug_level)]
 		self.cmd_queue = []
@@ -227,8 +226,8 @@ class SimpleAgent:
 	def simulation_sanity_check(self, original_state, action):
 		original_state.debug_file = self.logfile_name
 		simulated_state = original_state.takeAction(action)
-		real_diff = self.state_diff(original_state, self.blackboard.game)
-		sim_diff = self.state_diff(original_state, simulated_state)
+		real_diff = self.state_diff(original_state, self.blackboard.game, ignore_randomness=True)
+		sim_diff = self.state_diff(original_state, simulated_state, ignore_randomness=True)
 		diff_diff = {}
 		skip_warn = False
 		for key, value in real_diff.items():
@@ -243,28 +242,29 @@ class SimpleAgent:
 		#diff = self.state_diff(self.blackboard.game, simulated_state)
 		if diff_diff != {}:
 			# check for just drawing different cards
-			if simulated_state.just_reshuffled:
-				if len(simulated_state.hand) == len(self.blackboard.game.hand) and len(simulated_state.discard_pile) == len(self.blackboard.game.discard_pile) and original_state.known_top_cards == []:
-					self.log("minor warning: reshuffled different cards in simulation")
-					skip_warn = True
-			elif "sims_val_drawn" in diff_diff and "real_val_drawn" in diff_diff:
-				if len(simulated_state.hand) == len(self.blackboard.game.hand) and original_state.known_top_cards == []:
-					self.log("minor warning: drew different cards in simulation")
-					if len(diff_diff) == 2:
-						skip_warn = True
+			# if simulated_state.just_reshuffled:
+				# if len(simulated_state.hand) == len(self.blackboard.game.hand) and len(simulated_state.discard_pile) == len(self.blackboard.game.discard_pile) and original_state.known_top_cards == []:
+					# self.log("minor warning: reshuffled different cards in simulation")
+					# skip_warn = True
+			# elif "sims_val_drawn" in diff_diff and "real_val_drawn" in diff_diff:
+				# if len(simulated_state.hand) == len(self.blackboard.game.hand) and original_state.known_top_cards == []:
+					# self.log("minor warning: drew different cards in simulation")
+					# if len(diff_diff) == 2:
+						# skip_warn = True
 					
 			if not skip_warn:
 				self.log("WARN: simulation discrepency, see log for details", debug=3)
-			self.log("actual/sim diff: " + str(diff_diff), debug=4)
-			self.note("Simulated:")
-			self.note(str(simulated_state))
-			self.note("Actual:")
-			self.note(str(self.blackboard.game))
+			self.log("actual/sim diff: " + str(diff_diff), debug=3)
+			# self.note("Simulated:")
+			# self.note(str(simulated_state))
+			# self.note("Actual:")
+			# self.note(str(self.blackboard.game))
 		else:
 			self.log("Simulation sanity check success!")
 		
 	# Returns a dict of what changed between game states
-	def state_diff(self, state1, state2):	
+	# ignore_randomness is used by simulation_sanity_check and ignores poor simulations due to chance
+	def state_diff(self, state1, state2, ignore_randomness=False):	
 		diff = {}
 		if state1.room_phase != state2.room_phase:
 			diff["room_phase"] = str(state2.room_phase)
@@ -346,9 +346,11 @@ class SimpleAgent:
 			monsters1 = [monster for monster in state1.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
 			monsters2 = [monster for monster in state2.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
 
+			checked_monsters = []
 			for monster1 in monsters1:
 				for monster2 in monsters2:
-					if monster1 == monster2:
+					if monster1 == monster2 and monster1 not in checked_monsters:
+						checked_monsters.append(monster1) # avoid checking twice
 						m_id = monster1.monster_id + str(monster1.monster_index)
 						if monster1.current_hp != monster2.current_hp:
 							monster_changes[m_id + "_hp"] = monster2.current_hp - monster1.current_hp
@@ -387,104 +389,119 @@ class SimpleAgent:
 				diff["monsters"] = monster_changes
 			
 			# general fixme?: better record linking between state1 and state2? right now most record linking is by name or ID (which might not be the same necessarily)
+			
+			delta_hand = len(state2.hand) - len(state1.hand)
+			delta_draw_pile = len(state2.draw_pile) - len(state1.draw_pile)
+			delta_discard = len(state2.discard_pile) - len(state1.discard_pile)
+			delta_exhaust = len(state2.exhaust_pile) - len(state1.exhaust_pile)
+			if delta_hand != 0:
+				diff["delta_hand"] = delta_hand
+			if delta_draw_pile != 0:
+				diff["delta_draw_pile"] = delta_draw_pile
+			if delta_discard != 0:
+				diff["delta_discard"] = delta_discard
+			if delta_exhaust != 0:
+				diff["delta_exhaust"] = delta_exhaust
+			
+			if not ignore_randomness:
 		
-			cards_changed_from_hand = set(state2.hand).symmetric_difference(set(state1.hand))
-			cards_changed_from_draw = set(state2.draw_pile).symmetric_difference(set(state1.draw_pile))
-			cards_changed_from_discard = set(state2.discard_pile).symmetric_difference(set(state1.discard_pile))
-			cards_changed_from_exhaust = set(state2.exhaust_pile).symmetric_difference(set(state1.exhaust_pile))
-			cards_changed = cards_changed_from_hand | cards_changed_from_draw | cards_changed_from_discard | cards_changed_from_exhaust
-			cards_changed_outside_hand = cards_changed_from_draw | cards_changed_from_discard | cards_changed_from_exhaust
-			
-			card_actions = ["drawn", "hand_to_deck", "discovered", "exhausted", "exhumed", "discarded",
-							"discard_to_hand", "deck_to_discard", "discard_to_deck",
-							"discovered_to_deck", "discovered_to_discard", # "playability_changed", <- deprecated
-							 "power_played", "upgraded", "unknown_change", "err_pc"]
-			
-			for a in card_actions:
-				diff[a] = []
+				cards_changed_from_hand = set(state2.hand).symmetric_difference(set(state1.hand))
+				cards_changed_from_draw = set(state2.draw_pile).symmetric_difference(set(state1.draw_pile))
+				cards_changed_from_discard = set(state2.discard_pile).symmetric_difference(set(state1.discard_pile))
+				cards_changed_from_exhaust = set(state2.exhaust_pile).symmetric_difference(set(state1.exhaust_pile))
+				cards_changed = cards_changed_from_hand | cards_changed_from_draw | cards_changed_from_discard | cards_changed_from_exhaust
+				cards_changed_outside_hand = cards_changed_from_draw | cards_changed_from_discard | cards_changed_from_exhaust
 				
-			# TODO some checks if none of these cases are true
-			for card in cards_changed:
-				if card in cards_changed_from_draw and card in cards_changed_from_hand:
-					# draw
-					if card in state2.hand:
-						diff["drawn"].append(card.get_id_str())
+				card_actions = ["drawn", "hand_to_deck", "discovered", "exhausted", "exhumed", "discarded",
+								"discard_to_hand", "deck_to_discard", "discard_to_deck",
+								"discovered_to_deck", "discovered_to_discard", # "playability_changed", <- deprecated
+								 "power_played", "upgraded", "unknown_change", "err_pc"]
+				
+				for a in card_actions:
+					diff[a] = []
+					
+				# TODO some checks if none of these cases are true
+				for card in cards_changed:
+					if card in cards_changed_from_draw and card in cards_changed_from_hand:
+						# draw
+						if card in state2.hand:
+							diff["drawn"].append(card.get_id_str())
+							continue
+						# hand to deck
+						elif card in state1.hand:
+							diff["hand_to_deck"].append(card.get_id_str())
+							continue	
+					elif card in cards_changed_from_hand and card in cards_changed_from_discard:
+						# discard
+						if card in state1.hand:
+							diff["discarded"].append(card.get_id_str())
+							continue
+						# discard to hand
+						elif card in state2.hand:
+							diff["discard_to_hand"].append(card.get_id_str())
+							continue	
+					elif card in cards_changed_from_exhaust and card in cards_changed_from_hand:
+						#exhaust
+						if card in state1.hand:
+							diff["exhausted"].append(card.get_id_str())
+							continue
+						#exhume
+						elif card in state2.hand:
+							diff["exhumed"].append(card.get_id_str())
+							continue
+					elif card in cards_changed_from_discard and card in cards_changed_from_draw:
+						#deck to discard
+						if card in state2.discard_pile:
+							diff["deck_to_discard"].append(card.get_id_str())
+							continue
+						# discard to deck
+						elif card in state1.discard_pile:
+							diff["discard_to_deck"].append(card.get_id_str())
+							continue
+					elif card in cards_changed_from_hand and card in state2.hand and card not in cards_changed_outside_hand:
+						#discovered
+						if card not in state1.hand and card not in state1.draw_pile and card not in state1.discard_pile and card not in state1.exhaust_pile:
+							diff["discovered"].append(card.get_id_str())
+							continue
+					elif card in cards_changed_from_hand and card in state1.hand and card not in cards_changed_outside_hand:
+						if card.type is spirecomm.spire.card.CardType.POWER and card not in state2.hand:
+							# power played
+							diff["power_played"].append(card.get_id_str())
+							continue
+						elif card.upgrades > 0: # assume upgrading it was the different thing
+							diff["upgraded"].append(card.get_id_str()) # FIXME check this more strongly
+							continue	
+					elif card in state2.deck and card not in state1.deck and card not in state1.hand and card not in state1.discard_pile and card not in state1.exhaust_pile:
+						# discovered to deck, e.g. status effect
+						diff["discovered_to_deck"].append(card.get_id_str())
 						continue
-					# hand to deck
-					elif card in state1.hand:
-						diff["hand_to_deck"].append(card.get_id_str())
-						continue	
-				elif card in cards_changed_from_hand and card in cards_changed_from_discard:
-					# discard
-					if card in state1.hand:
-						diff["discarded"].append(card.get_id_str())
+					elif card in state2.discard_pile and card not in state1.discard_pile and card not in state1.hand and card not in state1.deck and card not in state1.exhaust_pile:
+						# discovered to discard, e.g. status effect
+						diff["discovered_to_discard"].append(card.get_id_str())
 						continue
-					# discard to hand
-					elif card in state2.hand:
-						diff["discard_to_hand"].append(card.get_id_str())
-						continue	
-				elif card in cards_changed_from_exhaust and card in cards_changed_from_hand:
-					#exhaust
-					if card in state1.hand:
-						diff["exhausted"].append(card.get_id_str())
-						continue
-					#exhume
-					elif card in state2.hand:
-						diff["exhumed"].append(card.get_id_str())
-						continue
-				elif card in cards_changed_from_discard and card in cards_changed_from_draw:
-					#deck to discard
-					if card in state2.discard_pile:
-						diff["deck_to_discard"].append(card.get_id_str())
-						continue
-					# discard to deck
-					elif card in state1.discard_pile:
-						diff["discard_to_deck"].append(card.get_id_str())
-						continue
-				elif card in cards_changed_from_hand and card in state2.hand and card not in cards_changed_outside_hand:
-					#discovered
-					if card not in state1.hand and card not in state1.draw_pile and card not in state1.discard_pile and card not in state1.exhaust_pile:
-						diff["discovered"].append(card.get_id_str())
-						continue
-				elif card in cards_changed_from_hand and card in state1.hand and card not in cards_changed_outside_hand:
-					if card.type is spirecomm.spire.card.CardType.POWER and card not in state2.hand:
-						# power played
-						diff["power_played"].append(card.get_id_str())
-						continue
-					elif card.upgrades > 0: # assume upgrading it was the different thing
-						diff["upgraded"].append(card.get_id_str()) # FIXME check this more strongly
-						continue	
-				elif card in state2.deck and card not in state1.deck and card not in state1.hand and card not in state1.discard_pile and card not in state1.exhaust_pile:
-					# discovered to deck, e.g. status effect
-					diff["discovered_to_deck"].append(card.get_id_str())
-					continue
-				elif card in state2.discard_pile and card not in state1.discard_pile and card not in state1.hand and card not in state1.deck and card not in state1.exhaust_pile:
-					# discovered to discard, e.g. status effect
-					diff["discovered_to_discard"].append(card.get_id_str())
-					continue
-				else:
-					self.log("WARN: unknown card change " + card.get_id_str(), debug=3)
-					diff["unknown_change"].append(card.get_id_str())
-					if card in state1.deck:
-						self.log("card was in state1 deck")
-					if card in state2.deck:
-						self.log("card is in state2 deck")
-					if card in state1.discard_pile:
-						self.log("card was in state1 discard")
-					if card in state2.discard_pile:
-						self.log("card is in state2 discard")
-					if card in state1.hand:
-						self.log("card was in state1 hand")
-					if card in state2.hand:
-						self.log("card is in state2 hand")
-					if card in state1.exhaust_pile:
-						self.log("card was in state1 exhaust")
-					if card in state2.exhaust_pile:
-						self.log("card is in state2 exhaust")
-			
-			for a in card_actions:
-				if diff[a] == []:
-					diff.pop(a, None)
+					else:
+						self.log("WARN: unknown card change " + card.get_id_str(), debug=3)
+						diff["unknown_change"].append(card.get_id_str())
+						if card in state1.deck:
+							self.log("card was in state1 deck")
+						if card in state2.deck:
+							self.log("card is in state2 deck")
+						if card in state1.discard_pile:
+							self.log("card was in state1 discard")
+						if card in state2.discard_pile:
+							self.log("card is in state2 discard")
+						if card in state1.hand:
+							self.log("card was in state1 hand")
+						if card in state2.hand:
+							self.log("card is in state2 hand")
+						if card in state1.exhaust_pile:
+							self.log("card was in state1 exhaust")
+						if card in state2.exhaust_pile:
+							self.log("card is in state2 exhaust")
+				
+				for a in card_actions:
+					if diff[a] == []:
+						diff.pop(a, None)
 		
 			if state1.player.block != state2.player.block:
 				diff["block"] = state2.player.block - state1.player.block
@@ -657,11 +674,12 @@ class SimpleAgent:
 				else:
 					index_str = ""
 				if monster.move_adjusted_damage is not None:
-					if monster.move_hits > 1:
-						self.think("{}{} is hitting me for {}x{} damage".format(monster.monster_id, index_str, monster.move_adjusted_damage, monster.move_hits))
-					else:
-						self.think("{}{} is hitting me for {} damage".format(monster.monster_id, index_str, monster.move_adjusted_damage))
-					#self.think("    adjusted: {}, base: {}".format(monster.move_adjusted_damage, monster.move_base_damage))
+					if self.debug_level > 3:
+						if monster.move_hits > 1:
+							self.think("{}{} is hitting me for {}x{} damage".format(monster.monster_id, index_str, monster.move_adjusted_damage, monster.move_hits))
+						else:
+							self.think("{}{} is hitting me for {} damage".format(monster.monster_id, index_str, monster.move_adjusted_damage))
+						#self.think("    adjusted: {}, base: {}".format(monster.move_adjusted_damage, monster.move_base_damage))
 		
 		# FIXME map_route isn't actually nodes, but a set of X coords
 		#upcoming_rooms = collections.defaultdict(int)

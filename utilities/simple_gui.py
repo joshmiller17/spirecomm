@@ -49,6 +49,7 @@ class Base(BoxLayout):
 		self.sleeping = False
 		self.z_pause = False
 		self.z_count = 0
+		self.thread_error = False
 		print("Base: Init", file=self.log, flush=True)
 
 		self.input_text = TextInput(size_hint=(2, 7))
@@ -106,6 +107,10 @@ class Base(BoxLayout):
 					self.in_history.append(m)
 			if len(threading.enumerate()) != 4:
 				self.in_history.append("[ERR] A thread has crashed, likely the agent.")
+		else:
+			if len(threading.enumerate()) != 4 and not self.thread_error:
+				self.in_history.append("[ERR] A thread has crashed, likely the agent.")
+				self.thread_error = True
 				
 		
 		self.input_text.text = "\n".join(self.in_history)

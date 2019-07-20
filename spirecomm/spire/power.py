@@ -28,7 +28,7 @@ class Power:
 		return cls(json_object["id"], json_object["name"], json_object["amount"])
 
 	def __str__(self):
-		return self.power_name + "<" + str(self.power_id) + "> " + str(self.amount)
+		return self.power_name + str(self.amount) # + "<" + str(self.power_id) + "> " 
 	
 	# note, for __eq__ and hash, changed from id to name because we don't know the ids of the powers when simming
 	def __eq__(self, other):

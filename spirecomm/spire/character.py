@@ -69,8 +69,19 @@ class Character:
 		for power in self.powers:
 			if power.power_name == power_name:
 				power.amount += amount
+				if power.amount == 0:
+					self.remove_power(power_name)
 				return
-		self.powers.append(Power(0, power_name, amount)) # TODO power ID??
+		self.powers.append(Power(power_name, power_name, amount)) # FIXME setting power ID to power_name as temp fix
+		
+	def remove_power(self, power_name):
+		for power in self.powers:
+			if power.power_name == power_name:
+				self.powers.remove(power)
+				return
+				
+	def decrement_power(self, power_name):
+		self.add_power(power_name, -1)
 		
 	def has_power(self, power_name):
 		for power in self.powers:
