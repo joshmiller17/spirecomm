@@ -23,7 +23,7 @@ class SimpleAgent:
 		self.chosen_class = chosen_class
 		self.change_class(chosen_class)
 		self.action_delay = 0.5 # seconds delay per action, useful for actually seeing what's going on.
-		self.debug_level = 3
+		self.debug_level = 4
 		self.ascension = 0
 		self.debug_queue = ["AI initialized.", "Delay timer set to " + str(self.action_delay), "Debug level set to " + str(self.debug_level)]
 		self.cmd_queue = []
@@ -34,6 +34,7 @@ class SimpleAgent:
 		self.paused = False
 		self.step = False
 		self.combat_round = 1
+		self.state_id = 0 # debugging guide for tracking state
 		self.root = SelectorBehaviour("Root Context Selector")
 		self.init_behaviour_tree(self.root) # Warning: uses British spelling
 		self.behaviour_tree = py_trees.trees.BehaviourTree(self.root)
@@ -75,8 +76,8 @@ class SimpleAgent:
 		f.close()
 		
 		self.root = SelectorBehaviour.fromDict(jsonTree,self)
-		self.log(filename + " loaded successfully:")
-		self.log(py_trees.display.ascii_tree(self.root))
+		self.log(filename + " loaded successfully")
+		self.log(py_trees.display.ascii_tree(self.root), debug=6)
 		
 	def print_tree(self):
 		self.log(py_trees.display.ascii_tree(self.root))
@@ -226,6 +227,8 @@ class SimpleAgent:
 	def simulation_sanity_check(self, original_state, action):
 		original_state.debug_file = self.logfile_name
 		simulated_state = original_state.takeAction(action)
+		while len(simulated_state.debug_log):
+			self.log(simulated_state.debug_log.pop(0))
 		real_diff = self.state_diff(original_state, self.blackboard.game, ignore_randomness=True)
 		sim_diff = self.state_diff(original_state, simulated_state, ignore_randomness=True)
 		diff_diff = {}
@@ -255,12 +258,13 @@ class SimpleAgent:
 			if not skip_warn:
 				self.log("WARN: simulation discrepency, see log for details", debug=3)
 			self.log("actual/sim diff: " + str(diff_diff), debug=3)
+			self.log("sim diff: " + str(sim_diff), debug=3)
 			# self.note("Simulated:")
 			# self.note(str(simulated_state))
 			# self.note("Actual:")
 			# self.note(str(self.blackboard.game))
 		else:
-			self.log("Simulation sanity check success!")
+			self.log("Simulation sanity check success!", debug=5)
 		
 	# Returns a dict of what changed between game states
 	# ignore_randomness is used by simulation_sanity_check and ignores poor simulations due to chance
@@ -292,6 +296,8 @@ class SimpleAgent:
 			diff["act"] = state2.act
 		if state1.gold != state2.gold:
 			diff["gold"] = state2.gold - state1.gold
+		if state1.state_id != state2.state_id:
+			diff["state_id"] = state2.state_id - state1.state_id
 			
 		# relics
 		if state1.relics != state2.relics:
@@ -620,6 +626,9 @@ class SimpleAgent:
 	def get_next_action_in_game(self, game_state):
 		self.last_game_state = self.blackboard.game
 		self.blackboard.game = game_state
+		self.state_id += 1
+		self.blackboard.game.state_id = self.state_id
+		#self.think("state " + str(self.state_id))
 		
 		# Check difference from last state
 		self.log("Diff: " + str(self.state_diff(self.last_game_state, self.blackboard.game)), debug=7)
@@ -674,7 +683,7 @@ class SimpleAgent:
 				else:
 					index_str = ""
 				if monster.move_adjusted_damage is not None:
-					if self.debug_level > 3:
+					if self.debug_level >= 5:
 						if monster.move_hits > 1:
 							self.think("{}{} is hitting me for {}x{} damage".format(monster.monster_id, index_str, monster.move_adjusted_damage, monster.move_hits))
 						else:
@@ -701,7 +710,7 @@ class SimpleAgent:
 				return self.decide(potion_action)
 		if self.blackboard.game.play_available:
 			return self.decide(self.get_play_card_action())
-		return self.decide(EndTurnAction())
+		return EndTurnAction()
 
 	def is_monster_attacking(self):
 		for monster in self.blackboard.game.monsters:
@@ -747,7 +756,7 @@ class SimpleAgent:
 			else:
 				nonzero_cost_cards = [card for card in nonzero_cost_cards if not card.exhausts]
 		if len(playable_cards) == 0:
-			return self.decide(EndTurnAction())
+			return EndTurnAction()
 		if len(zero_cost_non_attacks) > 0:
 			card_to_play = self.priorities.get_best_card_to_play(zero_cost_non_attacks)
 		elif len(nonzero_cost_cards) > 0:
@@ -758,11 +767,11 @@ class SimpleAgent:
 			card_to_play = self.priorities.get_best_card_to_play(zero_cost_attacks)
 		else:
 			# This shouldn't happen!
-			return self.decide(EndTurnAction())
+			return EndTurnAction()
 		if card_to_play.has_target:
 			available_monsters = [monster for monster in self.blackboard.game.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
 			if len(available_monsters) == 0:
-				return self.decide(EndTurnAction())
+				return EndTurnAction()
 			if card_to_play.type == spirecomm.spire.card.CardType.ATTACK:
 				target = self.get_low_hp_target()
 			else:

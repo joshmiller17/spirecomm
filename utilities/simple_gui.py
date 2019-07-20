@@ -316,7 +316,7 @@ def run_agent(f, communication_coordinator):
 		#result = coordinator.play_one_game(chosen_class)
 
 def launch_gui():
-	f=open("ai.log","w")
+	f=open("game.log","a+")
 	print("GUI: Init " + str(time.time()), file=f, flush=True)
 	agent = SimpleAgent("ai.log")
 	print("GUI: Register agent", file=f, flush=True)
@@ -351,6 +351,7 @@ def verifyJSONFolder(directory,kind):
 if __name__ == "__main__":
 	lf = open("err.log", "w")
 	open("game.log", "w").close()
+	open("ai.log", "w").close()
 		
 	if config.SPIRECOMM_PATH == "C:\\path\\to\\spirecomm":
 		err_msg = "\nERROR: Please set the path to spirecomm in spirecomm/config.py\n"

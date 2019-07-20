@@ -90,6 +90,8 @@ class Game:
 		self.is_simulation = False
 		self.known_top_cards = [] # cards which we know we will be drawing first go here
 		self.just_reshuffled = False
+		self.state_id = -1
+		self.debug_log = []
 	
 	# for some reason, pausing the game invalidates the state
 	def is_valid(self):
@@ -305,6 +307,7 @@ class Game:
 		new_state = copy.deepcopy(self)
 		new_state.possible_actions = None
 		new_state.original_state = self
+		new_state.state_id += 1
 		
 		new_state.just_reshuffled = False
 		
@@ -394,11 +397,12 @@ class Game:
 					monster.current_hp = max(monster.current_hp - power.amount, 0)
 			elif power.power_name == "Ritual":
 				character.add_power("Strength", power.amount)
-			elif power.power_name in turn_based_powers:
-				character.decrement_power(power.power_name)
 			elif power.power_name == "Regen":
 				character.current_hp = min(character.current_hp + power.amount, character.max_hp)
-				character.decrement_power(power.power_name)
+				character.decrement_power(power.power_name)			
+
+			elif power.power_name in turn_based_powers:
+				character.decrement_power(power.power_name)				
 				
 	# TODO apply_start_of_turn_effects
 		
@@ -406,7 +410,6 @@ class Game:
 	# Returns a new state
 	def simulate_end_turn(self, action):
 		
-		debug_log = []
 		
 		# TODO consider retaining cards (well-laid plans) or runic pyramid
 		
@@ -424,7 +427,7 @@ class Game:
 		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
 		for monster in available_monsters:
 			if monster is None:
-				debug_log.append("WARN: Monster is None")
+				self.debug_log.append("WARN: Monster is None")
 				continue
 				
 			monster.block = 0 # remove old block
@@ -434,11 +437,11 @@ class Game:
 				if monster.current_move is None:
 					if self.combat_round == 1 and "startswith" in monster.intents:
 						monster.current_move = monster.intents["startswith"]
-						debug_log.append("Known initial intent for " + str(monster) + " is " + str(monster.current_move))
+						self.debug_log.append("Known initial intent for " + str(monster) + " is " + str(monster.current_move))
 
 					elif self.is_simulation: # generate random move
 						monster.current_move = self.choose_move(monster)
-						debug_log.append("Simulated intent for " + str(monster) + " is " + str(monster.current_move))
+						self.debug_log.append("Simulated intent for " + str(monster) + " is " + str(monster.current_move))
 					else: # figure out move from what we know about it
 					
 						timeout = 100 # assume trying 100 times will be enough unless there's a problem
@@ -464,11 +467,11 @@ class Game:
 								break
 							timeout -= 1
 							
-						debug_log.append("Recognized intent for " + str(monster) + " is " + str(monster.current_move))
 								
 				if monster.current_move is None:
-					debug_log.append("ERROR: Could not determine " + monster.name + "\'s intent of " + str(monster.intent))
+					self.debug_log.append("ERROR: Could not determine " + monster.name + "\'s intent of " + str(monster.intent))
 				else:
+					self.debug_log.append("Recognized intent for " + str(monster) + " is " + str(monster.current_move))
 					# Finally, apply the intended move
 					effects = monster.intents["moveset"][monster.current_move]["effects"]
 					buffs = ["Ritual", "Strength"]
@@ -503,7 +506,7 @@ class Game:
 							#self.discard_pile.append(...)
 						
 						else:
-							debug_log.append("WARN: Unknown effect " + effect["name"])
+							self.debug_log.append("WARN: Unknown effect " + effect["name"])
 						
 					# increment count of moves in a row
 					if str(monster) in self.monsters_last_attacks:
@@ -511,12 +514,9 @@ class Game:
 					else:
 						self.monsters_last_attacks[str(monster)] = [monster.current_move, 1]
 
-						
-					monster.current_move = None # now that we used the move, clear it
-
 			
 			if monster.intents == {} or monster.current_move is None:
-				debug_log.append("WARN: did not load intents for " + str(monster))
+				self.debug_log.append("WARN: unable to get intent for " + str(monster))
 				# default behaviour: just assume the same move as the first turn of simulation
 				if monster.intent.is_attack():
 					if monster.move_adjusted_damage is not None:
@@ -529,8 +529,11 @@ class Game:
 						else:
 							self.player.block -= incoming_damage
 							
+			monster.current_move = None # now that we used the move, clear it
+							
 		for monster in available_monsters:
 			self.apply_end_of_turn_effects(monster)
+		self.apply_end_of_turn_effects(self.player)
 
 		# if we have any block left, get rid of it - TODO barricade, calipers
 		self.player.block = 0
@@ -551,10 +554,10 @@ class Game:
 		# TODO check if any enemies died and if anything happens when they do
 		
 			
-		if self.debug_file and debug_log != []:
+		if self.debug_file and self.debug_log != []:
 			with open(self.debug_file, 'a+') as d:
 				d.write('\n')
-				d.write('\n'.join(debug_log))
+				d.write('\n'.join(self.debug_log))
 				d.write('\n')
 				#d.write("\nNew State:\n")
 				#d.write(str(self))
@@ -566,8 +569,6 @@ class Game:
 		
 	# Returns a new state
 	def simulate_potion(self, action):
-	
-		debug_log = []
 		
 		if action.potion.name == "Artifact Potion":
 			self.player.add_power("Artifact", 1)
@@ -632,6 +633,9 @@ class Game:
 		elif action.potion.name == "Power Potion":
 			# TODO
 			pass
+			
+		elif action.potion.name == "Regen Potion":
+			self.player.add_power("Regen", 5)
 		
 		elif action.potion.name == "Skill Potion":
 			# TODO
@@ -665,16 +669,16 @@ class Game:
 			pass
 		
 		else:
-			raise Exception("No handler for potion: " + str(action.potion))
+			self.debug_log.append("ERROR: No handler for potion: " + str(action.potion))
 			
 			
 		# TODO check if any enemies died and if anything happens when they do
 			
 		
-		if self.debug_file and debug_log != []:
+		if self.debug_file and self.debug_log != []:
 			with open(self.debug_file, 'a+') as d:
 				d.write('\n')
-				d.write('\n'.join(debug_log))
+				d.write('\n'.join(self.debug_log))
 				d.write('\n')
 				#d.write("\nNew State:\n")
 				#d.write(str(self))
@@ -688,7 +692,6 @@ class Game:
 	def simulate_play(self, action):
 		# TODO
 		
-		debug_log = []
 		power_effects = ["Vulnerable", "Weakened"]
 		
 		if not action.card.loadedFromJSON:
@@ -781,17 +784,15 @@ class Game:
 						self.discard_pile.append(self.hand.pop())
 					
 				else:
-					debug_log.append("WARN: Unknown effect " + effect["effect"])
+					self.debug_log.append("WARN: Unknown effect " + effect["effect"])
 						
 		# TODO check if any enemies died and if anything happens when they do
-		
-		self.apply_end_of_turn_effects(self.player)
 					
 			
-		if self.debug_file and debug_log != []:
+		if self.debug_file and self.debug_log != []:
 			with open(self.debug_file, 'a+') as d:
 				d.write('\n')
-				d.write('\n'.join(debug_log))
+				d.write('\n'.join(self.debug_log))
 				d.write('\n')
 				#d.write("\nNew State:\n")
 				#d.write(str(self))
