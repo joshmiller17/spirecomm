@@ -359,12 +359,12 @@ class Game:
 		damage = base_damage
 		damage += attacker.get_power_amount("Strength")
 		if attacker.has_power("Weakened"):
-			if attacker is not self.player and self.get_relic("paper krane") is not None:
+			if attacker is not self.player and self.get_relic("Paper Krane") is not None:
 				damage = int(math.floor(damage - (0.40 * damage)))
 			else:
 				damage = int(math.floor(damage - (0.25 * damage)))
 		if target.has_power("Vulnerable"):
-			if target is not self.player and self.get_relic("paper phrog") is not None:
+			if target is not self.player and self.get_relic("Paper Phrog") is not None:
 				damage = int(math.floor(damage + (0.75 * damage)))
 			else:
 				damage = int(math.floor(damage + (0.50 * damage)))
@@ -401,6 +401,7 @@ class Game:
 				character.add_power("Strength", power.amount)
 			elif power.power_name == "Incantation":
 				character.add_power("Ritual", 3) # eventually adjust for ascensions
+				character.remove_power("Incantation")
 			elif power.power_name == "Regen":
 				character.current_hp = min(character.current_hp + power.amount, character.max_hp)
 				character.decrement_power(power.power_name)			
@@ -426,6 +427,10 @@ class Game:
 					continue
 		self.discard_pile += self.hand
 		self.hand = []
+		
+		# end player's turn
+		self.apply_end_of_turn_effects(self.player)
+
 		
 		# MONSTER TURN / MONSTERS ATTACK
 		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
@@ -489,7 +494,7 @@ class Game:
 				else:
 					# Finally, apply the intended move
 					effects = monster.intents["moveset"][monster.current_move]["effects"]
-					buffs = ["Ritual", "Strength"]
+					buffs = ["Ritual", "Strength", "Incantation"]
 					debuffs = ["Frail", "Vulnerable", "Weakened"]
 					for effect in effects:
 						
@@ -550,7 +555,6 @@ class Game:
 							
 		for monster in available_monsters:
 			self.apply_end_of_turn_effects(monster)
-		self.apply_end_of_turn_effects(self.player)
 
 		# if we have any block left, get rid of it - TODO barricade, calipers
 		self.player.block = 0
@@ -729,7 +733,7 @@ class Game:
 		if action.card.type == spirecomm.spire.card.CardType.ATTACK:
 		
 			# ornamental fan
-			fan = self.get_relic("ornamental fan")
+			fan = self.get_relic("Ornamental Fan")
 			if fan:
 				fan.counter += 1
 				if fan.counter == 3:
