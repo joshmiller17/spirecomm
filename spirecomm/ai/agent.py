@@ -214,7 +214,6 @@ class SimpleAgent:
 	def decide(self, action):
 		if action.command.startswith("end"):
 			self.combat_round += 1
-			self.blackboard.game.combat_round = self.combat_round
 		if action.command.startswith("proceed"):
 			self.combat_round = 1
 		if self.step:
@@ -259,6 +258,7 @@ class SimpleAgent:
 				self.log("WARN: simulation discrepency, see log for details", debug=3)
 			self.log("actual/sim diff: " + str(diff_diff), debug=3)
 			self.log("sim diff: " + str(sim_diff), debug=3)
+			self.log("real diff: " + str(real_diff), debug=3)
 			# self.note("Simulated:")
 			# self.note(str(simulated_state))
 			# self.note("Actual:")
@@ -298,6 +298,8 @@ class SimpleAgent:
 			diff["gold"] = state2.gold - state1.gold
 		if state1.state_id != state2.state_id:
 			diff["state_id"] = state2.state_id - state1.state_id
+		if state1.combat_round != state2.combat_round:
+			diff["combat_round"] = state2.combat_round - state1.combat_round
 			
 		# relics
 		if state1.relics != state2.relics:
@@ -628,6 +630,8 @@ class SimpleAgent:
 		self.blackboard.game = game_state
 		self.state_id += 1
 		self.blackboard.game.state_id = self.state_id
+		self.blackboard.game.combat_round = self.combat_round
+
 		#self.think("state " + str(self.state_id))
 		
 		# Check difference from last state

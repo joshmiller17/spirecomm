@@ -7,8 +7,8 @@
 					"probability" : 0.0,
 					"effects" : [
 						{
-							"name" : "Ritual",
-							"amount" : 3
+							"name" : "Incantation",
+							"amount" : 1
 						}
 					]
 					},

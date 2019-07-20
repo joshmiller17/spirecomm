@@ -299,10 +299,12 @@ class Game:
 	# Returns a new state
 	def takeAction(self, action):
 	
+		self.debug_log.append("Simulating taking action: " + str(action))
+		#self.debug_log.append("Combat round: " + str(self.combat_round))
+	
 		if self.debug_file:
 			with open(self.debug_file, 'a+') as d:
-				d.write("\nSimulating taking action: ")
-				d.write(str(action) + "\n")
+				d.write("\nSimulating taking action: " + str(action) + "\n")
 		
 		new_state = copy.deepcopy(self)
 		new_state.possible_actions = None
@@ -397,6 +399,8 @@ class Game:
 					monster.current_hp = max(monster.current_hp - power.amount, 0)
 			elif power.power_name == "Ritual":
 				character.add_power("Strength", power.amount)
+			elif power.power_name == "Incantation":
+				character.add_power("Ritual", 3) # eventually adjust for ascensions
 			elif power.power_name == "Regen":
 				character.current_hp = min(character.current_hp + power.amount, character.max_hp)
 				character.decrement_power(power.power_name)			
@@ -438,6 +442,17 @@ class Game:
 					if self.combat_round == 1 and "startswith" in monster.intents:
 						monster.current_move = monster.intents["startswith"]
 						self.debug_log.append("Known initial intent for " + str(monster) + " is " + str(monster.current_move))
+						if monster.name == "FuzzyLouseNormal" or monster.name == "FuzzyLouseDefensive":
+							# louses have a variable base attack
+							effs = monster.intents["moveset"][move]["effects"]
+							json_base = None
+							for eff in effs:
+								if eff["name"] == "Damage":
+									json_base = eff["amount"]
+							if not json_base:
+								raise Exception("Malformed Louse json when calculating base damage")
+							attack_adjustment = monster.move_base_damage - json_base
+							monster.misc = attack_adjustment
 
 					elif self.is_simulation: # generate random move
 						monster.current_move = self.choose_move(monster)
@@ -464,6 +479,7 @@ class Game:
 									monster.current_move = move
 									
 							if monster.current_move is not None:
+								self.debug_log.append("Recognized intent for " + str(monster) + " is " + str(monster.current_move))
 								break
 							timeout -= 1
 							
@@ -471,7 +487,6 @@ class Game:
 				if monster.current_move is None:
 					self.debug_log.append("ERROR: Could not determine " + monster.name + "\'s intent of " + str(monster.intent))
 				else:
-					self.debug_log.append("Recognized intent for " + str(monster) + " is " + str(monster.current_move))
 					# Finally, apply the intended move
 					effects = monster.intents["moveset"][monster.current_move]["effects"]
 					buffs = ["Ritual", "Strength"]
@@ -480,6 +495,8 @@ class Game:
 						
 						if effect["name"] == "Damage":
 							base_damage = effect["amount"]
+							if monster.name == "FuzzyLouseNormal" or monster.name == "FuzzyLouseDefensive":
+								base_damage += monster.misc # adjustment because louses are variable
 							adjusted_damage = self.calculate_real_damage(base_damage, monster, self.player)
 							damage_after_block = adjusted_damage - self.player.block
 							if damage_after_block > 0:
