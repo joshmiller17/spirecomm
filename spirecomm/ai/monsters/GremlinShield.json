@@ -1,0 +1,28 @@
+{
+	"startswith" : "Protect",
+	"moveset" : {
+		"Shield Bash" :
+			{
+			"intent_type": "ATTACK",
+			"probability" : 1.0,
+			"effects" :[
+				{
+					"name" : "Damage",
+					"amount" : 6
+				}
+			]
+			},
+		"Protect" :
+			{
+			"intent_type": "DEFEND",
+			"probability" : 0.0,
+			"effects" :[
+				{
+					"name" : "BlockOther",
+					"amount" : 7
+				}
+			]
+			}
+		}
+	
+}
