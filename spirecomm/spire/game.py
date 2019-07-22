@@ -20,6 +20,7 @@ MCTS_MAX_HP_VALUE = 7
 MCTS_HP_VALUE = 1
 MCTS_POTION_VALUE = 7 # TODO change by potion type, evolved by behaviour tree
 MCTS_ROUND_COST = 0.5 # penalize long fights
+# TODO add cost for losing gold (e.g. to thieves) -- note, somehow count how much gold was stolen and report that it will return if we kill the thief
 # TODO eventually add: value for deck changes (e.g. cost for gaining parasite)
 # TODO eventually add: value for card misc changes (e.g., genetic algorithm, ritual dagger)
 
@@ -329,8 +330,11 @@ class Game:
 			raise Exception("Chosen simulated action is not a valid combat action.")
 		
 	def choose_move(self, monster):
+		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
 		if self.combat_round == 1 and "startswith" in monster.intents:
 			selected_move = monster.intents["startswith"]
+		elif monster.monster_id == "GremlinShield" and len(available_monsters) > 1:
+			selected_move == "Protect"
 		else:
 			# make sure the attack we pick is not limited
 			while True: # do-while
@@ -440,6 +444,10 @@ class Game:
 		# Note attacker may be None, e.g. from Burn card
 		adjusted_damage = self.calculate_real_damage(base_damage, attacker, target)
 		adjusted_damage = max(adjusted_damage, 0)
+		if attacker.has_power("Thievery"):
+			self.gold = max(self.gold - attacker.get_power_amount("Thievery"), 0)
+		if target.has_power("Angry"):
+			target.add_power("Strength", target.get_power_amount("Angry"))
 		if target.has_power("Intangible"):
 			adjusted_damage = 1
 		unblocked_damage = adjusted_damage - target.block
@@ -573,6 +581,12 @@ class Game:
 						elif effect["name"] == "Block":
 							monster.block += effect["amount"]
 							
+						elif effect["name"] == "BlockOtherRandom":
+							selected_ally = None
+							while selected_ally is None or selected_ally is monster:
+								selected_ally = random.choice(available_monsters)
+							selected_ally.block += effect["amount"]
+							
 						elif effect["name"] in buffs:
 							monster.add_power(effect["name"], effect["amount"])
 							
@@ -583,6 +597,9 @@ class Game:
 							for __ in range(effect["amount"]):
 								slimed = spirecomm.spire.card.Card("Slimed", "Slimed", spirecomm.spire.card.CardRarity.SPECIAL)
 								self.discard_pile.append(slimed)
+						
+						elif effect["name"] == "Escape":
+							monster.is_gone = True
 						
 						else:
 							self.debug_log.append("WARN: Unknown effect " + effect["name"])
