@@ -99,6 +99,11 @@ class Base(BoxLayout):
 			if new_msg == 'z':
 				self.sleeping = True
 				self.z_count += 1
+				if self.agent.paused:
+					if not self.z_pause:
+						self.pause.text = "Paused (Press again to unlock scrolling)"
+					else:
+						self.pause.text = "Paused (Press again to scroll to bottom and lock)"
 			else:
 				self.sleeping = False
 				self.z_count = 0

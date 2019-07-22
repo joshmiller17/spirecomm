@@ -370,6 +370,8 @@ class Game:
 			elif power.power_name == "Focus Down":
 				self.apply_debuff(character, "Focus Down", -1 * power.amount)
 				character.remove_power("Focus Down")
+			elif power.power_name == "Plated Armor":
+				character.block += power.amount
 			elif power.power_name == "Combust":
 				character.current_hp -= 1 # TODO "on lose HP" effects
 				available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
@@ -387,7 +389,28 @@ class Game:
 			elif power.power_name in turn_based_powers:
 				character.decrement_power(power.power_name)				
 				
+	# Note: this function isn't called anywhere yet, but it also might not need to ever be simulated
+	def apply_start_of_combat_effects(self, character):
+		if character == self.player:
+			if character.has_relic("Thread and Needle"):
+				character.add_power("Plated Armor", 4)
+			
+
 	# TODO apply_start_of_turn_effects
+	def apply_start_of_turn_effects(self, character):
+	
+	# if we have any block left, get rid of it - TODO barricade, calipers
+		if character.has_power("Barricade"):
+			pass
+		elif character == self.player and character.has_relic("Calipers"):
+			character.block = max(character.block - 15, 0)
+		else:
+			character.block = 0
+	
+		if character == self.player:
+			if character.has_relic("Runic Dodecahedron") and character.current_hp == character.max_hp:
+				character.energy += 1
+		
 	
 	def apply_debuff(self, target, debuff, amount):
 		if debuff in spirecomm.spire.power.DEBUFFS and target.has_power("Artifact"):
@@ -406,23 +429,36 @@ class Game:
 				damage = int(math.floor(damage - (0.25 * damage)))
 		if target.has_power("Vulnerable"):
 			if target is not self.player and self.get_relic("Paper Phrog") is not None:
-				damage = int(math.floor(damage + (0.75 * damage)))
+				damage = int(math.ceil(damage + (0.75 * damage)))
 			else:
-				damage = int(math.floor(damage + (0.50 * damage)))
+				damage = int(math.ceil(damage + (0.50 * damage)))
 		return damage
 		
 	# applies Damage attack and returns unblocked damage
+	# Note: this should only be used for ATTACK damage
 	def apply_damage(self, base_damage, attacker, target):
 		# Note attacker may be None, e.g. from Burn card
 		adjusted_damage = self.calculate_real_damage(base_damage, attacker, target)
+		adjusted_damage = max(adjusted_damage, 0)
+		if target.has_power("Intangible"):
+			adjusted_damage = 1
 		unblocked_damage = adjusted_damage - target.block
+		unblocked_damage = max(unblocked_damage, 0)
 		if unblocked_damage > 0:
+			if unblocked_damage <= 5 and attacker == self.player and attacker.has_relic("The Boot"):
+				unblocked_damage = 5
 			unblocked_damage = min(target.current_hp, unblocked_damage)
-			unblocked_damage = max(unblocked_damage, 0)
 			target.current_hp -= unblocked_damage
 			target.block = 0
+			if target.has_power("Plated Armor"):
+				target.decrement_power("Plated Armor")
+			if target.current_hp == 0 and unblocked_damage > 0: # just died
+				if target.has_power("Fungal Spores"):
+					self.player.add_power("Vulnerable", target.get_power_amount("Fungal Spores"))
+				# TODO corpse explosion, that relic that shifts poison (specimen?)
 		else:
 			target.block -= adjusted_damage
+		# TODO spikes
 		if target.has_power("Curl Up"):
 			curl = target.get_power_amount("Curl Up")
 			target.block += curl
@@ -433,6 +469,7 @@ class Game:
 	# Returns a new state
 	def simulate_end_turn(self, action):
 		
+		# TODO check if any enemies want to change intents
 		
 		# TODO consider retaining cards (well-laid plans) or runic pyramid
 		
@@ -463,8 +500,8 @@ class Game:
 			if monster is None:
 				self.debug_log.append("WARN: Monster is None")
 				continue
-				
-			monster.block = 0 # remove old block
+							
+			self.apply_start_of_turn_effects(monster)
 				
 			if monster.intents != {}: # we have correctly loaded intents JSON
 			
@@ -472,6 +509,7 @@ class Game:
 					if self.combat_round == 1 and "startswith" in monster.intents:
 						monster.current_move = monster.intents["startswith"]
 						self.debug_log.append("Known initial intent for " + str(monster) + " is " + str(monster.current_move))
+						# TODO adjust initial intents for Sentries
 						if monster.monster_id == "FuzzyLouseNormal" or monster.monster_id == "FuzzyLouseDefensive":
 							# louses have a variable base attack
 							effs = monster.intents["moveset"][move]["effects"]
@@ -542,9 +580,9 @@ class Game:
 							self.apply_debuff(self.player, effect["name"], effect["amount"])
 							
 						elif effect["name"] == "AddSlimedToDiscard":
-							# TODO, create a Slimed card, add effect["amount"] of them to discard
-							pass
-							#self.discard_pile.append(...)
+							for __ in range(effect["amount"]):
+								slimed = spirecomm.spire.card.Card("Slimed", "Slimed", spirecomm.spire.card.CardRarity.SPECIAL)
+								self.discard_pile.append(slimed)
 						
 						else:
 							self.debug_log.append("WARN: Unknown effect " + effect["name"])
@@ -571,12 +609,9 @@ class Game:
 		for monster in available_monsters:
 			self.apply_end_of_turn_effects(monster)
 
-		# if we have any block left, get rid of it - TODO barricade, calipers
-		self.player.block = 0
-		
 		self.player.energy = 3 # hard coded energy per turn. TODO energy relics; if icecream, += 3
-
 		self.combat_round += 1
+		self.apply_start_of_turn_effects(self.player)
 
 		# Draw new hand - TODO consider relic modifiers and known information
 		while len(self.hand) < 5:
@@ -726,7 +761,6 @@ class Game:
 		
 	# Returns a new state
 	def simulate_play(self, action):
-		# TODO
 		
 		power_effects = ["Vulnerable", "Weakened"]
 		
@@ -818,6 +852,8 @@ class Game:
 					self.debug_log.append("WARN: Unknown effect " + effect["effect"])
 						
 		# TODO check if any enemies died and if anything happens when they do
+		
+		# TODO check if any enemies want to change intents
 					
 			
 		if self.debug_file and self.debug_log != []:
