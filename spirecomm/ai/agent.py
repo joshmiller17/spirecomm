@@ -289,10 +289,10 @@ class SimpleAgent:
 			diff["current_action"] = str(state2.current_action)
 		if state1.act_boss != state2.act_boss:
 			diff["act_boss"] = state2.act_boss
-		if state1.current_hp != state2.current_hp:
-			diff["current_hp"] = state2.current_hp - state1.current_hp
-		if state1.max_hp != state2.max_hp:
-			diff["max_hp"] = state2.max_hp - state1.max_hp
+		if state1.player.current_hp != state2.player.current_hp:
+			diff["current_hp"] = state2.player.current_hp - state1.player.current_hp
+		if state1.player.max_hp != state2.player.max_hp:
+			diff["max_hp"] = state2.player.max_hp - state1.player.max_hp
 		if state1.floor != state2.floor:
 			diff["floor"] = state2.floor
 		if state1.act != state2.act:
@@ -349,8 +349,7 @@ class SimpleAgent:
 			diff["in_combat"] = state2.in_combat
 		
 
-		# Combat for both states
-		if state1.player is not None and state2.player is not None:
+		if state1.in_combat and state2.in_combat:
 		
 			monster_changes = {}
 			
@@ -632,6 +631,8 @@ class SimpleAgent:
 	def get_next_action_in_game(self, game_state):
 		self.last_game_state = self.blackboard.game
 		self.blackboard.game = game_state
+		if not self.blackboard.game.player and self.last_game_state.player:
+			self.blackboard.game.player = self.last_game_state.player # persist the player
 		self.state_id += 1
 		self.blackboard.game.state_id = self.state_id
 		self.blackboard.game.combat_round = self.combat_round
@@ -900,7 +901,7 @@ class SimpleAgent:
 	def choose_rest_option(self):
 		rest_options = self.blackboard.game.screen.rest_options
 		if len(rest_options) > 0 and not self.blackboard.game.screen.has_rested:
-			if RestOption.REST in rest_options and self.blackboard.game.current_hp < self.blackboard.game.max_hp / 2:
+			if RestOption.REST in rest_options and self.blackboard.game.player.current_hp < self.blackboard.game.player.max_hp / 2:
 				return RestAction(RestOption.REST)
 			elif RestOption.REST in rest_options and self.blackboard.game.act != 1 and self.blackboard.game.floor % 17 == 15 and self.blackboard.game.current_hp < self.blackboard.game.max_hp * 0.9:
 				return RestAction(RestOption.REST)
@@ -910,7 +911,7 @@ class SimpleAgent:
 				return RestAction(RestOption.LIFT)
 			elif RestOption.DIG in rest_options:
 				return RestAction(RestOption.DIG)
-			elif RestOption.REST in rest_options and self.blackboard.game.current_hp < self.blackboard.game.max_hp:
+			elif RestOption.REST in rest_options and self.blackboard.game.player.current_hp < self.blackboard.game.player.max_hp:
 				return RestAction(RestOption.REST)
 			else:
 				return ChooseAction(0)

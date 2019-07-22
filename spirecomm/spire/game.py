@@ -38,8 +38,7 @@ class Game:
 
 		self.current_action = None # "The class name of the action in the action manager queue, if not empty"
 		self.act_boss = None
-		self.current_hp = 0 # NOTE: DO NOT USE player.CURRENT_HP/MAX_HP -- Use game.current_hp and game.max_hp instead
-		self.max_hp = 0
+		# For HP, see game.player
 		self.floor = 0
 		self.act = 0
 		self.gold = 0
@@ -116,7 +115,7 @@ class Game:
 		#string += "Screen: " + str(self.screen) + " (" + str(self.screen_type) + ")\n"
 		#string += "Room: " + str(self.room_type) + "\n"
 		if self.in_combat:
-			string += "\nHP: " + str(self.current_hp) + "/" + str(self.max_hp)
+			string += "\nHP: " + str(self.player.current_hp) + "/" + str(self.player.max_hp)
 			string += "\nBlock: " + str(self.player.block)
 			string += "\nRound: " + str(self.combat_round)
 			string += "\nEnergy: " + str(self.player.energy)
@@ -152,8 +151,11 @@ class Game:
 	def from_json(cls, json_state, available_commands):
 		game = cls()
 		game.current_action = json_state.get("current_action", None)
-		game.current_hp = json_state.get("current_hp")
-		game.max_hp = json_state.get("max_hp")
+		if not game.player:
+			game.player = spirecomm.spire.character.Player(json_state.get("max_hp"), json_state.get("current_hp"))
+		else:
+			game.player.current_hp = json_state.get("current_hp")
+			game.player.max_hp = json_state.get("max_hp")
 		game.floor = json_state.get("floor")
 		game.act = json_state.get("act")
 		game.gold = json_state.get("gold")
@@ -226,7 +228,7 @@ class Game:
 	# True iff either we're dead or the monsters are
 	def isTerminal(self):
 		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
-		return self.current_hp <= 0 or len(available_monsters) < 1
+		return self.player.current_hp <= 0 or len(available_monsters) < 1
 		
 	# return value of terminal state
 	def getReward(self):
@@ -236,8 +238,8 @@ class Game:
 		while original_game_state.original_state is not None:
 			original_game_state = original_game_state.original_state
 			
-		delta_hp = self.current_hp - original_game_state.current_hp
-		delta_max_hp = self.max_hp - original_game_state.max_hp
+		delta_hp = self.player.current_hp - original_game_state.player.current_hp
+		delta_max_hp = self.player.max_hp - original_game_state.player.max_hp
 		delta_potions = len(self.potions) - len(original_game_state.potions)
 		
 		reward = 0
@@ -369,10 +371,7 @@ class Game:
 				self.apply_debuff(character, "Focus Down", -1 * power.amount)
 				character.remove_power("Focus Down")
 			elif power.power_name == "Combust":
-				if character == self.player:
-					self.current_hp -= 1
-				else:
-					character.current_hp -= 1 # TODO "on lose HP" effects
+				character.current_hp -= 1 # TODO "on lose HP" effects
 				available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
 				for monster in available_monsters:
 					monster.current_hp = max(monster.current_hp - power.amount, 0)
@@ -382,12 +381,8 @@ class Game:
 				character.add_power("Ritual", 3) # eventually adjust for ascensions
 				character.remove_power("Incantation")
 			elif power.power_name == "Regen":
-				if character == self.player:
-					self.current_hp = min(self.current_hp + power.amount, self.max_hp)
-					character.decrement_power(power.power_name)			
-				else:
-					character.current_hp = min(character.current_hp + power.amount, character.max_hp)
-					character.decrement_power(power.power_name)		
+				character.current_hp = min(character.current_hp + power.amount, character.max_hp)
+				character.decrement_power(power.power_name)		
 
 			elif power.power_name in turn_based_powers:
 				character.decrement_power(power.power_name)				
@@ -422,17 +417,10 @@ class Game:
 		adjusted_damage = self.calculate_real_damage(base_damage, attacker, target)
 		unblocked_damage = adjusted_damage - target.block
 		if unblocked_damage > 0:
-			current_hp = target.current_hp
-			if target == self.player:
-				current_hp = self.current_hp
-			unblocked_damage = min(current_hp, unblocked_damage)
+			unblocked_damage = min(target.current_hp, unblocked_damage)
 			unblocked_damage = max(unblocked_damage, 0)
-			self.debug_log.append(str(unblocked_damage))
-			current_hp -= unblocked_damage
+			target.current_hp -= unblocked_damage
 			target.block = 0
-			target.current_hp = current_hp
-			if target == self.player:
-				self.current_hp = current_hp
 		else:
 			target.block -= adjusted_damage
 		if target.has_power("Curl Up"):
@@ -629,9 +617,9 @@ class Game:
 			self.player.block += 12
 		
 		elif action.potion.name == "Blood Potion":
-			hp_gained = int(math.ceil(self.max_hp * 0.10))
-			new_hp = min(self.max_hp, self.current_hp + hp_gained)
-			self.current_hp = new_hp
+			hp_gained = int(math.ceil(self.player.max_hp * 0.10)) # FIXME updated to 0.25 in a recent patch, but we're not on that patch yet
+			new_hp = min(self.player.max_hp, self.player.current_hp + hp_gained)
+			self.player.current_hp = new_hp
 		
 		elif action.potion.name == "Dexterity Potion":
 			self.player.add_power("Dexterity", 2)
@@ -664,8 +652,8 @@ class Game:
 			self.player.add_power("Focus", 2)
 		
 		elif action.potion.name == "Fruit Juice":
-			self.max_hp += 5
-			self.current_hp += 5
+			self.player.max_hp += 5
+			self.player.current_hp += 5
 		
 		elif action.potion.name == "Gambler's Brew":
 			# TODO

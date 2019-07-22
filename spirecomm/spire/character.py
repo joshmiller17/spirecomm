@@ -106,9 +106,6 @@ class Character:
 
 class Player(Character):
 
-	# NOTE: DO NOT USE CURRENT_HP/MAX_HP
-	# Use game.current_hp and game.max_hp instead
-
 	def __init__(self, max_hp, current_hp=None, block=0, energy=0):
 		super().__init__(max_hp, current_hp, block)
 		self.energy = energy

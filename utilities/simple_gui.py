@@ -204,15 +204,15 @@ class Base(BoxLayout):
 				monte_carlo = mcts(timeLimit=mcts_timeout)
 
 				
-				while game_state.current_hp > 0 and game_state.monsters[0].current_hp > 0:
+				while game_state.player.current_hp > 0 and game_state.monsters[0].current_hp > 0:
 					action = monte_carlo.search(initialState=game_state)
 					print("MCTS choosing: " + str(action))
 					game_state = game_state.takeAction(action)
 				print("Done.")
 
 				print("")		
-				self.in_history.append("VICTORY" if game_state.current_hp > 0 else "DEFEAT")
-				self.in_history.append("Health left: " + str(game_state.current_hp))
+				self.in_history.append("VICTORY" if game_state.player.current_hp > 0 else "DEFEAT")
+				self.in_history.append("Health left: " + str(game_state.player.current_hp))
 				self.in_history.append("See game.log for details")
 				
 			except Exception as e:
