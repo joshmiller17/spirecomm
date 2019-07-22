@@ -1,0 +1,97 @@
+{
+	"powers" : 
+		[
+			{
+				"name" : "Thievery",
+				"amount" : 15
+			}
+		],
+	"startswith" : "Mug",
+	"moveset" : {
+				
+				"Mug" :
+					{
+					"intent_type": "ATTACK",
+					"probability" : 0.0,
+					"effects" :[
+						{
+							"name" : "Damage",
+							"amount" : 10
+						}
+					],
+					"next_move" :[
+						{
+							"name" : "Mug 2",
+							"probability" : 1.0
+						}
+					]
+					},
+				"Mug 2" :
+					{
+					"intent_type": "ATTACK",
+					"probability" : 0.0,
+					"effects" :[
+						{
+							"name" : "Damage",
+							"amount" : 10
+						}
+					],
+					"next_move" :[
+						{
+							"name" : "Lunge",
+							"probability" : 0.50
+						},
+						{
+							"name" : "Smoke Bomb",
+							"probability" : 0.50
+						}
+					]
+					},
+				"Lunge" :
+					{
+					"intent_type": "ATTACK",
+					"probability" : 0.0,
+					"effects" :[
+						{
+							"name" : "Damage",
+							"amount" : 12
+						}
+					],
+					"next_move" :[
+						{
+							"name" : "Smoke Bomb",
+							"probability" : 1.0
+						}
+					]
+					},
+				"Smoke Bomb" :
+					{
+					"intent_type": "DEFEND",
+					"probability" : 0.0,
+					"effects" :[
+						{
+							"name" : "Block",
+							"amount" : 6
+						}
+					],
+					"next_move" :[
+						{
+							"name" : "Escape",
+							"probability" : 1.0
+						}
+					]
+					},
+				"Escape" :
+					{
+					"intent_type": "ESCAPE",
+					"probability" : 0.0,
+					"effects" :[
+						{
+							"name" : "Escape",
+							"amount" : 1
+						}
+					]
+					}
+			}
+	
+}

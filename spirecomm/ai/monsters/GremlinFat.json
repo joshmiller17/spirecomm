@@ -1,0 +1,19 @@
+{
+	"moveset": {
+		"Smash":
+		{
+			"intent_type": "ATTACK_DEBUFF",
+			"probability" : 1.0,
+			"effects" :[
+				{
+					"name" : "Damage",
+					"amount" : 4
+				},
+				{
+					"name" : "Weakened",
+					"amount" : 1
+				}
+			]
+		}
+	}
+}

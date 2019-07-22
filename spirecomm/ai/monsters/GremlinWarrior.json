@@ -1,0 +1,23 @@
+{
+	"powers" : 
+		[
+			{
+				"name" : "Angry",
+				"amount" : 1
+			}
+		],
+	"moveset" : {
+		"Scratch" :
+			{
+			"intent_type": "ATTACK",
+			"probability" : 1.0,
+			"effects" :[
+				{
+					"name" : "Damage",
+					"amount" : 4
+				}
+			]
+			}
+	}
+	
+}

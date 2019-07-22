@@ -1,0 +1,74 @@
+{
+	"startswith" : "Charge 2",
+	"moveset" : {
+				"Charge" :
+					{
+					"intent_type": "UNKNOWN",
+					"probability" : 0.0,
+					"effects" :[
+						{
+							"name" : "Charge",
+							"amount" : 1
+						}
+					],
+					"next_move" :[
+						{
+							"name" : "Charge 2",
+							"probability" : 1.0
+						}
+					]
+					},
+				"Charge 2" :
+					{
+					"intent_type": "UNKNOWN",
+					"probability" : 0.0,
+					"effects" :[
+						{
+							"name" : "Charge",
+							"amount" : 1
+						}
+					],
+					"next_move" :[
+						{
+							"name" : "Charge 3",
+							"probability" : 1.0
+						}
+					]
+					},
+				"Charge 3" :
+					{
+					"intent_type": "UNKNOWN",
+					"probability" : 0.0,
+					"effects" :[
+						{
+							"name" : "Charge",
+							"amount" : 1
+						}
+					],
+					"next_move" :[
+						{
+							"name" : "Ultimate Blast",
+							"probability" : 1.0
+						}
+					]
+					},
+				"Ultimate Blast" :
+					{
+					"intent_type": "ATTACK",
+					"probability" : 0.0,
+					"effects" :[
+						{
+							"name" : "Damage",
+							"amount" : 25
+						}
+					],
+					"next_move" :[
+						{
+							"name" : "Charge",
+							"probability" : 1.0
+						}
+					]
+					}
+			}
+	
+}

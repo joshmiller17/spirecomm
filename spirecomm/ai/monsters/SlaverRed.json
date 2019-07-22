@@ -74,7 +74,7 @@
 					},
 				"Entangle" :
 					{
-					"intent_type": "DEBUFF",
+					"intent_type": "STRONG_DEBUFF",
 					"probability" : 0.0,
 					"effects" : [
 						{
