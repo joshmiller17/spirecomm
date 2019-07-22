@@ -1,5 +1,4 @@
 {
-	"startswith" : "Protect",
 	"moveset" : {
 		"Shield Bash" :
 			{
@@ -18,7 +17,7 @@
 			"probability" : 0.0,
 			"effects" :[
 				{
-					"name" : "BlockOther",
+					"name" : "BlockOtherRandom",
 					"amount" : 7
 				}
 			]
