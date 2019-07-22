@@ -32,6 +32,7 @@ class SimpleAgent:
 		self.logfile = open(self.logfile_name, 'a+')
 		self.skipping_card = False
 		self.paused = False
+		self.auto_pause = True # pause after warnings and errors
 		self.step = False
 		self.combat_round = 1
 		self.state_id = 0 # debugging guide for tracking state
@@ -259,6 +260,8 @@ class SimpleAgent:
 			self.log("actual/sim diff: " + str(diff_diff), debug=3)
 			self.log("sim diff: " + str(sim_diff), debug=3)
 			self.log("real diff: " + str(real_diff), debug=3)
+			if self.auto_pause:
+				self.paused = True
 			# self.note("Simulated:")
 			# self.note(str(simulated_state))
 			# self.note("Actual:")
@@ -505,6 +508,8 @@ class SimpleAgent:
 							self.log("card was in state1 exhaust")
 						if card in state2.exhaust_pile:
 							self.log("card is in state2 exhaust")
+						if self.auto_pause:
+							self.paused = True
 				
 				for a in card_actions:
 					if diff[a] == []:

@@ -38,7 +38,7 @@ class Game:
 
 		self.current_action = None # "The class name of the action in the action manager queue, if not empty"
 		self.act_boss = None
-		self.current_hp = 0
+		self.current_hp = 0 # NOTE: DO NOT USE player.CURRENT_HP/MAX_HP -- Use game.current_hp and game.max_hp instead
 		self.max_hp = 0
 		self.floor = 0
 		self.act = 0
@@ -353,7 +353,53 @@ class Game:
 					if not exceeds_limit:
 						break
 		return selected_move
+	
 		
+	def apply_end_of_turn_effects(self, character):
+		turn_based_powers = ["Vulnerable", "Frail", "Weakened", "No Block"]
+	
+		for power in character.powers:
+			if power.power_name == "Strength Down":
+				self.apply_debuff(character, "Strength Down", -1 * power.amount)
+				character.remove_power("Strength Down")
+			elif power.power_name == "Dexterity Down":
+				self.apply_debuff(character, "Dexterity Down", -1 * power.amount)
+				character.remove_power("Dexterity Down")
+			elif power.power_name == "Focus Down":
+				self.apply_debuff(character, "Focus Down", -1 * power.amount)
+				character.remove_power("Focus Down")
+			elif power.power_name == "Combust":
+				if character == self.player:
+					self.current_hp -= 1
+				else:
+					character.current_hp -= 1 # TODO "on lose HP" effects
+				available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+				for monster in available_monsters:
+					monster.current_hp = max(monster.current_hp - power.amount, 0)
+			elif power.power_name == "Ritual":
+				character.add_power("Strength", power.amount)
+			elif power.power_name == "Incantation":
+				character.add_power("Ritual", 3) # eventually adjust for ascensions
+				character.remove_power("Incantation")
+			elif power.power_name == "Regen":
+				if character == self.player:
+					self.current_hp = min(self.current_hp + power.amount, self.max_hp)
+					character.decrement_power(power.power_name)			
+				else:
+					character.current_hp = min(character.current_hp + power.amount, character.max_hp)
+					character.decrement_power(power.power_name)		
+
+			elif power.power_name in turn_based_powers:
+				character.decrement_power(power.power_name)				
+				
+	# TODO apply_start_of_turn_effects
+	
+	def apply_debuff(self, target, debuff, amount):
+		if debuff in spirecomm.spire.power.DEBUFFS and target.has_power("Artifact"):
+			target.decrement_power("Artifact")
+		else:
+			target.add_power(debuff, amount)
+			
 	# helper function to calculate damage
 	def calculate_real_damage(self, base_damage, attacker, target):
 		damage = base_damage
@@ -370,55 +416,30 @@ class Game:
 				damage = int(math.floor(damage + (0.50 * damage)))
 		return damage
 		
-	def apply_end_of_turn_effects(self, character):
-		turn_based_powers = ["Vulnerable", "Frail", "Weakened", "No Block"]
-	
-		for power in character.powers:
-			if power.power_name == "Strength Down":
-				self.apply_debuff(character, "Strength Down", -1 * power.amount)
-				character.remove_power("Strength Down")
-			elif power.power_name == "Dexterity Down":
-				self.apply_debuff(character, "Dexterity Down", -1 * power.amount)
-				character.remove_power("Dexterity Down")
-			elif power.power_name == "Focus Down":
-				self.apply_debuff(character, "Focus Down", -1 * power.amount)
-				character.remove_power("Focus Down")
-			elif power.power_name == "Combust":
-				character.current_hp -= 1 # TODO "on lose HP" effects
-				available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
-				for monster in available_monsters:
-					monster.current_hp = max(monster.current_hp - power.amount, 0)
-			elif power.power_name == "Ritual":
-				character.add_power("Strength", power.amount)
-			elif power.power_name == "Incantation":
-				character.add_power("Ritual", 3) # eventually adjust for ascensions
-				character.remove_power("Incantation")
-			elif power.power_name == "Regen":
-				character.current_hp = min(character.current_hp + power.amount, character.max_hp)
-				character.decrement_power(power.power_name)			
-
-			elif power.power_name in turn_based_powers:
-				character.decrement_power(power.power_name)				
-				
-	# TODO apply_start_of_turn_effects
-	
-	def apply_debuff(self, target, debuff, amount):
-		if debuff in spirecomm.spire.power.DEBUFFS and target.has_power("Artifact"):
-			target.decrement_power("Artifact")
-		else:
-			target.add_power(debuff, amount)
-		
 	# applies Damage attack and returns unblocked damage
 	def apply_damage(self, base_damage, attacker, target):
 		# Note attacker may be None, e.g. from Burn card
 		adjusted_damage = self.calculate_real_damage(base_damage, attacker, target)
 		unblocked_damage = adjusted_damage - target.block
 		if unblocked_damage > 0:
-			target.current_hp = max(target.current_hp - unblocked_damage, 0)
+			current_hp = target.current_hp
+			if target == self.player:
+				current_hp = self.current_hp
+			unblocked_damage = min(current_hp, unblocked_damage)
+			unblocked_damage = max(unblocked_damage, 0)
+			self.debug_log.append(str(unblocked_damage))
+			current_hp -= unblocked_damage
 			target.block = 0
+			target.current_hp = current_hp
+			if target == self.player:
+				self.current_hp = current_hp
 		else:
 			target.block -= adjusted_damage
-		return max(unblocked_damage, 0)
+		if target.has_power("Curl Up"):
+			curl = target.get_power_amount("Curl Up")
+			target.block += curl
+			target.remove_power("Curl Up")
+		return unblocked_damage
 		
 		
 	# Returns a new state
@@ -440,7 +461,7 @@ class Game:
 				elif effect["effect"] == "SelfFrail":
 					self.apply_debuff(self.player, "Frail", effect["amount"])
 				elif effect["effect"] == "SelfDamage":
-					self.apply_damage(None, self.player, effect["amount"])
+					self.apply_damage(effect["amount"], None, self.player)
 					
 		self.hand = []
 		
@@ -508,12 +529,13 @@ class Game:
 				if monster.current_move is None:
 					self.debug_log.append("ERROR: Could not determine " + monster.name + "\'s intent of " + str(monster.intent))
 				else:
+								
 					# Finally, apply the intended move
 					effects = monster.intents["moveset"][monster.current_move]["effects"]
 					buffs = ["Ritual", "Strength", "Incantation"]
 					debuffs = ["Frail", "Vulnerable", "Weakened"]
 					for effect in effects:
-						
+											
 						if effect["name"] == "Damage":
 							base_damage = effect["amount"]
 							if monster.name == "FuzzyLouseNormal" or monster.name == "FuzzyLouseDefensive":
@@ -785,17 +807,8 @@ class Game:
 					
 				elif effect["effect"] == "Damage":
 					base_damage = effect["amount"]
-					adjusted_damage = self.calculate_real_damage(base_damage, self.player, target)
-					damage_after_block = adjusted_damage - target.block
-					if damage_after_block > 0:
-						target.current_hp = max(target.current_hp - damage_after_block, 0)
-						target.block = 0
-					else:
-						target.block -= adjusted_damage
-					if target.has_power("Curl Up"):
-						curl = target.get_power_amount("Curl Up")
-						target.block += curl
-						target.remove_power("Curl Up")
+					self.apply_damage(base_damage, self.player, target)
+					
 						
 				elif effect["effect"] in power_effects:
 					target.add_power(effect["effect"], effect["amount"])

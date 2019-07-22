@@ -120,6 +120,9 @@ class Player(Character):
 		player.powers = [Power.from_json(json_power) for json_power in json_object["powers"]]
 		player.orbs = [Orb.from_json(orb) for orb in json_object["orbs"]]
 		return player
+		
+	def __str__(self):
+		return "[Player] " + str(self.current_hp) + "/" + str(self.max_hp) + ", Block " + str(self.block) + ", Energy " + str(self.energy)
 
 
 class Monster(Character):

@@ -190,6 +190,11 @@ class Base(BoxLayout):
 			self.agent.print_tree()
 			return True
 			
+		if msg == "auto pause":
+			self.agent.auto_pause = not self.agent_auto_pause
+			self.in_history.append("Auto pause: " + ("ON" if self.agent.auto_pause else "OFF"))
+			return True
+			
 		if msg == "test combat":
 			try:
 				open("game.log", "w").close()
