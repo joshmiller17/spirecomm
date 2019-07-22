@@ -358,6 +358,7 @@ class Game:
 								exceeds_limit = True
 					if not exceeds_limit:
 						break
+		# TODO Lagavulin sleeping?
 		return selected_move
 	
 		
@@ -398,6 +399,11 @@ class Game:
 		if character == self.player:
 			if character.has_relic("Thread and Needle"):
 				character.add_power("Plated Armor", 4)
+				
+	def check_intents(self):
+		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+		for monster in available_monsters:
+			pass	
 			
 
 	# TODO apply_start_of_turn_effects
@@ -477,7 +483,7 @@ class Game:
 	# Returns a new state
 	def simulate_end_turn(self, action):
 		
-		# TODO check if any enemies want to change intents
+		self.check_intents()
 		
 		# TODO consider retaining cards (well-laid plans) or runic pyramid
 		
@@ -795,6 +801,8 @@ class Game:
 		self.hand.remove(action.card)
 		self.discard_pile.append(action.card)
 		
+		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+
 		
 		if action.card.type == spirecomm.spire.card.CardType.ATTACK:
 		
@@ -812,10 +820,13 @@ class Game:
 			
 			# TODO pen nib
 				
+		if action.card.type == spirecomm.spire.card.CardType.SKILL:
+			for monster in available_monsters:
+				if monster.has_power("Enrage"):
+					monster.add_power("Strength", monster.get_power_amount("Enrage"))
 		
 			
 		effect_targets = []
-		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
 		for effect in action.card.effects:
 			
 			# Pick target(s)
@@ -870,7 +881,7 @@ class Game:
 						
 		# TODO check if any enemies died and if anything happens when they do
 		
-		# TODO check if any enemies want to change intents
+		self.check_intents()
 					
 			
 		if self.debug_file and self.debug_log != []:

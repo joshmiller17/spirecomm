@@ -3,7 +3,7 @@
 	"moveset" : {
 				"Sleep" :
 					{
-					"intent_type": "UNKNOWN",
+					"intent_type": "SLEEP",
 					"probability" : 0.0,
 					"effects" :[
 						{
@@ -20,7 +20,7 @@
 					},
 				"Sleep 2" :
 					{
-					"intent_type": "UNKNOWN",
+					"intent_type": "SLEEP",
 					"probability" : 0.0,
 					"effects" :[
 						{
@@ -37,7 +37,7 @@
 					},
 				"Sleep 3" :
 					{
-					"intent_type": "UNKNOWN",
+					"intent_type": "SLEEP",
 					"probability" : 0.0,
 					"effects" :[
 						{
@@ -109,11 +109,11 @@
 					"probability" : 0.0,
 					"effects" :[
 						{
-							"name" : "AddStrengthToPlayer",
+							"name" : "Strength",
 							"amount" : -1
 						},
 						{
-							"name" : "AddDexToPlayer",
+							"name" : "Dexterity",
 							"amount" : -1
 						}
 					],
