@@ -1,0 +1,46 @@
+{
+	"startswith" : "Bellow",
+	"moveset" : {
+		"Bellow" :
+			{
+			"intent_type": "BUFF",
+			"probability" : 0.0,
+			"effects" :[
+				{
+					"name" : "Enrage",
+					"amount" : 3
+				}
+			]
+			},
+		"Rush" :
+			{
+			"intent_type": "ATTACK",
+			"probability" : 0.67,
+			"effects" :[
+				{
+					"name" : "Damage",
+					"amount" : 14
+				}
+			]
+			},
+		"Skull Bash" :
+			{
+			"intent_type": "ATTACK_DEBUFF",
+			"probability" : 0.33,
+			"effects" :[
+				{
+					"name" : "Damage",
+					"amount" : 6
+				},
+				{
+					"name" : "Vulnerable",
+					"amount" : 2
+				}
+			]
+			}
+	},
+	"limits" : {
+			"Rush" : 3
+	}
+	
+}

@@ -1,0 +1,129 @@
+{
+	"startswith" : "Sleep",
+	"moveset" : {
+				"Sleep" :
+					{
+					"intent_type": "UNKNOWN",
+					"probability" : 0.0,
+					"effects" :[
+						{
+							"name" : "Sleep",
+							"amount" : 1
+						}
+					],
+					"next_move" :[
+						{
+							"name" : "Sleep 2",
+							"probability" : 1.0
+						}
+					]
+					},
+				"Sleep 2" :
+					{
+					"intent_type": "UNKNOWN",
+					"probability" : 0.0,
+					"effects" :[
+						{
+							"name" : "Sleep",
+							"amount" : 1
+						}
+					],
+					"next_move" :[
+						{
+							"name" : "Sleep 3",
+							"probability" : 1.0
+						}
+					]
+					},
+				"Sleep 3" :
+					{
+					"intent_type": "UNKNOWN",
+					"probability" : 0.0,
+					"effects" :[
+						{
+							"name" : "Sleep",
+							"amount" : 1
+						}
+					],
+					"next_move" :[
+						{
+							"name" : "Stunned",
+							"probability" : 1.0
+						}
+					]
+					},
+				"Stunned" :
+					{
+					"intent_type": "STUN",
+					"probability" : 0.0,
+					"effects" :[
+						{
+							"name" : "Stunned",
+							"amount" : 1
+						}
+					],
+					"next_move" :[
+						{
+							"name" : "Attack 1",
+							"probability" : 1.0
+						}
+					]
+					},
+				"Attack 1" :
+					{
+					"intent_type": "ATTACK",
+					"probability" : 0.0,
+					"effects" :[
+						{
+							"name" : "Damage",
+							"amount" : 18
+						}
+					],
+					"next_move" :[
+						{
+							"name" : "Attack 2",
+							"probability" : 1.0
+						}
+					]
+					},
+				"Attack 2" :
+					{
+					"intent_type": "ATTACK",
+					"probability" : 0.0,
+					"effects" :[
+						{
+							"name" : "Damage",
+							"amount" : 18
+						}
+					],
+					"next_move" :[
+						{
+							"name" : "Siphon Soul",
+							"probability" : 1.0
+						}
+					]
+					},
+				"Siphon Soul" :
+					{
+					"intent_type": "STRONG_DEBUFF",
+					"probability" : 0.0,
+					"effects" :[
+						{
+							"name" : "AddStrengthToPlayer",
+							"amount" : -1
+						},
+						{
+							"name" : "AddDexToPlayer",
+							"amount" : -1
+						}
+					],
+					"next_move" :[
+						{
+							"name" : "Attack 1",
+							"probability" : 1.0
+						}
+					]
+					}
+			}
+	
+}

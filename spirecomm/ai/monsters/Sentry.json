@@ -1,0 +1,40 @@
+{
+	"startswith" : "Bolt",
+	"moveset" : {
+		"Bolt" :
+			{
+			"intent_type": "DEBUFF",
+			"probability" : 0.0,
+			"effects" : [
+				{
+					"name" : "AddDazedToDiscard",
+					"amount" : 2
+				}
+			],
+			"next_move" :[
+				{
+					"name" : "Beam",
+					"probability" : 1.0
+				}
+			]
+			},
+		"Beam" :
+			{
+			"intent_type": "ATTACK",
+			"probability" : 0.0,
+			"effects" :[
+				{
+					"name" : "Damage",
+					"amount" : 9
+				}
+			],
+			"next_move" :[
+				{
+					"name" : "Bolt",
+					"probability" : 1.0
+				}
+			]
+			}
+	}
+	
+}
