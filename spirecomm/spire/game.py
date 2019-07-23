@@ -111,6 +111,17 @@ class Game:
 				return relic
 		return None
 		
+	def increment_relic(self, name):
+		for relic in self.relics:
+			if relic.name == name:
+				relic.counter += 1
+	
+	def set_relic_counter(self, name, amount):
+		for relic in self.relics:
+			if relic.name == name:
+				relic.counter = amount
+		
+		
 	def has_relic(self, name):
 		return self.get_relic(name) is not None
 	
@@ -118,6 +129,8 @@ class Game:
 		string = "\n\n---- Game State ----\n"
 		#string += "Screen: " + str(self.screen) + " (" + str(self.screen_type) + ")\n"
 		#string += "Room: " + str(self.room_type) + "\n"
+		string += "\nID: " + str(self.state_id)
+		string += "\nSimulation?: " + str(self.is_simulation)
 		if self.in_combat:
 			string += "\nHP: " + str(self.player.current_hp) + "/" + str(self.player.max_hp)
 			string += "\nBlock: " + str(self.player.block)
@@ -279,7 +292,7 @@ class Game:
 					possible_actions.append(PotionAction(True, potion=potion))
 					
 			for card in self.hand:
-				if len(available_monsters) == 0 and card != spirecomm.spire.card.CardType.POWER:
+				if len(available_monsters) == 0 and card.type != spirecomm.spire.card.CardType.POWER:
 					continue
 				if card.cost > self.player.energy:
 					continue
@@ -390,7 +403,9 @@ class Game:
 		turn_based_powers = ["Vulnerable", "Frail", "Weakened", "No Block"]
 	
 		for power in character.powers:
-			if power.power_name == "Strength Down":
+			if power.power_name == "Shackles":
+				character.remove_power("Shackles")
+			elif power.power_name == "Strength Down":
 				self.apply_debuff(character, "Strength Down", -1 * power.amount)
 				character.remove_power("Strength Down")
 			elif power.power_name == "Dexterity Down":
@@ -400,9 +415,11 @@ class Game:
 				self.apply_debuff(character, "Focus Down", -1 * power.amount)
 				character.remove_power("Focus Down")
 			elif power.power_name == "Plated Armor":
-				character.block += power.amount
+				self.add_block(character, power.amount)
+			elif power.power_name == "Metallicize":
+				self.add_block(character, power.amount)
 			elif power.power_name == "Combust":
-				character.current_hp -= 1 # TODO "on lose HP" effects
+				self.lose_hp(character, 1, from_card=True)
 				available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
 				for monster in available_monsters:
 					monster.current_hp = max(monster.current_hp - power.amount, 0)
@@ -414,17 +431,32 @@ class Game:
 			elif power.power_name == "Regen":
 				character.current_hp = min(character.current_hp + power.amount, character.max_hp)
 				character.decrement_power(power.power_name)		
+			elif power.power_name == "DemonForm":
+				character.add_power("Strength", power.amount)
 
 			elif power.power_name in turn_based_powers:
 				character.decrement_power(power.power_name)				
 				
 	# Note: this function isn't called anywhere yet, but it also might not need to ever be simulated
 	def apply_start_of_combat_effects(self, character):
+	
+		# TODO move innate cards to top of deck / starting hand
+	
 		if character is self.player:
 			if self.has_relic("Thread and Needle"):
 				character.add_power("Plated Armor", 4)
 			if self.has_relic("Anchor"):
-				character.block += 10
+				self.add_block(character, 10)
+			if self.has_relic("Bronze Scales"):
+				character.add_power("Thorns", 3)
+			if self.has_relic("Mark of Pain"):
+				self.draw_pile.append(spirecomm.spire.card.Card("Wound", "Wound", spirecomm.spire.card.CardType.STATUS, spirecomm.spire.card.CardRarity.SPECIAL))
+				self.draw_pile.append(spirecomm.spire.card.Card("Wound", "Wound", spirecomm.spire.card.CardType.STATUS, spirecomm.spire.card.CardRarity.SPECIAL))
+				random.shuffle(draw_pile)
+			if self.has_relic("Philosopher's Stone"):
+				available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+				for monster in available_monsters:
+					monster.add_power("Strength", 1)
 					
 				
 	def check_intents(self):
@@ -446,6 +478,10 @@ class Game:
 		if character is self.player:
 			if self.has_relic("Runic Dodecahedron") and character.current_hp == character.max_hp:
 				character.energy += 1
+				
+			if character.has_power("Brutality"):
+				self.lose_hp(character, 1, from_card=True):
+				self.draw_card()
 		
 	
 	def apply_debuff(self, target, debuff, amount):
@@ -453,11 +489,14 @@ class Game:
 			target.decrement_power("Artifact")
 		else:
 			target.add_power(debuff, amount)
+			if target is not self.player and self.player.has_power("SadisticNature"):
+				target.current_hp = max(target.current_hp - self.player.get_power_amount("SadisticNature"), 0)
 			
 	# helper function to calculate damage
 	def calculate_real_damage(self, base_damage, attacker, target):
 		damage = base_damage
 		damage += attacker.get_power_amount("Strength")
+		damage -= attacker.get_power_amount("Shackles")
 		if attacker.has_power("Weakened"):
 			if attacker is not self.player and self.has_relic("Paper Krane"):
 				damage = int(math.floor(damage - (0.40 * damage)))
@@ -498,14 +537,74 @@ class Game:
 				# TODO corpse explosion, that relic that shifts poison (specimen?)
 		else:
 			target.block -= adjusted_damage
-		# TODO spikes
+		if target.has_power("Flame Barrier"):
+			self.apply_damage(target.get_power_amount("Flame Barrier"), None, attacker)
+		if target.has_power("Thorns"):
+			self.apply_damage(target.get_power_amount("Thorns"), None, attacker)
+		if card.name.startswith("Dropkick"):
+			if target.has_power("Vulnerable"):
+				self.player.energy += 1 
+				self.draw_card()
 		if target.has_power("Curl Up"):
 			curl = target.get_power_amount("Curl Up")
-			target.block += curl
+			self.add_block(target, curl)
 			target.remove_power("Curl Up")
 		return unblocked_damage
 		
+	def add_block(self, target, amount):
+		if not target.has_power("NoBlock"):
+			if amount == "Entrench":
+				target.block *= 2
+			else:
+				target.block += amount
+			if target.has_power("Juggernaut"):
+				available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+				selected_monster = random.choice(available_monsters)
+				self.apply_damage(target.get_power_amount("Juggernaut"), None, selected_monster)
+			
+	# HP lost from cards / relics
+	def lose_hp(self, target, amount, from_card=False):
+		target.current_hp = max(target.current_hp - amount, 0)
+		if target is self.player and from_card and target.has_power("Rupture"):
+			target.add_power("Strength", target.get_power_amount("Rupture"))
 		
+	def gain_hp(self, target, amount):
+		if target is self.player and self.has_relic("Magic Flower"):
+			amount = math.ceil(amount * 1.5)
+		target.current_hp += amount
+		
+	def exhaust_card(self, card):
+		self.exhaust_pile.append(card)
+		if self.player.has_power("DarkEmbrace"):
+			self.draw_card()
+		if self.player.has_power("Feel No Pain"):
+			self.add_block(self.player, self.player.get_power_amount("Feel No Pain"))
+		if card.name.startswith("Sentinel"):
+			for effect in card.effects:
+				if effect["effect"] == "Sentinel":
+					self.player.energy += effect["amount"]
+	
+	def draw_card(self):
+		if self.player.has_power("No Draw"):
+			return
+		if len(self.draw_pile) == 0:
+			self.draw_pile = self.discard_pile
+			random.shuffle(self.draw_pile)
+			self.discard_pile = []
+			self.just_reshuffled = True
+		card = self.draw_pile.pop(0)
+		if len(self.hand) >= 10:
+			self.discard_pile.append(card)
+		else:
+			self.hand.append(card)
+		if card.type == spirecomm.spire.card.CardType.STATUS and self.player.has_power("Evolve"):
+			for _ in range(self.player.get_power_amount("Evolve")):
+				self.draw_card()
+		if self.player.has_relic("Snecko Eye"):
+			card.cost = random.choice(range(4))
+		if action.card.type == spirecomm.spire.card.CardType.SKILL and self.player.has_power("Corruption"):
+			card.cost = 0
+	
 	# Returns a new state
 	def simulate_end_turn(self, action):
 		
@@ -518,8 +617,8 @@ class Game:
 		for card in self.hand:
 			for effect in card.effects:
 				if effect["effect"] == "Ethereal":
-					self.exhaust_pile.append(card)
 					self.hand.remove(card)
+					self.exhaust_card(card)
 					continue
 				elif effect["effect"] == "SelfWeakened":
 					self.apply_debuff(self.player, "Weakened", effect["amount"])
@@ -528,7 +627,8 @@ class Game:
 				elif effect["effect"] == "SelfDamage":
 					self.apply_damage(effect["amount"], None, self.player)
 					
-		self.hand = []
+		if not self.player.has_relic("Runic Pyramid"):
+			self.hand = []
 		
 		# end player's turn
 		self.apply_end_of_turn_effects(self.player)
@@ -546,23 +646,14 @@ class Game:
 			if monster.intents != {}: # we have correctly loaded intents JSON
 			
 				if monster.current_move is None:
+					# if self.combat_round == 1:
+		
 					if self.combat_round == 1 and "startswith" in monster.intents:
 						monster.current_move = monster.intents["startswith"]
 						self.debug_log.append("Known initial intent for " + str(monster) + " is " + str(monster.current_move))
 						if monster.monster_id == "Sentry" and monster.monster_index == 1:
 							# The second Sentry starts with an attack rather than debuff
 							monster.current_move = "Beam"
-						elif monster.monster_id == "FuzzyLouseNormal" or monster.monster_id == "FuzzyLouseDefensive":
-							# louses have a variable base attack
-							effs = monster.intents["moveset"][move]["effects"]
-							json_base = None
-							for eff in effs:
-								if eff["name"] == "Damage":
-									json_base = eff["amount"]
-							if not json_base:
-								raise Exception("Malformed Louse json when calculating base damage")
-							attack_adjustment = monster.move_base_damage - json_base
-							monster.misc = attack_adjustment
 
 					elif self.is_simulation: # generate random move
 						monster.current_move = self.choose_move(monster)
@@ -597,11 +688,23 @@ class Game:
 				if monster.current_move is None:
 					self.debug_log.append("ERROR: Could not determine " + monster.name + "\'s intent of " + str(monster.intent))
 				else:
+				
+					if monster.intent == spirecomm.spire.character.Intent.ATTACK and (monster.monster_id == "FuzzyLouseNormal" or monster.monster_id == "FuzzyLouseDefensive"):
+						# louses have a variable base attack
+						effs = monster.intents["moveset"][move]["effects"]
+						json_base = None
+						for eff in effs:
+							if eff["name"] == "Damage":
+								json_base = eff["amount"]
+						if not json_base:
+							raise Exception("Malformed Louse json when calculating base damage")
+						attack_adjustment = monster.move_base_damage - json_base
+						monster.misc = attack_adjustment
 								
 					# Finally, apply the intended move
 					effects = monster.intents["moveset"][monster.current_move]["effects"]
 					buffs = ["Ritual", "Strength", "Incantation"]
-					debuffs = ["Frail", "Vulnerable", "Weakened", "Entangled"]
+					debuffs = ["Frail", "Vulnerable", "Weakened", "Entangled", "Shackles"]
 					for effect in effects:
 						
 						if effect["name"] == "Damage":
@@ -613,13 +716,13 @@ class Game:
 							self.debug_log.append("Taking " + str(unblocked_damage) + " damage from " + str(monster))
 								
 						elif effect["name"] == "Block":
-							monster.block += effect["amount"]
+							self.add_block(monster, effect["amount"])
 							
 						elif effect["name"] == "BlockOtherRandom":
 							selected_ally = None
 							while selected_ally is None or selected_ally is monster:
 								selected_ally = random.choice(available_monsters)
-							selected_ally.block += effect["amount"]
+							self.add_block(selected_ally, effect["amount"])
 							
 						elif effect["name"] in buffs:
 							monster.add_power(effect["name"], effect["amount"])
@@ -629,8 +732,21 @@ class Game:
 														
 						elif effect["name"] == "AddSlimedToDiscard":
 							for __ in range(effect["amount"]):
-								slimed = spirecomm.spire.card.Card("Slimed", "Slimed", spirecomm.spire.card.CardRarity.SPECIAL)
+								slimed = spirecomm.spire.card.Card("Slimed", "Slimed", spirecomm.spire.card.CardType.STATUS, spirecomm.spire.card.CardRarity.SPECIAL)
 								self.discard_pile.append(slimed)
+								
+						elif effect["effect"] == "GainBurnToDiscard" or effect["effect"] == "AddBurnToDiscard":
+							for _ in range(effect["amount"]):
+								self.discard_pile.append(spirecomm.spire.card.Card("Burn", "Burn", spirecomm.spire.card.CardType.STATUS, spirecomm.spire.card.CardRarity.SPECIAL))
+								
+						elif effect["effect"] == "GainBurn+ToDiscard" or effect["effect"] == "AddBurn+ToDiscard":
+							for _ in range(effect["amount"]):
+								self.discard_pile.append(spirecomm.spire.card.Card("Burn+", "Burn+", spirecomm.spire.card.CardType.STATUS, spirecomm.spire.card.CardRarity.SPECIAL, upgrades=1))
+								
+						elif effect["effect"] == "GainBurnToDeck" or effect["effect"] == "AddBurnToDeck":
+							for _ in range(effect["amount"]):
+								self.draw_pile.append(spirecomm.spire.card.Card("Burn", "Burn", spirecomm.spire.card.CardType.STATUS, spirecomm.spire.card.CardRarity.SPECIAL))	
+						
 						
 						elif effect["name"] == "Escape":
 							monster.is_gone = True
@@ -661,27 +777,25 @@ class Game:
 			self.apply_end_of_turn_effects(monster)
 
 		
-		if self.player.has_relic("Ice Cream"):
+		if self.has_relic("Ice Cream"):
 			self.player.energy += 3
 		else:
 			self.player.energy = 3
 		for relic in ["Coffee Dripper", "Mark of Pain", "Sozu", "Ectoplasm", "Cursed Key", "Runic Dome", "Philosopher's Stone"]:
-			if self.player.has_relic(relic):
+			if self.has_relic(relic):
 				self.player.energy += 1
+		if self.player.has_power("Berserk"):
+			self.player.energy += 1
 			
 		self.combat_round += 1
 		self.apply_start_of_turn_effects(self.player)
 
 		# Draw new hand - TODO consider relic modifiers and known information
 		while len(self.hand) < 5:
-			if len(self.draw_pile) == 0:
-				self.draw_pile = self.discard_pile
-				self.discard_pile = []
-				self.just_reshuffled = True
-			self.hand.append(self.draw_pile.pop(random.randrange(len(self.draw_pile))))
+			self.draw_card()
 			
 			
-		# TODO check if any enemies died and if anything happens when they do
+		# TODO check if any enemies died / half-health effects and if anything happens when they do
 		
 			
 		if self.debug_file and self.debug_log != []:
@@ -708,7 +822,7 @@ class Game:
 			pass
 		
 		elif action.potion.name == "Block Potion":
-			self.player.block += 12
+			self.add_block(self.player, 12)
 		
 		elif action.potion.name == "Blood Potion":
 			hp_gained = int(math.ceil(self.player.max_hp * 0.10)) # FIXME updated to 0.25 in a recent patch, but we're not on that patch yet
@@ -819,43 +933,59 @@ class Game:
 		
 		
 	# Returns a new state
-	def simulate_play(self, action):
+	def simulate_play(self, action, free_play=False):
 		
-		buffs = []
-		debuffs = ["Vulnerable", "Weakened"]
+		buffs = ["Strength", "Dexterity", "Metallicize", "SadisticNature", "Juggernaut", "DoubleTap", "DemonForm", "DarkEmbrace", "Brutality", "Berserk", "Rage", "Feel No Pain", "Flame Barrier", "Corruption", "Combust"]
+		debuffs = ["Vulnerable", "Weakened", "NoBlock", "No Draw"]
 		
 		if not action.card.loadedFromJSON:
 			raise Exception("Card not loaded from JSON: " + str(action.card.name))
+			
+		self.player.increment_relic("Velvet Choker")
 			
 		
 		# Fix for IDs not matching
 		for c in self.hand:
 			if action.card == c:
 				action.card = c
-			
-		# move card to discard
-		self.player.energy -= action.card.cost
-		self.hand.remove(action.card)
-		self.discard_pile.append(action.card)
+							
+		if not free_play:
+			# move card to discard
+			self.player.energy -= action.card.cost
+			self.hand.remove(action.card)
+			self.discard_pile.append(action.card)
 		
 		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
 
 		
 		if action.card.type == spirecomm.spire.card.CardType.ATTACK:
 		
-			# ornamental fan
+			if self.player.has_power("Rage"):
+				self.add_block(self.player, self.player.get_power_amount("Rage"))
+		
 			fan = self.get_relic("Ornamental Fan")
 			if fan:
 				fan.counter += 1
 				if fan.counter == 3:
 					fan.counter = 0
-					self.player.block += 4
+					self.add_block(self.player, 4)
 					
-			# TODO kunai
+			kunai = self.get_relic("Kunai")
+			if kunai:
+				kunai.counter += 1
+				if kunai.counter == 3:
+					kunai.counter = 0
+					self.player.add_power("Dexterity", 1)
 			
-			# TODO shuriken
+			shuriken = self.get_relic("Shuriken")
+			if shuriken:
+				shuriken.counter += 1
+				if shuriken.counter == 3:
+					shuriken.counter = 0
+					self.player.add_power("Strength", 1)
 			
-			# TODO pen nib
+			# TODO pen nib double if 10
+			self.increment_relic("Pen Nib")
 				
 		if action.card.type == spirecomm.spire.card.CardType.SKILL:
 			for monster in available_monsters:
@@ -890,33 +1020,187 @@ class Game:
 					real_amount += target.get_power_amount("Dexterity")
 					if target.has_power("Frail"):
 						real_amount = int(math.floor(real_amount - (0.25 * real_amount)))
-					target.block += real_amount
+					self.add_block(target, real_amount)
+					
+				elif effect["effect"] == "Entrench":
+					self.add_block(target, "Entrench")
 					
 				elif effect["effect"] == "Damage":
 					base_damage = effect["amount"]
+					if action.card.name.startswith("Searing Blow"):
+						upgrades = action.card.upgrades
+						base_damage = math.ceil((upgrades * ((upgrades + 7) / 2)) + 12)
+					if action.card.name == "Ritual Dagger" or action.card.name == "Rampage":
+						base_damage += action.card.misc
+					
+					for effect in action.card.effects:
+						if effect["name"] == "Strike Damage":
+							cards = self.draw_pile + self.discard_pile + self.hand
+							for card in cards:
+								if "Strike" in card.name:
+									base_damage += effect["amount"]
+						if effect["name"] == "Bonus Strength Damage":
+							base_damage += effect["amount"] * self.player.get_power_amount("Strength")
+					
 					self.apply_damage(base_damage, self.player, target)
 					
+				elif effect["effect"] == "Corruption":
+					cards = self.draw_pile + self.discard_pile + self.hand
+					for card in cards:
+						if card.type == spirecomm.spire.card.CardType.SKILL:
+							card.cost = 0
+					self.add_power(effect["effect"], effect["amount"])
+					
+				elif effect["effect"] == "Armaments+":
+					for card in self.hand:
+						card.upgrades += 1
+					
+					
+				elif effect["effect"] in buffs:
+					self.add_power(effect["effect"], effect["amount"])
 						
 				elif effect["effect"] in debuffs:
-					target.apply_debuff(target, effect["effect"], effect["amount"])
+					self.apply_debuff(target, effect["effect"], effect["amount"])
+					
+				elif effect["effect"] == "Block as Damage":
+					base_damage = self.player.block
+					self.apply_damage(base_damage, self.player, target)
+					
+				elif effect["effect"] == "MindBlast":
+					base_damage = len(self.draw_pile)
+					self.apply_damage(base_damage, self.player, target)
+					
+				elif effect["effect"] ==  "Violence":
+					available_attacks = [c for c in self.draw_pile if c.type == spirecomm.spire.card.CardType.ATTACK]
+					for _ in range(min(effect["amount"], len(available_attacks))):
+						selected_card = random.choice(available_attacks)
+						self.hand.append(selected_card)
+						self.draw_pile.remove(selected_card)
+						available_attacks.remove(selected_card)
+						
+				elif effect["effect"] == "Heal":
+					self.gain_hp(target, effect["amount"])
+					
+				elif effect["effect"] == "Energy":
+					self.player.energy += effect["amount"]
+					
+				elif effect["effect"] == "Anger":
+					new_card = copy.deepcopy(action.card)
+					new_card.uuid = ""
+					self.discard_pile.append(new_card)
+					
+				elif effect["effect"] == "Rampage":
+					action.card.misc += effect["amount"]				
+					
+				
+				elif effect["effect"] == "SpotWeakness":
+					if target.intent.is_attack():
+						self.add_power("Strength", effect["amount"])
+						
+				elif effect["effect"] == "SecondWind":
+					hand = self.hand
+					for card in hand:
+						if card.type != spirecomm.spire.card.CardType.ATTACK:
+							self.exhaust_card(card)
+							self.add_block(self.player, effect["amount"])
+						
+						
+				elif effect["effect"] == "ExhaustAllNonAttacks":
+					hand = self.hand
+					for card in hand:
+						if card.type != spirecomm.spire.card.CardType.ATTACK:
+							self.exhaust_card(card)
+					
+				elif effect["effect"] == "FiendFire":
+					hand = self.hand
+					for card in hand:
+						self.hand.remove(card)
+						self.exhaust_card(card)
+						self.apply_damage(effect["amount"], self.player, target)
+						
+				elif effect["effect"] == "GainBurnToDiscard":
+					for _ in range(effect["amount"]):
+						self.discard_pile.append(spirecomm.spire.card.Card("Burn", "Burn", spirecomm.spire.card.CardType.STATUS, spirecomm.spire.card.CardRarity.SPECIAL))
+						
+				elif effect["effect"] == "DazedToDraw":
+					for _ in range(effect["amount"]):
+						self.draw_pile.append(spirecomm.spire.card.Card("Dazed", "Dazed", spirecomm.spire.card.CardType.STATUS, spirecomm.spire.card.CardRarity.SPECIAL))
+						
+				elif effect["effect"] == "WoundToHand":
+					for _ in range(effect["amount"]):
+						if len(self.hand) >= 10:
+							self.discard_pile.append(spirecomm.spire.card.Card("Wound", "Wound", spirecomm.spire.card.CardType.STATUS, spirecomm.spire.card.CardRarity.SPECIAL))
+						else:
+							self.hand.append(spirecomm.spire.card.Card("Wound", "Wound", spirecomm.spire.card.CardType.STATUS, spirecomm.spire.card.CardRarity.SPECIAL))
+							
+				elif effect["effect"] == "WoundToDeck":
+					for _ in range(effect["amount"]):
+						self.draw_pile.append(spirecomm.spire.card.Card("Wound", "Wound", spirecomm.spire.card.CardType.STATUS, spirecomm.spire.card.CardRarity.SPECIAL))
+					
+				elif effect["effect"] == "Reaper":
+					base_damage = effect["amount"]
+					unblocked_damage = self.apply_damage(base_damage, self.player, target)
+					self.gain_hp(unblocked_damage)
+					
+				elif effect["effect"] == "LimitBreak":
+					target.add_power("Strength", target.get_power_amount("Strength"))
+						
+				elif effect["effect"] == "Havoc":
+					havoc_card = self.draw_pile.pop(0)
+					# randomly play the card
+					play_action = PlayCardAction(havoc_card)
+					if havoc_card.has_target:
+						available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+						selected_monster = random.choice(available_monsters)
+						play_action.target_index = selected_monster.monster_index
+						play_action.target_monster = selected_monster
+						
+					self.simulate_play(play_action)
+					self.discard_pile.remove(havoc_card)
+					self.exhaust_card(havoc_card)
+					
+				elif effect["effect"] == "Apotheosis":
+					cards = self.draw_pile + self.discard_pile + self.hand
+					for card in cards:
+						if card is not action.card:
+							card.upgrades += 1 
+							
+				elif effect["effect"] = "Lose HP":
+					self.lose_hp(self.player, effect["amount"], from_card=True)
+					
+				elif effect["effect"] == "DiscardToDraw":
+					self.draw_pile += self.discard_pile
+					random.shuffle(self.draw_pile)
+					self.discard_pile = []
 					
 				elif effect["effect"] == "Exhaust":
-					self.exhaust_pile.append(action.card)
 					self.discard_pile.remove(action.card)
+					self.exhaust_card(action.card)
 				elif effect["effect"] == "ExhaustRandom":
 					exhausted_card = random.choice(self.hand)
-					self.exhaust_pile.append(exhausted_card)
 					self.hand.remove(exhausted_card)
+					self.exhaust_card(exhausted_card)
 					
 				elif effect["effect"] == "Draw":
-					self.hand.append(self.draw_pile.pop(0))
-					while len(self.hand) > 10:
-						self.discard_pile.append(self.hand.pop())
+					self.draw_card()
+						
+				elif effect["effect"] == "Madness":
+					selected_card = random.choice([c for c in self.hand if c.cost > 0])
+					selected_card.cost = 0
 					
 				else:
 					self.debug_log.append("WARN: Unknown effect " + effect["effect"])
+					
+					
+			if action.card.type == spirecomm.spire.card.CardType.ATTACK and self.player.has_power("DoubleTap"):
+				self.player.decrement_power("DoubleTap")
+				self.simulate_play(action, free_play=True)
+				
+			if action.card.type == spirecomm.spire.card.CardType.SKILL and self.player.has_power("Corruption"):
+				self.discard_pile.remove(exhausted_card) # FIXME if might not have gone to discard
+				self.exhaust_card(action.card)
 						
-		# TODO check if any enemies died and if anything happens when they do
+		# TODO check if any enemies died / half-health effects and if anything happens when they do (e.g. ritual dagger)
 		
 		self.check_intents()
 					

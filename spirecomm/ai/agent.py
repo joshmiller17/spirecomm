@@ -41,7 +41,8 @@ class SimpleAgent:
 		self.behaviour_tree = py_trees.trees.BehaviourTree(self.root)
 		self.blackboard = py_trees.blackboard.Blackboard()
 		self.blackboard.game = Game()
-		self.last_game_state = Game()
+		self.blackboard.game.player = spirecomm.spire.character.Player(0)
+		self.last_game_state = None
 		# call behaviour_tree.tick() for one tick
 		# can use behaviour.tick_once() to tick a specific behaviour
 		
@@ -101,6 +102,8 @@ class SimpleAgent:
 			print(str(time.time()) + ": " + msg, file=self.logfile, flush=True)
 		if self.debug_level >= debug:
 			self.debug_queue.append(msg)
+		if "WARN" in msg or "ERR" in msg and self.auto_pause:
+			self.paused = True
 			
 	# a note is a log that isn't shown to the Kivy window
 	def note(self, msg):
@@ -232,10 +235,8 @@ class SimpleAgent:
 		real_diff = self.state_diff(original_state, self.blackboard.game, ignore_randomness=True)
 		if real_diff == {}:
 			self.log("WARN: real diff is null", debug=3)
-			self.note(original_state)
-			self.note(self.blackboard.game)
-			if self.auto_pause:
-				self.paused = True
+			self.note(str(original_state))
+			self.note(str(self.blackboard.game))
 		sim_diff = self.state_diff(original_state, simulated_state, ignore_randomness=True)
 		diff_diff = {}
 		skip_warn = False
@@ -266,8 +267,6 @@ class SimpleAgent:
 			self.log("actual/sim diff: " + str(diff_diff), debug=3)
 			self.log("sim diff: " + str(sim_diff), debug=3)
 			self.log("real diff: " + str(real_diff), debug=3)
-			if self.auto_pause:
-				self.paused = True
 			# self.note("Simulated:")
 			# self.note(str(simulated_state))
 			# self.note("Actual:")
@@ -282,8 +281,10 @@ class SimpleAgent:
 		if state1.player is None or state2.player is None:
 			self.log("ERR: Null player")
 			if state1.player is None:
+				self.log("in state 1")
 				self.log(str(state1))
 			else:
+				self.log("in state 2")
 				self.log(str(state2))
 			raise Exception("Null player")
 	
@@ -413,13 +414,11 @@ class SimpleAgent:
 						cause = "unknown"
 						if unavailable_monster.half_dead:
 							cause = "half dead"
-						elif unavailable_monster.is_gone:
-							cause = "is gone"
-						elif monster.current_hp <= 0:
-							cause = "dead"
-						monster_changes[m_id + "_not_available"] = cause
+						elif unavailable_monster.is_gone or unavailable_monster.current_hp <= 0:
+							cause = "is gone / dead"
+						monster_changes[monster1.monster_id + str(monster1.monster_index) + "_not_available"] = cause
 					elif monster2 not in monsters1:
-						monster_changes[m_id + "_returned_with_hp"] = monster2.current_hp
+						monster_changes[monster1.monster_id + str(monster1.monster_index) + "_returned_with_hp"] = monster2.current_hp
 								
 						
 			
@@ -492,7 +491,7 @@ class SimpleAgent:
 						if card in state2.discard_pile:
 							diff["deck_to_discard"].append(card.get_id_str())
 							continue
-						# discard to deck
+						# discard to draw_pile
 						elif card in state1.discard_pile:
 							diff["discard_to_deck"].append(card.get_id_str())
 							continue
@@ -509,21 +508,21 @@ class SimpleAgent:
 						elif card.upgrades > 0: # assume upgrading it was the different thing
 							diff["upgraded"].append(card.get_id_str()) # FIXME check this more strongly
 							continue	
-					elif card in state2.deck and card not in state1.deck and card not in state1.hand and card not in state1.discard_pile and card not in state1.exhaust_pile:
-						# discovered to deck, e.g. status effect
+					elif card in state2.draw_pile and card not in state1.draw_pile and card not in state1.hand and card not in state1.discard_pile and card not in state1.exhaust_pile:
+						# discovered to draw pile, e.g. status effect
 						diff["discovered_to_deck"].append(card.get_id_str())
 						continue
-					elif card in state2.discard_pile and card not in state1.discard_pile and card not in state1.hand and card not in state1.deck and card not in state1.exhaust_pile:
+					elif card in state2.discard_pile and card not in state1.discard_pile and card not in state1.hand and card not in state1.draw_pile and card not in state1.exhaust_pile:
 						# discovered to discard, e.g. status effect
 						diff["discovered_to_discard"].append(card.get_id_str())
 						continue
 					else:
 						self.log("WARN: unknown card change " + card.get_id_str(), debug=3)
 						diff["unknown_change"].append(card.get_id_str())
-						if card in state1.deck:
-							self.log("card was in state1 deck")
-						if card in state2.deck:
-							self.log("card is in state2 deck")
+						if card in state1.draw_pile:
+							self.log("card was in state1 draw pile")
+						if card in state2.draw_pile:
+							self.log("card is in state2 draw pile")
 						if card in state1.discard_pile:
 							self.log("card was in state1 discard")
 						if card in state2.discard_pile:
@@ -536,8 +535,6 @@ class SimpleAgent:
 							self.log("card was in state1 exhaust")
 						if card in state2.exhaust_pile:
 							self.log("card is in state2 exhaust")
-						if self.auto_pause:
-							self.paused = True
 				
 				for a in card_actions:
 					if diff[a] == []:
@@ -623,7 +620,6 @@ class SimpleAgent:
 	# For example, if we open pause menu, the last action we send will be Invalid
 	# Coordinator still needs an action input, so this function needs to return a valid action
 	def handle_error(self, error):
-		return Action() # TODO remove
 		self.log("Error: " + str(error), debug=2)
 		if "Invalid command" in str(error):
 			if "error" in str(error):
@@ -633,12 +629,14 @@ class SimpleAgent:
 			# Assume this just means we're paused
 			self.log("Invalid command error", debug=3)
 			time.sleep(1)
+			self.last_action = Action()
 			return Action()
 		elif "Selected card requires an enemy target" in str(error):
 			# FIXME I think this is related to unpausing from in-game pause menu, we accidentally input an un-initialized play
 			# For now, just try again
 			self.log("Selected card requires target error", debug=3)
 			time.sleep(1)
+			self.last_action = Action()
 			return Action()
 		else:
 			raise Exception(error)
@@ -660,15 +658,15 @@ class SimpleAgent:
 	def get_next_action_in_game(self, game_state):
 		self.last_game_state = self.blackboard.game
 		self.blackboard.game = game_state
-		if not self.blackboard.game.player:
-			if self.last_game_state.player:
+		if self.blackboard.game.player is None:
+			if self.last_game_state.player is not None:
 				self.blackboard.game.player = self.last_game_state.player # persist the player
 			else:
-				raise Exception("Two states in a row without a player")
+				raise Exception("Previous game state did not have a Player")
 		self.state_id += 1
 		self.blackboard.game.state_id = self.state_id
 		self.blackboard.game.combat_round = self.combat_round
-
+		
 		#self.think("state " + str(self.state_id))
 		
 		# Check difference from last state

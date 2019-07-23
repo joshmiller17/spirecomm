@@ -15,7 +15,6 @@
 		"effect" : "Innate",
 		"amount" : 1
 		},
-		
 		{
 		"target" : "self",
 		"effect" : "Brutality",

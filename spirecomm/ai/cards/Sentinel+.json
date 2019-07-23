@@ -20,6 +20,11 @@
 		"target" : "self",
 		"effect" : "Block",
 		"amount" : 8
+		},
+		{
+		"target" : "self",
+		"effect" : "Sentinel",
+		"amount" : 3
 		}
 	]
 }

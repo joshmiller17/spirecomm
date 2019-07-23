@@ -10,7 +10,7 @@
 	},
 	
 	"effects": [
-		{
+	{
 		"target" : "self",
 		"effect" : "Brutality",
 		"amount" : 1

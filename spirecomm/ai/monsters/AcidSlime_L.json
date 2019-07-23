@@ -8,7 +8,7 @@
 					"effects" : [
 						{
 							"name" : "Damage",
-							"amount" : 7
+							"amount" : 11
 						},
 						{
 							"name" : "AddSlimedToDiscard",
@@ -23,7 +23,7 @@
 					"effects" :[
 						{
 							"name" : "Weakened",
-							"amount" : 1
+							"amount" : 2
 						}
 					]
 					},
@@ -34,7 +34,7 @@
 					"effects" : [
 						{
 							"name" : "Damage",
-							"amount" : 10
+							"amount" : 16
 						}
 					]
 				}

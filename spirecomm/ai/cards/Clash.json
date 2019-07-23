@@ -10,12 +10,7 @@
 	},
 	
 	"effects": [
-		{
-		"target" : "one",
-		"effect" : "Is Clash Playable",
-		"amount" : 0
-		},
-		
+		{		
 		{
 		"target" : "one",
 		"effect" : "Damage",

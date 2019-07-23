@@ -8,7 +8,7 @@
 	"effects": [
 		{
 		"target" : "self",
-		"effect" : "Purity",
+		"effect" : "ExhaustSelect",
 		"amount" : 3
 		},
 		{
