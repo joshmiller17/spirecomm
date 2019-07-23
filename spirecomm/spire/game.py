@@ -364,8 +364,10 @@ class Game:
 					if "next_move" in moveset[last_move]:
 						list_of_next_moves = moveset[last_move]["next_move"]
 						moveset = {}
-						for move, details in list_of_next_moves:
-							moveset[move] = details
+						for movedict in list_of_next_moves:
+							moveset[movedict["name"]] = monster.intents["moveset"][movedict["name"]]
+							moveset[movedict["name"]]["probability"] = movedict["probability"]
+						self.debug_log.append("Found next moves to be: " + str(moveset))
 				
 				# pick from our moveset
 				for move, details in moveset.items():
@@ -480,7 +482,7 @@ class Game:
 				character.energy += 1
 				
 			if character.has_power("Brutality"):
-				self.lose_hp(character, 1, from_card=True):
+				self.lose_hp(character, 1, from_card=True)
 				self.draw_card()
 		
 	
@@ -493,30 +495,33 @@ class Game:
 				target.current_hp = max(target.current_hp - self.player.get_power_amount("SadisticNature"), 0)
 			
 	# helper function to calculate damage
+	# note: attacker may be None (e.g. Burn)
 	def calculate_real_damage(self, base_damage, attacker, target):
 		damage = base_damage
-		damage += attacker.get_power_amount("Strength")
-		damage -= attacker.get_power_amount("Shackles")
-		if attacker.has_power("Weakened"):
-			if attacker is not self.player and self.has_relic("Paper Krane"):
-				damage = int(math.floor(damage - (0.40 * damage)))
-			else:
-				damage = int(math.floor(damage - (0.25 * damage)))
+		if attacker is not None:
+			damage += attacker.get_power_amount("Strength")
+			damage -= attacker.get_power_amount("Shackles")
+			if attacker.has_power("Weakened"):
+				if attacker is not self.player and self.has_relic("Paper Krane"):
+					damage = int(math.floor(damage - (0.40 * damage)))
+				else:
+					damage = int(math.floor(damage - (0.25 * damage)))
 		if target.has_power("Vulnerable"):
 			if target is not self.player and self.has_relic("Paper Phrog"):
-				damage = int(math.ceil(damage + (0.75 * damage)))
+				damage = int(math.floor(damage + (0.75 * damage)))
 			else:
-				damage = int(math.ceil(damage + (0.50 * damage)))
+				damage = int(math.floor(damage + (0.50 * damage)))
 		return damage
 		
 	# applies Damage attack and returns unblocked damage
 	# Note: this should only be used for ATTACK damage
+	# Note attacker may be None, e.g. from Burn card
 	def apply_damage(self, base_damage, attacker, target):
-		# Note attacker may be None, e.g. from Burn card
 		adjusted_damage = self.calculate_real_damage(base_damage, attacker, target)
 		adjusted_damage = max(adjusted_damage, 0)
-		if attacker.has_power("Thievery"):
-			self.gold = max(self.gold - attacker.get_power_amount("Thievery"), 0)
+		if attacker is not None:
+			if attacker.has_power("Thievery"):
+				self.gold = max(self.gold - attacker.get_power_amount("Thievery"), 0)
 		if target.has_power("Angry"):
 			target.add_power("Strength", target.get_power_amount("Angry"))
 		if target.has_power("Intangible"):
@@ -532,19 +537,16 @@ class Game:
 			if target.has_power("Plated Armor"):
 				target.decrement_power("Plated Armor")
 			if target.current_hp == 0 and unblocked_damage > 0: # just died
-				if target.has_power("Fungal Spores"):
+				if target.has_power("Fungal Spores"): # TODO move this to "check if enemy just died" method?
 					self.player.add_power("Vulnerable", target.get_power_amount("Fungal Spores"))
 				# TODO corpse explosion, that relic that shifts poison (specimen?)
 		else:
 			target.block -= adjusted_damage
-		if target.has_power("Flame Barrier"):
-			self.apply_damage(target.get_power_amount("Flame Barrier"), None, attacker)
-		if target.has_power("Thorns"):
-			self.apply_damage(target.get_power_amount("Thorns"), None, attacker)
-		if card.name.startswith("Dropkick"):
-			if target.has_power("Vulnerable"):
-				self.player.energy += 1 
-				self.draw_card()
+		if attacker is not None:
+			if target.has_power("Flame Barrier"):
+				self.apply_damage(target.get_power_amount("Flame Barrier"), None, attacker)
+			if target.has_power("Thorns"):
+				self.apply_damage(target.get_power_amount("Thorns"), None, attacker)
 		if target.has_power("Curl Up"):
 			curl = target.get_power_amount("Curl Up")
 			self.add_block(target, curl)
@@ -600,9 +602,9 @@ class Game:
 		if card.type == spirecomm.spire.card.CardType.STATUS and self.player.has_power("Evolve"):
 			for _ in range(self.player.get_power_amount("Evolve")):
 				self.draw_card()
-		if self.player.has_relic("Snecko Eye"):
+		if self.has_relic("Snecko Eye"):
 			card.cost = random.choice(range(4))
-		if action.card.type == spirecomm.spire.card.CardType.SKILL and self.player.has_power("Corruption"):
+		if card.type == spirecomm.spire.card.CardType.SKILL and self.player.has_power("Corruption"):
 			card.cost = 0
 	
 	# Returns a new state
@@ -627,7 +629,7 @@ class Game:
 				elif effect["effect"] == "SelfDamage":
 					self.apply_damage(effect["amount"], None, self.player)
 					
-		if not self.player.has_relic("Runic Pyramid"):
+		if not self.has_relic("Runic Pyramid"):
 			self.hand = []
 		
 		# end player's turn
@@ -700,6 +702,7 @@ class Game:
 							raise Exception("Malformed Louse json when calculating base damage")
 						attack_adjustment = monster.move_base_damage - json_base
 						monster.misc = attack_adjustment
+						self.debug_log.append("Adjusted damage for louse: " + str(monster.misc))
 								
 					# Finally, apply the intended move
 					effects = monster.intents["moveset"][monster.current_move]["effects"]
@@ -709,7 +712,7 @@ class Game:
 						
 						if effect["name"] == "Damage":
 							base_damage = effect["amount"]
-							if monster.name == "FuzzyLouseNormal" or monster.name == "FuzzyLouseDefensive":
+							if monster.monster_id == "FuzzyLouseNormal" or monster.monster_id == "FuzzyLouseDefensive":
 								base_damage += monster.misc # adjustment because louses are variable
 								self.debug_log.append("Adjusted damage for louse: " + str(monster.misc))
 							unblocked_damage = self.apply_damage(base_damage, monster, self.player)
@@ -735,15 +738,20 @@ class Game:
 								slimed = spirecomm.spire.card.Card("Slimed", "Slimed", spirecomm.spire.card.CardType.STATUS, spirecomm.spire.card.CardRarity.SPECIAL)
 								self.discard_pile.append(slimed)
 								
-						elif effect["effect"] == "GainBurnToDiscard" or effect["effect"] == "AddBurnToDiscard":
+						elif effect["name"] == "AddDazedToDiscard":
+							for __ in range(effect["amount"]):
+								slimed = spirecomm.spire.card.Card("Dazed", "Dazed", spirecomm.spire.card.CardType.STATUS, spirecomm.spire.card.CardRarity.SPECIAL)
+								self.discard_pile.append(slimed)
+								
+						elif effect["name"] == "GainBurnToDiscard" or effect["name"] == "AddBurnToDiscard":
 							for _ in range(effect["amount"]):
 								self.discard_pile.append(spirecomm.spire.card.Card("Burn", "Burn", spirecomm.spire.card.CardType.STATUS, spirecomm.spire.card.CardRarity.SPECIAL))
 								
-						elif effect["effect"] == "GainBurn+ToDiscard" or effect["effect"] == "AddBurn+ToDiscard":
+						elif effect["name"] == "GainBurn+ToDiscard" or effect["name"] == "AddBurn+ToDiscard":
 							for _ in range(effect["amount"]):
 								self.discard_pile.append(spirecomm.spire.card.Card("Burn+", "Burn+", spirecomm.spire.card.CardType.STATUS, spirecomm.spire.card.CardRarity.SPECIAL, upgrades=1))
 								
-						elif effect["effect"] == "GainBurnToDeck" or effect["effect"] == "AddBurnToDeck":
+						elif effect["name"] == "GainBurnToDeck" or effect["name"] == "AddBurnToDeck":
 							for _ in range(effect["amount"]):
 								self.draw_pile.append(spirecomm.spire.card.Card("Burn", "Burn", spirecomm.spire.card.CardType.STATUS, spirecomm.spire.card.CardRarity.SPECIAL))	
 						
@@ -941,7 +949,7 @@ class Game:
 		if not action.card.loadedFromJSON:
 			raise Exception("Card not loaded from JSON: " + str(action.card.name))
 			
-		self.player.increment_relic("Velvet Choker")
+		self.increment_relic("Velvet Choker")
 			
 		
 		# Fix for IDs not matching
@@ -1034,12 +1042,12 @@ class Game:
 						base_damage += action.card.misc
 					
 					for effect in action.card.effects:
-						if effect["name"] == "Strike Damage":
+						if effect["effect"] == "Strike Damage":
 							cards = self.draw_pile + self.discard_pile + self.hand
 							for card in cards:
 								if "Strike" in card.name:
 									base_damage += effect["amount"]
-						if effect["name"] == "Bonus Strength Damage":
+						if effect["effect"] == "Bonus Strength Damage":
 							base_damage += effect["amount"] * self.player.get_power_amount("Strength")
 					
 					self.apply_damage(base_damage, self.player, target)
@@ -1083,6 +1091,11 @@ class Game:
 					
 				elif effect["effect"] == "Energy":
 					self.player.energy += effect["amount"]
+					
+				elif effect["effect"] == "Dropkick":
+					if target.has_power("Vulnerable"):
+						self.player.energy += 1 
+						self.draw_card()
 					
 				elif effect["effect"] == "Anger":
 					new_card = copy.deepcopy(action.card)
@@ -1165,7 +1178,7 @@ class Game:
 						if card is not action.card:
 							card.upgrades += 1 
 							
-				elif effect["effect"] = "Lose HP":
+				elif effect["effect"] == "Lose HP":
 					self.lose_hp(self.player, effect["amount"], from_card=True)
 					
 				elif effect["effect"] == "DiscardToDraw":

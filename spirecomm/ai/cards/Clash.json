@@ -10,7 +10,6 @@
 	},
 	
 	"effects": [
-		{		
 		{
 		"target" : "one",
 		"effect" : "Damage",

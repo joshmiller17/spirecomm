@@ -138,7 +138,7 @@ class mcts():
 						face = "^_^"
 					else:
 						face = "\(^o^)/"
-				print("Considering " + str(action) + " [" + face + "]" + " " * 50, end='\r')
+				print("Considering " + str(action) + " [" + face + "]" + " " * 20, end='\r')
 
 	def selectNode(self, node):
 		while not node.isTerminal:

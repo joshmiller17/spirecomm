@@ -19,7 +19,7 @@
 					"effects" :[
 						{
 							"name" : "Damage",
-							"amount" : 16
+							"amount" : 8
 						},
 						{
 							"name" : "AddSlimedToDiscard",

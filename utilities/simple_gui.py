@@ -294,7 +294,7 @@ class CommunicationApp(App):
 		
 def run_agent(f, communication_coordinator):
 	# TEST
-	print("Agent: preparing profiler test", file=f, flush=True)
+	#print("Agent: preparing profiler test", file=f, flush=True)
 	try:
 		# import io, cProfile, pstats
 		# pr = cProfile.Profile()
@@ -303,7 +303,7 @@ def run_agent(f, communication_coordinator):
 		# print("Agent: init profiler test", file=f, flush=True)
 
 		result = communication_coordinator.play_one_game(PlayerClass.IRONCLAD)
-		print("Agent: first game ended in {}" "victory" if result else "defeat", file=f, flush=True)
+		print("Agent: first game ended in {}" + "victory" if result else "defeat", file=f, flush=True)
 		# print("Agent: finishing profiler test", file=f, flush=True)
 		# pr.disable()
 		# sortby = 'cumulative'
