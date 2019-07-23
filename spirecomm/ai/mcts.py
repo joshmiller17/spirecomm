@@ -2,6 +2,9 @@ import math
 import random
 import time
 
+
+COGITATION_LEVEL = 8
+
 def rolloutPolicy(state):
 	while not state.isTerminal():
 		try:
@@ -57,32 +60,85 @@ class mcts():
 				raise ValueError("Iteration limit must be greater than one")
 			self.searchLimit = iterationLimit
 			self.limitType = 'iterations'
+			
+		self.limitType = 'smart' # TEST
+			
 		self.explorationConstant = explorationConstant
 		self.rollout = rolloutPolicy
 
 	def search(self, initialState):
 		self.root = treeNode(initialState, None)
-
+				
 		if self.limitType == 'time':
 			timeLimit = time.time() + self.timeLimit / 1000
 			while time.time() < timeLimit:
 				self.executeRound()
-		else:
+		elif self.limitType == 'iterations':
 			for i in range(self.searchLimit):
 				self.executeRound()
+		elif self.limitType == 'smart':
+			rounds = 1
+			best_child = None
+			rounds_certainty = 0
+			while True:
+				self.executeRound()
+				rounds += 1
+				new_best_child = self.getBestChild(self.root, 0)
+				if best_child == new_best_child:
+					rounds_certainty += 1
+				else:
+					best_child = new_best_child
+					rounds_certainty = 0
 
+				if rounds_certainty > COGITATION_LEVEL:
+					break
+				
+				if rounds > 100:
+					break
+
+		else:
+			raise Exception("Unknown MCTS limit type.")
+
+		print("") # TEST
 		bestChild = self.getBestChild(self.root, 0)
-		#TEST
-		# print(self.root.children.keys())
-		# for action,child in self.root.children.items():
-		# 	nodeValue = child.totalReward / child.numVisits
-		# 	print("%s: %f"%(action,nodeValue))
 		return self.getAction(self.root, bestChild)
+		
+	def get_values_of_children(self):
+		vals = []
+		for action, node in self.root.children.items():
+			vals.append(node.totalReward / node.numVisits)
+		return vals
 
 	def executeRound(self):
 		node = self.selectNode(self.root)
 		reward = self.rollout(node.state)
 		self.backpropogate(node, reward)
+		
+		# TEST
+		bestChild = self.getBestChild(self.root, 0)
+		vals = self.get_values_of_children()
+		if len(vals) > 1:
+			vals.remove(max(vals))
+			second_highest = max(vals)
+		else:
+			second_highest = -999
+		for action, node in self.root.children.items():
+			if node is bestChild:
+				best_value = node.totalReward / node.numVisits
+				val_diff = best_value - second_highest
+				face = "-_-"
+				if second_highest != -999:
+					if val_diff < 0:
+						face = ">_<"
+					elif val_diff < 1:
+						face = "O_o"
+					elif val_diff < 4:
+						face = "*_*'"
+					elif val_diff < 10:
+						face = "^_^"
+					else:
+						face = "\(^o^)/"
+				print("Considering " + str(action) + " [" + face + "]" + " " * 50, end='\r')
 
 	def selectNode(self, node):
 		while not node.isTerminal:
@@ -124,7 +180,7 @@ class mcts():
 		return random.choice(bestNodes)
 
 	def getAction(self, root, bestChild):		
-		#print(str(root)) # TEST
 		for action, node in root.children.items():
 			if node is bestChild:
 				return action
+				

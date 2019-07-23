@@ -25,14 +25,14 @@ class SimpleAgent:
 		self.action_delay = 0.5 # seconds delay per action, useful for actually seeing what's going on.
 		self.debug_level = 4
 		self.ascension = 0
-		self.debug_queue = ["AI initialized.", "Delay timer set to " + str(self.action_delay), "Debug level set to " + str(self.debug_level)]
+		self.auto_pause = True # pause after warnings and errors
+		self.debug_queue = ["AI initialized.", "Delay timer set to " + str(self.action_delay), "Debug level set to " + str(self.debug_level), "Auto pause is " + "ON" if self.auto_pause else "OFF"]
 		self.cmd_queue = []
 		self.last_action = None
 		self.logfile_name = logfile_name
 		self.logfile = open(self.logfile_name, 'a+')
 		self.skipping_card = False
 		self.paused = False
-		self.auto_pause = True # pause after warnings and errors
 		self.step = False
 		self.combat_round = 1
 		self.state_id = 0 # debugging guide for tracking state

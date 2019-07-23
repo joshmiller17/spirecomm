@@ -206,7 +206,8 @@ class Base(BoxLayout):
 				communication_state = json.load(open(os.path.join(config.SPIRECOMM_PATH, "utilities", "combat_example.json")))
 				game_state = Game.from_json(communication_state.get("game_state"), communication_state.get("available_commands"))
 				mcts_timeout = 2000 # in ms # eventually set to agent.action_delay * 1000 with debug cmd to adjust
-				monte_carlo = mcts(timeLimit=mcts_timeout)
+				mcts_iterations = 100
+				monte_carlo = mcts(iterationLimit=mcts_iterations)  #timeLimit=mcts_timeout)
 
 				
 				while game_state.player.current_hp > 0 and game_state.monsters[0].current_hp > 0:

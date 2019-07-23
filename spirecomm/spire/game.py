@@ -110,6 +110,9 @@ class Game:
 			if relic.name == name:
 				return relic
 		return None
+		
+	def has_relic(self, name):
+		return self.get_relic(name) is not None
 	
 	def __str__(self):
 		string = "\n\n---- Game State ----\n"
@@ -396,8 +399,8 @@ class Game:
 				
 	# Note: this function isn't called anywhere yet, but it also might not need to ever be simulated
 	def apply_start_of_combat_effects(self, character):
-		if character == self.player:
-			if character.has_relic("Thread and Needle"):
+		if character is self.player:
+			if self.has_relic("Thread and Needle"):
 				character.add_power("Plated Armor", 4)
 				
 	def check_intents(self):
@@ -409,16 +412,15 @@ class Game:
 	# TODO apply_start_of_turn_effects
 	def apply_start_of_turn_effects(self, character):
 	
-	# if we have any block left, get rid of it - TODO barricade, calipers
 		if character.has_power("Barricade"):
 			pass
-		elif character == self.player and character.has_relic("Calipers"):
+		elif character is self.player and self.has_relic("Calipers"):
 			character.block = max(character.block - 15, 0)
 		else:
 			character.block = 0
 	
-		if character == self.player:
-			if character.has_relic("Runic Dodecahedron") and character.current_hp == character.max_hp:
+		if character is self.player:
+			if self.has_relic("Runic Dodecahedron") and character.current_hp == character.max_hp:
 				character.energy += 1
 		
 	
@@ -433,12 +435,12 @@ class Game:
 		damage = base_damage
 		damage += attacker.get_power_amount("Strength")
 		if attacker.has_power("Weakened"):
-			if attacker is not self.player and self.get_relic("Paper Krane") is not None:
+			if attacker is not self.player and self.has_relic("Paper Krane"):
 				damage = int(math.floor(damage - (0.40 * damage)))
 			else:
 				damage = int(math.floor(damage - (0.25 * damage)))
 		if target.has_power("Vulnerable"):
-			if target is not self.player and self.get_relic("Paper Phrog") is not None:
+			if target is not self.player and self.has_relic("Paper Phrog"):
 				damage = int(math.ceil(damage + (0.75 * damage)))
 			else:
 				damage = int(math.ceil(damage + (0.50 * damage)))
@@ -459,7 +461,7 @@ class Game:
 		unblocked_damage = adjusted_damage - target.block
 		unblocked_damage = max(unblocked_damage, 0)
 		if unblocked_damage > 0:
-			if unblocked_damage <= 5 and attacker == self.player and attacker.has_relic("The Boot"):
+			if unblocked_damage <= 5 and attacker is self.player and self.has_relic("The Boot"):
 				unblocked_damage = 5
 			unblocked_damage = min(target.current_hp, unblocked_damage)
 			target.current_hp -= unblocked_damage
