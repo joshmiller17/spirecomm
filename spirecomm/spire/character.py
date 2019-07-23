@@ -160,7 +160,6 @@ class Monster(Character):
 
 		self.intents = {}
 		self.current_move = None
-		self.expected_next_move = None # not used yet
 		
 		try:
 			with open(os.path.join(MONSTERS_PATH, self.monster_id + ".json"),"r") as f:

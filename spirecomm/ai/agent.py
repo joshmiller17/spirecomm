@@ -230,6 +230,12 @@ class SimpleAgent:
 		while len(simulated_state.debug_log):
 			self.log(simulated_state.debug_log.pop(0))
 		real_diff = self.state_diff(original_state, self.blackboard.game, ignore_randomness=True)
+		if real_diff == {}:
+			self.log("WARN: real diff is null", debug=3)
+			self.note(original_state)
+			self.note(self.blackboard.game)
+			if self.auto_pause:
+				self.paused = True
 		sim_diff = self.state_diff(original_state, simulated_state, ignore_randomness=True)
 		diff_diff = {}
 		skip_warn = False
@@ -272,6 +278,15 @@ class SimpleAgent:
 	# Returns a dict of what changed between game states
 	# ignore_randomness is used by simulation_sanity_check and ignores poor simulations due to chance
 	def state_diff(self, state1, state2, ignore_randomness=False):	
+	
+		if state1.player is None or state2.player is None:
+			self.log("ERR: Null player")
+			if state1.player is None:
+				self.log(str(state1))
+			else:
+				self.log(str(state2))
+			raise Exception("Null player")
+	
 		diff = {}
 		if state1.room_phase != state2.room_phase:
 			diff["room_phase"] = str(state2.room_phase)
@@ -299,8 +314,8 @@ class SimpleAgent:
 			diff["act"] = state2.act
 		if state1.gold != state2.gold:
 			diff["gold"] = state2.gold - state1.gold
-		if state1.state_id != state2.state_id:
-			diff["state_id"] = state2.state_id - state1.state_id
+		#if state1.state_id != state2.state_id:
+		#	diff["state_id"] = state2.state_id - state1.state_id
 		if state1.combat_round != state2.combat_round:
 			diff["combat_round"] = state2.combat_round - state1.combat_round
 			
@@ -392,6 +407,20 @@ class SimpleAgent:
 							if monster_changes[m_id + "_powers_changed"] == []:
 								monster_changes.pop(m_id + "_powers_changed", None)
 						break
+						
+					elif monster1 not in monsters2:
+						unavailable_monster = [monster for monster in state2.monsters if monster1 == monster][0]
+						cause = "unknown"
+						if unavailable_monster.half_dead:
+							cause = "half dead"
+						elif unavailable_monster.is_gone:
+							cause = "is gone"
+						elif monster.current_hp <= 0:
+							cause = "dead"
+						monster_changes[m_id + "_not_available"] = cause
+					elif monster2 not in monsters1:
+						monster_changes[m_id + "_returned_with_hp"] = monster2.current_hp
+								
 						
 			
 			if monster_changes != {}:
@@ -631,8 +660,11 @@ class SimpleAgent:
 	def get_next_action_in_game(self, game_state):
 		self.last_game_state = self.blackboard.game
 		self.blackboard.game = game_state
-		if not self.blackboard.game.player and self.last_game_state.player:
-			self.blackboard.game.player = self.last_game_state.player # persist the player
+		if not self.blackboard.game.player:
+			if self.last_game_state.player:
+				self.blackboard.game.player = self.last_game_state.player # persist the player
+			else:
+				raise Exception("Two states in a row without a player")
 		self.state_id += 1
 		self.blackboard.game.state_id = self.state_id
 		self.blackboard.game.combat_round = self.combat_round
@@ -913,8 +945,6 @@ class SimpleAgent:
 				return RestAction(RestOption.DIG)
 			elif RestOption.REST in rest_options and self.blackboard.game.player.current_hp < self.blackboard.game.player.max_hp:
 				return RestAction(RestOption.REST)
-			else:
-				return ChooseAction(0)
 		else:
 			return ProceedAction()
 

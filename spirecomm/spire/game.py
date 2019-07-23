@@ -344,6 +344,17 @@ class Game:
 				move_weights = []
 				moves = []
 				moveset = monster.intents["moveset"]
+				
+				# change moveset to next move if exists
+				if str(monster) in self.monsters_last_attacks:
+					last_move = self.monsters_last_attacks[str(monster)][0]
+					if "next_move" in moveset[last_move]:
+						list_of_next_moves = moveset[last_move]["next_move"]
+						moveset = {}
+						for move, details in list_of_next_moves:
+							moveset[move] = details
+				
+				# pick from our moveset
 				for move, details in moveset.items():
 					moves.append(move)
 					move_weights.append(details["probability"])
@@ -361,7 +372,17 @@ class Game:
 								exceeds_limit = True
 					if not exceeds_limit:
 						break
-		# TODO Lagavulin sleeping?
+		
+		# Check if Lagavulin should still be sleeping
+		moveset = monster.intents["moveset"]
+		if monster.monster_id == "Lagavulin":
+			if monster.current_hp != monster.max_hp and moveset[selected_move]["intent_type"] == "SLEEP":
+				# wake up 
+				selected_move = "Stunned"
+			if monster.has_power("Asleep") and moveset[selected_move]["intent_type"] != "SLEEP":
+				monster.add_power("Metallicize", -8)
+				monster.remove_power("Asleep")
+		
 		return selected_move
 	
 		
@@ -402,6 +423,9 @@ class Game:
 		if character is self.player:
 			if self.has_relic("Thread and Needle"):
 				character.add_power("Plated Armor", 4)
+			if self.has_relic("Anchor"):
+				character.block += 10
+					
 				
 	def check_intents(self):
 		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
@@ -525,8 +549,10 @@ class Game:
 					if self.combat_round == 1 and "startswith" in monster.intents:
 						monster.current_move = monster.intents["startswith"]
 						self.debug_log.append("Known initial intent for " + str(monster) + " is " + str(monster.current_move))
-						# TODO adjust initial intents for Sentries
-						if monster.monster_id == "FuzzyLouseNormal" or monster.monster_id == "FuzzyLouseDefensive":
+						if monster.monster_id == "Sentry" and monster.monster_index == 1:
+							# The second Sentry starts with an attack rather than debuff
+							monster.current_move = "Beam"
+						elif monster.monster_id == "FuzzyLouseNormal" or monster.monster_id == "FuzzyLouseDefensive":
 							# louses have a variable base attack
 							effs = monster.intents["moveset"][move]["effects"]
 							json_base = None
@@ -575,9 +601,9 @@ class Game:
 					# Finally, apply the intended move
 					effects = monster.intents["moveset"][monster.current_move]["effects"]
 					buffs = ["Ritual", "Strength", "Incantation"]
-					debuffs = ["Frail", "Vulnerable", "Weakened"]
+					debuffs = ["Frail", "Vulnerable", "Weakened", "Entangled"]
 					for effect in effects:
-											
+						
 						if effect["name"] == "Damage":
 							base_damage = effect["amount"]
 							if monster.name == "FuzzyLouseNormal" or monster.name == "FuzzyLouseDefensive":
@@ -600,7 +626,7 @@ class Game:
 							
 						elif effect["name"] in debuffs:
 							self.apply_debuff(self.player, effect["name"], effect["amount"])
-							
+														
 						elif effect["name"] == "AddSlimedToDiscard":
 							for __ in range(effect["amount"]):
 								slimed = spirecomm.spire.card.Card("Slimed", "Slimed", spirecomm.spire.card.CardRarity.SPECIAL)
@@ -634,7 +660,15 @@ class Game:
 		for monster in available_monsters:
 			self.apply_end_of_turn_effects(monster)
 
-		self.player.energy = 3 # hard coded energy per turn. TODO energy relics; if icecream, += 3
+		
+		if self.player.has_relic("Ice Cream"):
+			self.player.energy += 3
+		else:
+			self.player.energy = 3
+		for relic in ["Coffee Dripper", "Mark of Pain", "Sozu", "Ectoplasm", "Cursed Key", "Runic Dome", "Philosopher's Stone"]:
+			if self.player.has_relic(relic):
+				self.player.energy += 1
+			
 		self.combat_round += 1
 		self.apply_start_of_turn_effects(self.player)
 
@@ -787,7 +821,8 @@ class Game:
 	# Returns a new state
 	def simulate_play(self, action):
 		
-		power_effects = ["Vulnerable", "Weakened"]
+		buffs = []
+		debuffs = ["Vulnerable", "Weakened"]
 		
 		if not action.card.loadedFromJSON:
 			raise Exception("Card not loaded from JSON: " + str(action.card.name))
@@ -862,8 +897,8 @@ class Game:
 					self.apply_damage(base_damage, self.player, target)
 					
 						
-				elif effect["effect"] in power_effects:
-					target.add_power(effect["effect"], effect["amount"])
+				elif effect["effect"] in debuffs:
+					target.apply_debuff(target, effect["effect"], effect["amount"])
 					
 				elif effect["effect"] == "Exhaust":
 					self.exhaust_pile.append(action.card)

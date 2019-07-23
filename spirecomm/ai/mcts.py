@@ -3,7 +3,7 @@ import random
 import time
 
 
-COGITATION_LEVEL = 8
+COGITATION_LEVEL = 7
 
 def rolloutPolicy(state):
 	while not state.isTerminal():

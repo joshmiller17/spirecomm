@@ -78,7 +78,7 @@
 					"probability" : 0.0,
 					"effects" : [
 						{
-							"name" : "Entangle",
+							"name" : "Entangled",
 							"amount" : 1
 						}
 					]

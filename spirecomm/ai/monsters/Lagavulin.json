@@ -47,7 +47,7 @@
 					],
 					"next_move" :[
 						{
-							"name" : "Stunned",
+							"name" : "Attack 1",
 							"probability" : 1.0
 						}
 					]
