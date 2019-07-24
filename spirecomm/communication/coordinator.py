@@ -113,10 +113,6 @@ class Coordinator:
 		self.actions_played_queue.put(action)
 		action.execute(self)
 		
-	def re_execute_last_action(self):
-		self.actions_played_queue.put(self.last_action)
-		self.last_action.execute(self)
-
 	def execute_next_action_if_ready(self):
 		"""Immediately execute the next action in the action queue, if ready to do so
 
@@ -160,6 +156,7 @@ class Coordinator:
 		
 	def get_action_played(self):
 		if not self.actions_played_queue.empty():
+			return self.actions_played_queue.get()
 			return self.actions_played_queue.get()
 
 	def get_next_raw_message(self, block=False):
@@ -218,14 +215,6 @@ class Coordinator:
 					self.add_action_to_queue(new_action)
 			return True
 		return False
-		
-	def unpause_agent(self):
-		print("Communicator: game update " + str(time.time()), file=self.logfile, flush=True)
-		print("Communicator's game state:", file=self.logfile, flush=True)
-		print(str(self.last_game_state), file=self.logfile, flush=True)
-		self.last_game_state = Game.from_json(communication_state.get("game_state"), communication_state.get("available_commands"))
-		self.receive_game_state_update()
-		
 
 	def run(self):
 		"""Start executing actions forever

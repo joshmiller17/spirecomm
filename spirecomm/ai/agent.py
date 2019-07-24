@@ -213,7 +213,7 @@ class SimpleAgent:
 		try:
 			return self.cmd_queue.pop()
 		except:
-			return Action()
+			return StateAction()
 			
 	def decide(self, action):
 		if action.command.startswith("end"):
@@ -621,6 +621,7 @@ class SimpleAgent:
 	# Coordinator still needs an action input, so this function needs to return a valid action
 	def handle_error(self, error):
 		self.log("Agent handling error: " + str(error), debug=2)
+		#self.state_diff(self.last_game_state, self.blackboard.game) == {}
 		if "Invalid command" in str(error):
 			if "error" in str(error):
 				self.log(traceback.format_exc(), debug=2)
@@ -628,14 +629,20 @@ class SimpleAgent:
 				print(traceback.format_exc(), file=self.logfile, flush=True)
 			# Assume this just means we're paused
 			self.log("Invalid command error", debug=3)
-			self.last_action = Action()
-			return Action()
+			self.last_action = StateAction()
+			return StateAction()
 		elif "Selected card requires an enemy target" in str(error):
 			# FIXME I think this is related to unpausing from in-game pause menu, we accidentally input an un-initialized play
 			# For now, just try again
 			self.log("Selected card requires target error", debug=3)
-			self.last_action = Action()
-			return Action()
+			self.last_action = StateAction()
+			return StateAction()
+		elif "Selected card cannot be played with the selected target" in str(error):
+			# FIXME I think this is related to unpausing from in-game pause menu, we accidentally input an un-initialized play
+			# For now, just try again
+			self.log("Selected card requires target error", debug=3)
+			self.last_action = StateAction()
+			return StateAction()
 		else:
 			raise Exception(error)
 		
@@ -650,12 +657,13 @@ class SimpleAgent:
 		if self.blackboard.game.cancel_available:
 			return self.decide(CancelAction())
 		self.log("ERR: no choices available. Game paused?", debug=2)
-		self.last_action = Action()
-		return Action()
+		self.last_action = StateAction()
+		return StateAction()
 
 	def get_next_action_in_game(self, game_state):
 		self.last_game_state = self.blackboard.game
 		self.blackboard.game = game_state
+		
 		if self.blackboard.game.player is None:
 			if self.last_game_state.player is not None:
 				self.blackboard.game.player = self.last_game_state.player # persist the player
