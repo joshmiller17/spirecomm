@@ -126,7 +126,7 @@ class SelectorBehaviour(py_trees.composites.Selector):
 class TestBehaviour(DefaultBehaviour):
 	
 	def update(self):
-		self.log("tick", debug=6)
+		self.log("tick", debug=7)
 		self.agent.cmd_queue.append(self.agent.default_logic(self.agent.blackboard.game))
 		return py_trees.common.Status.SUCCESS
 
@@ -186,7 +186,7 @@ class BoolCheckBehaviour(DefaultBehaviour):
 		value = getattr(self.agent.blackboard.game, self.boolean)
 		ret = value if self.success else not value # invert bool if that's what we want to check
 		retStr = "SUCCESS" if ret else "FAILURE"
-		self.log(str(self.boolean) + " is " + str(value) + ": " + retStr, debug=6)
+		self.log(str(self.boolean) + " is " + str(value) + ": " + retStr, debug=7)
 		return py_trees.common.Status.SUCCESS if ret else py_trees.common.Status.FAILURE
 
 	def to_json(self):
@@ -225,7 +225,7 @@ class EqualityCheckBehaviour(BoolCheckBehaviour):
 		else:
 			logStr += "!= "
 		logStr += str(self.second) + ": " + retStr
-		self.log(logStr, debug=6)
+		self.log(logStr, debug=7)
 		return py_trees.common.Status.SUCCESS if ret else py_trees.common.Status.FAILURE
 
 	def to_json(self):

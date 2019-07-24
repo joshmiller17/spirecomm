@@ -23,7 +23,7 @@ class SimpleAgent:
 		self.chosen_class = chosen_class
 		self.change_class(chosen_class)
 		self.action_delay = 0.5 # seconds delay per action, useful for actually seeing what's going on.
-		self.debug_level = 4
+		self.debug_level = 6
 		self.ascension = 0
 		self.auto_pause = True # pause after warnings and errors
 		self.debug_queue = ["AI initialized.", "Delay timer set to " + str(self.action_delay), "Debug level set to " + str(self.debug_level), "Auto pause is " + "ON" if self.auto_pause else "OFF"]
@@ -620,7 +620,7 @@ class SimpleAgent:
 	# For example, if we open pause menu, the last action we send will be Invalid
 	# Coordinator still needs an action input, so this function needs to return a valid action
 	def handle_error(self, error):
-		self.log("Error: " + str(error), debug=2)
+		self.log("Agent handling error: " + str(error), debug=2)
 		if "Invalid command" in str(error):
 			if "error" in str(error):
 				self.log(traceback.format_exc(), debug=2)
@@ -628,14 +628,12 @@ class SimpleAgent:
 				print(traceback.format_exc(), file=self.logfile, flush=True)
 			# Assume this just means we're paused
 			self.log("Invalid command error", debug=3)
-			time.sleep(1)
 			self.last_action = Action()
 			return Action()
 		elif "Selected card requires an enemy target" in str(error):
 			# FIXME I think this is related to unpausing from in-game pause menu, we accidentally input an un-initialized play
 			# For now, just try again
 			self.log("Selected card requires target error", debug=3)
-			time.sleep(1)
 			self.last_action = Action()
 			return Action()
 		else:
@@ -651,8 +649,8 @@ class SimpleAgent:
 			return self.handle_combat()
 		if self.blackboard.game.cancel_available:
 			return self.decide(CancelAction())
-		self.log("Error: no choices available. Game paused?", debug=2)
-		time.sleep(1)
+		self.log("ERR: no choices available. Game paused?", debug=2)
+		self.last_action = Action()
 		return Action()
 
 	def get_next_action_in_game(self, game_state):
@@ -670,7 +668,7 @@ class SimpleAgent:
 		#self.think("state " + str(self.state_id))
 		
 		# Check difference from last state
-		self.log("Diff: " + str(self.state_diff(self.last_game_state, self.blackboard.game)), debug=7)
+		self.log("True Diff: " + str(self.state_diff(self.last_game_state, self.blackboard.game)), debug=6)
 		if self.blackboard.game.in_combat and self.last_game_state.in_combat and self.last_action is not None:
 			self.simulation_sanity_check(self.last_game_state, self.last_action) # check if we predicted this
 		
@@ -698,6 +696,8 @@ class SimpleAgent:
 		
 		cmd = self.get_next_cmd()
 		self.last_action = cmd
+		if len(self.cmd_queue) > 0:
+			self.log("WARN: command queue is non-empty: " + str(self.cmd_queue), debug=3)
 		return self.decide(cmd) # FIXME, after phasing out the default logic, should only get one decide - right now, decide is called twice
 		
 

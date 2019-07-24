@@ -399,32 +399,51 @@ class Game:
 				monster.remove_power("Asleep")
 		
 		return selected_move
+		
+	def apply_end_of_player_turn_effects(self):
 	
+		# reset relics
+		self.set_relic_counter("Kunai", 0)
+		self.set_relic_counter("Shuriken", 0)
+		self.set_relic_counter("Ornamental Fan", 0)
+		self.set_relic_counter("Velvet Choker", 0)
+	
+		for power in self.player.powers:
+			if power.power_name == "Strength Down":
+				self.apply_debuff(self.player, "Strength Down", -1 * power.amount)
+				self.player.remove_power("Strength Down")
+			elif power.power_name == "Dexterity Down":
+				self.apply_debuff(self.player, "Dexterity Down", -1 * power.amount)
+				self.player.remove_power("Dexterity Down")
+			elif power.power_name == "Focus Down":
+				self.apply_debuff(self.player, "Focus Down", -1 * power.amount)
+				self.player.remove_power("Focus Down")
+			elif power.power_name == "Plated Armor":
+				self.add_block(self.player, power.amount)
+			elif power.power_name == "Metallicize":
+				self.add_block(self.player, power.amount)
+			elif power.power_name == "Combust":
+				self.lose_hp(self.player, 1, from_card=True)
+				available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+				for monster in available_monsters:
+					monster.current_hp = max(monster.current_hp - power.amount, 0)
+			elif power.power_name == "Regen":
+				self.player.current_hp = min(self.player.current_hp + power.amount, self.player.max_hp)
+				self.player.decrement_power(power.power_name)
+			elif power.power_name == "DemonForm":
+				character.add_power("Strength", power.amount)
+				
+	def decrement_duration_powers(self, character):
+		turn_based_powers = ["Vulnerable", "Frail", "Weakened", "No Block", "No Draw"]
+		for power in character.powers:
+			if power.power_name in turn_based_powers:
+				character.decrement_power(power.power_name)	
 		
 	def apply_end_of_turn_effects(self, character):
-		turn_based_powers = ["Vulnerable", "Frail", "Weakened", "No Block"]
 	
 		for power in character.powers:
 			if power.power_name == "Shackles":
 				character.remove_power("Shackles")
-			elif power.power_name == "Strength Down":
-				self.apply_debuff(character, "Strength Down", -1 * power.amount)
-				character.remove_power("Strength Down")
-			elif power.power_name == "Dexterity Down":
-				self.apply_debuff(character, "Dexterity Down", -1 * power.amount)
-				character.remove_power("Dexterity Down")
-			elif power.power_name == "Focus Down":
-				self.apply_debuff(character, "Focus Down", -1 * power.amount)
-				character.remove_power("Focus Down")
-			elif power.power_name == "Plated Armor":
-				self.add_block(character, power.amount)
-			elif power.power_name == "Metallicize":
-				self.add_block(character, power.amount)
-			elif power.power_name == "Combust":
-				self.lose_hp(character, 1, from_card=True)
-				available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
-				for monster in available_monsters:
-					monster.current_hp = max(monster.current_hp - power.amount, 0)
 			elif power.power_name == "Ritual":
 				character.add_power("Strength", power.amount)
 			elif power.power_name == "Incantation":
@@ -432,12 +451,7 @@ class Game:
 				character.remove_power("Incantation")
 			elif power.power_name == "Regen":
 				character.current_hp = min(character.current_hp + power.amount, character.max_hp)
-				character.decrement_power(power.power_name)		
-			elif power.power_name == "DemonForm":
-				character.add_power("Strength", power.amount)
-
-			elif power.power_name in turn_based_powers:
-				character.decrement_power(power.power_name)				
+				character.decrement_power(power.power_name)					
 				
 	# Note: this function isn't called anywhere yet, but it also might not need to ever be simulated
 	def apply_start_of_combat_effects(self, character):
@@ -484,6 +498,8 @@ class Game:
 			if character.has_power("Brutality"):
 				self.lose_hp(character, 1, from_card=True)
 				self.draw_card()
+				
+		self.decrement_duration_powers(character)
 		
 	
 	def apply_debuff(self, target, debuff, amount):
@@ -512,6 +528,12 @@ class Game:
 			else:
 				damage = int(math.floor(damage + (0.50 * damage)))
 		return damage
+		
+	# Note attacker may be None, e.g. from Burn card
+	def mark_damage(self, damage, attacker, target, from_attack=False):
+		# TODO use this to replace all hp subtractions
+		# TODO check for changes to intent and effects on death
+		pass
 		
 	# applies Damage attack and returns unblocked damage
 	# Note: this should only be used for ATTACK damage
@@ -585,6 +607,10 @@ class Game:
 			for effect in card.effects:
 				if effect["effect"] == "Sentinel":
 					self.player.energy += effect["amount"]
+		if self.has_relic("Charon's Ashes"):
+			available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+			for monster in available_monsters:
+				monster.current_hp = max(monster.current_hp - 3, 0)
 	
 	def draw_card(self):
 		if self.player.has_power("No Draw"):
@@ -614,6 +640,9 @@ class Game:
 		
 		# TODO consider retaining cards (well-laid plans) or runic pyramid
 		
+		# end player's turn
+		self.apply_end_of_player_turn_effects()
+		
 		# Hand discarded
 		self.discard_pile += self.hand
 		for card in self.hand:
@@ -631,9 +660,6 @@ class Game:
 					
 		if not self.has_relic("Runic Pyramid"):
 			self.hand = []
-		
-		# end player's turn
-		self.apply_end_of_turn_effects(self.player)
 
 		
 		# MONSTER TURN / MONSTERS ATTACK
@@ -755,6 +781,8 @@ class Game:
 							for _ in range(effect["amount"]):
 								self.draw_pile.append(spirecomm.spire.card.Card("Burn", "Burn", spirecomm.spire.card.CardType.STATUS, spirecomm.spire.card.CardRarity.SPECIAL))	
 						
+						elif effect["name"] == "Sleep":
+							pass # take one (1) snoozle
 						
 						elif effect["name"] == "Escape":
 							monster.is_gone = True
@@ -974,22 +1002,22 @@ class Game:
 			fan = self.get_relic("Ornamental Fan")
 			if fan:
 				fan.counter += 1
-				if fan.counter == 3:
-					fan.counter = 0
+				if fan.counter >= 3:
+					self.set_relic_counter("Ornamental Fan", 0)
 					self.add_block(self.player, 4)
 					
 			kunai = self.get_relic("Kunai")
 			if kunai:
 				kunai.counter += 1
-				if kunai.counter == 3:
-					kunai.counter = 0
+				if kunai.counter >= 3:
+					self.set_relic_counter("Kunai", 0)
 					self.player.add_power("Dexterity", 1)
 			
 			shuriken = self.get_relic("Shuriken")
 			if shuriken:
 				shuriken.counter += 1
-				if shuriken.counter == 3:
-					shuriken.counter = 0
+				if shuriken.counter >= 3:
+					self.set_relic_counter("Shuriken", 0)
 					self.player.add_power("Strength", 1)
 			
 			# TODO pen nib double if 10
