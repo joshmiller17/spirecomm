@@ -1,5 +1,4 @@
 {
-	"startswith": "Stab",
 	"moveset" : {
 				"Stab" :
 					{
@@ -19,7 +18,7 @@
 					"effects" :[
 						{
 							"name" : "Damage",
-							"amount" : 6
+							"amount" : 7
 						},
 						{
 							"name" : "Weakened",
@@ -29,7 +28,7 @@
 					}
 			},
 	"limits" : {
-			"Scrape" : 3,
+			"Rake" : 3,
 			"Stab" : 3
 	}
 	
