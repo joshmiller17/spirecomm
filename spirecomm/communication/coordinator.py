@@ -172,7 +172,7 @@ class Coordinator:
 			return self.last_msg
 			
 
-	def receive_game_state_update(self, block=False, perform_callbacks=True, repeat=False):
+	def receive_game_state_update(self, block=False, perform_callbacks=True):
 		"""Using the next message from Communication Mod, update the stored game state
 
 		:param block: set to True to wait for the next message
@@ -182,11 +182,9 @@ class Coordinator:
 		:return: whether a message was received
 		"""
 		
-		message = ""
-		if repeat:
-			message = self.last_msg
-		else:
-			message = self.get_next_raw_message(block)
+		message = self.get_next_raw_message(block)
+		if len(self.action_queue) > 0:
+			print("WARN: action queue is non-empty: " + str(self.action_queue), file=self.logfile, flush=True)
 		
 		if message is not None:
 			communication_state = json.loads(message)
@@ -205,7 +203,7 @@ class Coordinator:
 					self.add_action_to_queue(new_action)
 				elif self.in_game:
 					if len(self.action_queue) == 0 and perform_callbacks:
-						#print(str(self.last_game_state), file=self.logfile, flush=True)
+						print(str(self.last_game_state), file=self.logfile, flush=True)
 						new_action = self.state_change_callback(self.last_game_state)
 						self.add_action_to_queue(new_action)
 				elif self.stop_after_run:

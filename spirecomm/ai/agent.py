@@ -620,7 +620,7 @@ class SimpleAgent:
 	# For example, if we open pause menu, the last action we send will be Invalid
 	# Coordinator still needs an action input, so this function needs to return a valid action
 	def handle_error(self, error):
-		self.log("Agent handling error: " + str(error), debug=2)
+		self.log("WARN: Agent received error " + str(error), debug=2)
 		#self.state_diff(self.last_game_state, self.blackboard.game) == {}
 		if "Invalid command" in str(error):
 			if "error" in str(error):
@@ -631,20 +631,22 @@ class SimpleAgent:
 			self.log("Invalid command error", debug=3)
 			self.last_action = StateAction()
 			return StateAction()
-		elif "Selected card requires an enemy target" in str(error):
-			# FIXME I think this is related to unpausing from in-game pause menu, we accidentally input an un-initialized play
-			# For now, just try again
-			self.log("Selected card requires target error", debug=3)
-			self.last_action = StateAction()
-			return StateAction()
-		elif "Selected card cannot be played with the selected target" in str(error):
-			# FIXME I think this is related to unpausing from in-game pause menu, we accidentally input an un-initialized play
-			# For now, just try again
-			self.log("Selected card requires target error", debug=3)
-			self.last_action = StateAction()
-			return StateAction()
 		else:
-			raise Exception(error)
+			# FIXME I think this is related to unpausing from in-game pause menu, we accidentally input an un-initialized play
+			# For now, just try again
+			self.log(str(error), debug=3)
+			self.log(traceback.format_exc(), debug=2)
+			self.log(str(sys.exc_info()), debug=2)
+			print(traceback.format_exc(), file=self.logfile, flush=True)
+			self.last_action = StateAction()
+			return StateAction()
+			
+		"""
+		Some errors we might receive:
+		Index X out of bounds in command ...
+		Selected card requires an enemy target
+		Selected card cannot be played with the selected target
+		"""
 		
 	def default_logic(self, game_state):
 	

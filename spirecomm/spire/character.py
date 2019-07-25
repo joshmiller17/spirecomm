@@ -137,7 +137,7 @@ class Monster(Character):
 		self.move_hits = move_hits
 		self.monster_index = 0
 		
-		self.misc = 0 # used by Louses to track their bonus damage. Will also probably be used by others in the future
+		self.misc = 0 # used by Louses to track their bonus damage. Used by thieves to track gold stolen
 
 		
 		self.move_powers = []

@@ -92,6 +92,7 @@ class Game:
 		self.just_reshuffled = False
 		self.state_id = -1
 		self.debug_log = []
+		self.incoming_gold = 0 # gold we get back from thieves if we kill them
 	
 	# for some reason, pausing the game invalidates the state
 	def is_valid(self):
@@ -530,20 +531,45 @@ class Game:
 		return damage
 		
 	# Note attacker may be None, e.g. from Burn card
-	def mark_damage(self, damage, attacker, target, from_attack=False):
+	def apply_damage(self, damage, attacker, target, from_attack=False, ignores_block=False):
 		# TODO use this to replace all hp subtractions
 		# TODO check for changes to intent and effects on death
-		pass
+		if not ignores_block and target.block > 0:
+			unblocked_damage = max(damage - target.block, 0)
+			target.block = max(target.block - damage, 0)
+		else:
+			unblocked_damage = damage
+		capped_damage = min(target.current_hp, unblocked_damage)
+		target.current_hp -= unblocked_damage
+		
+		# death checks
+		if target.current_hp == 0 and unblocked_damage > 0: # just died
+			if target.has_power("Fungal Spores"):
+				self.player.add_power("Vulnerable", target.get_power_amount("Fungal Spores"))
+			# TODO corpse explosion, that relic that shifts poison (specimen?)
+			if target.has_power("Thievery"):
+				self.incoming_gold += target.misc
+				
+		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+		# TODO add this in when we start pre-calculating intents (for MCTS). Right now we only calculate intents on their turn
+		#for monster in available_monsters:
+			#if monster.monster_id == "GremlinTsundere" and len(available_monsters) < 2:
+				
+					
+				
+		# intent change checks
 		
 	# applies Damage attack and returns unblocked damage
 	# Note: this should only be used for ATTACK damage
 	# Note attacker may be None, e.g. from Burn card
-	def apply_damage(self, base_damage, attacker, target):
+	def use_attack(self, base_damage, attacker, target):
 		adjusted_damage = self.calculate_real_damage(base_damage, attacker, target)
 		adjusted_damage = max(adjusted_damage, 0)
 		if attacker is not None:
 			if attacker.has_power("Thievery"):
-				self.gold = max(self.gold - attacker.get_power_amount("Thievery"), 0)
+				gold_stolen = min(self.gold, attacker.get_power_amount("Thievery"))
+				self.gold = self.gold - gold_stolen
+				attacker.misc += gold_stolen
 		if target.has_power("Angry"):
 			target.add_power("Strength", target.get_power_amount("Angry"))
 		if target.has_power("Intangible"):
@@ -553,22 +579,17 @@ class Game:
 		if unblocked_damage > 0:
 			if unblocked_damage <= 5 and attacker is self.player and self.has_relic("The Boot"):
 				unblocked_damage = 5
-			unblocked_damage = min(target.current_hp, unblocked_damage)
-			target.current_hp -= unblocked_damage
 			target.block = 0
+			self.apply_damage(unblocked_damage, attacker, target, from_attack=True)
 			if target.has_power("Plated Armor"):
 				target.decrement_power("Plated Armor")
-			if target.current_hp == 0 and unblocked_damage > 0: # just died
-				if target.has_power("Fungal Spores"): # TODO move this to "check if enemy just died" method?
-					self.player.add_power("Vulnerable", target.get_power_amount("Fungal Spores"))
-				# TODO corpse explosion, that relic that shifts poison (specimen?)
 		else:
 			target.block -= adjusted_damage
 		if attacker is not None:
 			if target.has_power("Flame Barrier"):
-				self.apply_damage(target.get_power_amount("Flame Barrier"), None, attacker)
+				self.use_attack(target.get_power_amount("Flame Barrier"), None, attacker)
 			if target.has_power("Thorns"):
-				self.apply_damage(target.get_power_amount("Thorns"), None, attacker)
+				self.use_attack(target.get_power_amount("Thorns"), None, attacker)
 		if target.has_power("Curl Up"):
 			curl = target.get_power_amount("Curl Up")
 			self.add_block(target, curl)
@@ -584,7 +605,7 @@ class Game:
 			if target.has_power("Juggernaut"):
 				available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
 				selected_monster = random.choice(available_monsters)
-				self.apply_damage(target.get_power_amount("Juggernaut"), None, selected_monster)
+				self.use_attack(target.get_power_amount("Juggernaut"), None, selected_monster)
 			
 	# HP lost from cards / relics
 	def lose_hp(self, target, amount, from_card=False):
@@ -656,7 +677,7 @@ class Game:
 				elif effect["effect"] == "SelfFrail":
 					self.apply_debuff(self.player, "Frail", effect["amount"])
 				elif effect["effect"] == "SelfDamage":
-					self.apply_damage(effect["amount"], None, self.player)
+					self.use_attack(effect["amount"], None, self.player)
 					
 		if not self.has_relic("Runic Pyramid"):
 			self.hand = []
@@ -741,7 +762,7 @@ class Game:
 							if monster.monster_id == "FuzzyLouseNormal" or monster.monster_id == "FuzzyLouseDefensive":
 								base_damage += monster.misc # adjustment because louses are variable
 								self.debug_log.append("Adjusted damage for louse: " + str(monster.misc))
-							unblocked_damage = self.apply_damage(base_damage, monster, self.player)
+							unblocked_damage = self.use_attack(base_damage, monster, self.player)
 							self.debug_log.append("Taking " + str(unblocked_damage) + " damage from " + str(monster))
 								
 						elif effect["name"] == "Block":
@@ -804,7 +825,7 @@ class Game:
 					if monster.move_adjusted_damage is not None:
 						# are weak and vulnerable accounted for in default logic?
 						for _ in range(monster.move_hits):
-							unblocked_damage = self.apply_damage(monster.move_base_damage, monster, self.player)
+							unblocked_damage = self.use_attack(monster.move_base_damage, monster, self.player)
 							self.debug_log.append("Taking " + str(unblocked_damage) + " damage from " + str(monster))						
 							
 			monster.current_move = None # now that we used the move, clear it
@@ -831,7 +852,7 @@ class Game:
 			self.draw_card()
 			
 			
-		# TODO check if any enemies died / half-health effects and if anything happens when they do
+		# TODO check if any enemies died / half-health effects and if anything happens when they do, e.g. thieves return gold
 		
 			
 		if self.debug_file and self.debug_log != []:
@@ -1078,7 +1099,7 @@ class Game:
 						if effect["effect"] == "Bonus Strength Damage":
 							base_damage += effect["amount"] * self.player.get_power_amount("Strength")
 					
-					self.apply_damage(base_damage, self.player, target)
+					self.use_attack(base_damage, self.player, target)
 					
 				elif effect["effect"] == "Corruption":
 					cards = self.draw_pile + self.discard_pile + self.hand
@@ -1100,11 +1121,11 @@ class Game:
 					
 				elif effect["effect"] == "Block as Damage":
 					base_damage = self.player.block
-					self.apply_damage(base_damage, self.player, target)
+					self.use_attack(base_damage, self.player, target)
 					
 				elif effect["effect"] == "MindBlast":
 					base_damage = len(self.draw_pile)
-					self.apply_damage(base_damage, self.player, target)
+					self.use_attack(base_damage, self.player, target)
 					
 				elif effect["effect"] ==  "Violence":
 					available_attacks = [c for c in self.draw_pile if c.type == spirecomm.spire.card.CardType.ATTACK]
@@ -1157,7 +1178,7 @@ class Game:
 					for card in hand:
 						self.hand.remove(card)
 						self.exhaust_card(card)
-						self.apply_damage(effect["amount"], self.player, target)
+						self.use_attack(effect["amount"], self.player, target)
 						
 				elif effect["effect"] == "GainBurnToDiscard":
 					for _ in range(effect["amount"]):
@@ -1180,7 +1201,7 @@ class Game:
 					
 				elif effect["effect"] == "Reaper":
 					base_damage = effect["amount"]
-					unblocked_damage = self.apply_damage(base_damage, self.player, target)
+					unblocked_damage = self.use_attack(base_damage, self.player, target)
 					self.gain_hp(unblocked_damage)
 					
 				elif effect["effect"] == "LimitBreak":
