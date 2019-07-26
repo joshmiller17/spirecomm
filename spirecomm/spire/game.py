@@ -145,7 +145,6 @@ class Game:
 		string = "\n\n<---- Game State " + str(self.state_id) + " ----"
 		string += "\nScreen: " + str(self.screen) + " (" + str(self.screen_type) + ")"
 		#string += "\nRoom: " + str(self.room_type)
-		string += "\nID: " + 
 		string += "\nSimulation?: " + str(self.is_simulation)
 		if self.in_combat:
 			string += "\nHP: " + str(self.player.current_hp) + "/" + str(self.player.max_hp)
@@ -436,14 +435,14 @@ class Game:
 				self.apply_damage(52, None, monster)
 				
 		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
-			for monster in available_monsters:
-				if monster.has_power("Poison"):
-					self.apply_damage(monster.get_power_amount("Poison"), None, monster, ignores_block=True)
-					monster.decrement_power("Poison")
+		for monster in available_monsters:
+			if monster.has_power("Poison"):
+				self.apply_damage(monster.get_power_amount("Poison"), None, monster, ignores_block=True)
+				monster.decrement_power("Poison")
 			
 		
-		if self.block == 0 and self.has_relic("Orichalcum"):
-			self.block += 6 # note, this happens before all other end of turn block gaining effects like frost orbs, metallicize, etc
+		if self.player.block == 0 and self.has_relic("Orichalcum"):
+			self.player.block += 6 # note, this happens before all other end of turn block gaining effects like frost orbs, metallicize, etc
 			
 		if not self.has_relic("Ice Cream"):
 			self.player.energy = 0
@@ -568,7 +567,7 @@ class Game:
 	
 		if character is self.player:
 		
-			self.block += self.next_turn_block
+			self.player.block += self.next_turn_block
 			self.next_turn_block = 0
 			
 			if self.has_relic("Brimstone"):
@@ -825,7 +824,7 @@ class Game:
 				self.player.energy += 2
 				
 		if self.has_relic("The Abacus"):
-			self.block += 6
+			self.player.block += 6
 	
 	def draw_card(self, draw=1):
 		if self.player.has_power("No Draw"):
@@ -840,7 +839,7 @@ class Game:
 		if card.type == spirecomm.spire.card.CardType.STATUS and self.player.has_power("Evolve"):
 			for _ in range(self.player.get_power_amount("Evolve")):
 				self.draw_card()
-		if self.has_power("Confused"):
+		if self.player.has_power("Confused"):
 			card.cost = random.choice(range(4))
 		if card.type == spirecomm.spire.card.CardType.SKILL and self.player.has_power("Corruption"):
 			card.cost = 0
