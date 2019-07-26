@@ -196,7 +196,7 @@ class Base(BoxLayout):
 			return True
 			
 		if msg == "auto pause":
-			self.agent.auto_pause = not self.agent_auto_pause
+			self.agent.auto_pause = not self.agent.auto_pause
 			self.in_history.append("Auto pause: " + ("ON" if self.agent.auto_pause else "OFF"))
 			return True
 			

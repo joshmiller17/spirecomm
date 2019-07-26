@@ -102,7 +102,7 @@ class SimpleAgent:
 			print(str(time.time()) + ": " + msg, file=self.logfile, flush=True)
 		if self.debug_level >= debug:
 			self.debug_queue.append(msg)
-		if "WARN" in msg or "ERR" in msg and self.auto_pause:
+		if ("WARN" in msg or "ERR" in msg) and self.auto_pause:
 			self.paused = True
 			
 	# a note is a log that isn't shown to the Kivy window
@@ -410,12 +410,16 @@ class SimpleAgent:
 						break
 						
 					elif monster1 not in monsters2:
-						unavailable_monster = [monster for monster in state2.monsters if monster1 == monster][0]
-						cause = "unknown"
-						if unavailable_monster.half_dead:
-							cause = "half dead"
-						elif unavailable_monster.is_gone or unavailable_monster.current_hp <= 0:
-							cause = "is gone / dead"
+						try:
+							unavailable_monster = [monster for monster in state2.monsters if monster1 == monster][0]
+							cause = "unknown"
+							if unavailable_monster.half_dead:
+								cause = "half dead"
+							elif unavailable_monster.is_gone or unavailable_monster.current_hp <= 0:
+								cause = "is gone / dead"
+						except:
+							cause = "no longer exists"
+						
 						monster_changes[monster1.monster_id + str(monster1.monster_index) + "_not_available"] = cause
 					elif monster2 not in monsters1:
 						monster_changes[monster1.monster_id + str(monster1.monster_index) + "_returned_with_hp"] = monster2.current_hp
@@ -841,6 +845,8 @@ class SimpleAgent:
 	def handle_event(self):
 		#if self.blackboard.game.screen.event_id in ["Vampires", "Masked Bandits", "Knowing Skull", "Ghosts", "Liars Game", "Golden Idol", "Drug Dealer", "The Library"]:
 		#		return ChooseAction(len(self.blackboard.game.screen.options) - 1)
+		self.log("Encountered event: " + str(self.blackboard.game.screen.event_id))
+		
 		return ChooseAction(0)
 		
 	# TODO
