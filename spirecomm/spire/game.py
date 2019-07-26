@@ -93,6 +93,14 @@ class Game:
 		self.state_id = -1
 		self.debug_log = []
 		self.incoming_gold = 0 # gold we get back from thieves if we kill them
+		self.attacks_played_this_turn = 0
+		self.attacks_played_last_turn = 0
+		self.cards_played_this_turn = 0
+		self.cards_played_last_turn = 0
+		self.times_lost_hp_this_combat = 0
+		self.next_turn_block = 0
+		self.below_half_health = False
+		self.necronomicon_triggered = False
 	
 	# for some reason, pausing the game invalidates the state
 	def is_valid(self):
@@ -104,6 +112,13 @@ class Game:
 		self.combat_round = 1
 		self.original_state = None
 		self.just_reshuffled = False
+		self.attacks_played_this_turn = 0
+		self.attacks_played_last_turn = 0
+		self.cards_played_this_turn = 0
+		self.cards_played_last_turn = 0
+		self.times_lost_hp_this_combat = 0
+		self.next_turn_block = 0
+		self.necronomicon_triggered = False
 		
 	# returns relic or None
 	def get_relic(self, name):
@@ -127,10 +142,10 @@ class Game:
 		return self.get_relic(name) is not None
 	
 	def __str__(self):
-		string = "\n\n---- Game State ----\n"
-		#string += "Screen: " + str(self.screen) + " (" + str(self.screen_type) + ")\n"
-		#string += "Room: " + str(self.room_type) + "\n"
-		string += "\nID: " + str(self.state_id)
+		string = "\n\n<---- Game State " + str(self.state_id) + " ----"
+		string += "\nScreen: " + str(self.screen) + " (" + str(self.screen_type) + ")"
+		#string += "\nRoom: " + str(self.room_type)
+		string += "\nID: " + 
 		string += "\nSimulation?: " + str(self.is_simulation)
 		if self.in_combat:
 			string += "\nHP: " + str(self.player.current_hp) + "/" + str(self.player.max_hp)
@@ -162,6 +177,7 @@ class Game:
 		if self.cancel_available:
 			available_commands.append("cancel")
 		string += "\n\nAvailable commands: " + ", ".join(available_commands)
+		string += "---- Game State " + str(self.state_id) + " ---->\n\n"
 		return string
 
 
@@ -408,7 +424,48 @@ class Game:
 		self.set_relic_counter("Shuriken", 0)
 		self.set_relic_counter("Ornamental Fan", 0)
 		self.set_relic_counter("Velvet Choker", 0)
-	
+		self.attacks_played_last_turn = self.attacks_played_this_turn
+		self.attacks_played_this_turn = 0
+		self.cards_played_last_turn = self.cards_played_this_turn
+		self.cards_played_this_turn = 0
+		self.necronomicon_triggered = False
+		
+		if self.combat_round == 7 and self.has_relic("Stone Calendar"):
+			available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+			for monster in available_monsters:
+				self.apply_damage(52, None, monster)
+				
+		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+			for monster in available_monsters:
+				if monster.has_power("Poison"):
+					self.apply_damage(monster.get_power_amount("Poison"), None, monster, ignores_block=True)
+					monster.decrement_power("Poison")
+			
+		
+		if self.block == 0 and self.has_relic("Orichalcum"):
+			self.block += 6 # note, this happens before all other end of turn block gaining effects like frost orbs, metallicize, etc
+			
+		if not self.has_relic("Ice Cream"):
+			self.player.energy = 0
+			
+		# Hand discarded
+		self.discard_pile += self.hand
+		for card in self.hand:
+			for effect in card.effects:
+				if effect["effect"] == "Ethereal":
+					self.hand.remove(card)
+					self.exhaust_card(card)
+					continue
+				elif effect["effect"] == "SelfWeakened":
+					self.apply_debuff(self.player, "Weakened", effect["amount"])
+				elif effect["effect"] == "SelfFrail":
+					self.apply_debuff(self.player, "Frail", effect["amount"])
+				elif effect["effect"] == "SelfDamage":
+					self.apply_damage(effect["amount"], None, self.player)
+					
+		if not self.has_relic("Runic Pyramid"):
+			self.hand = []
+		
 		for power in self.player.powers:
 			if power.power_name == "Strength Down":
 				self.apply_debuff(self.player, "Strength Down", -1 * power.amount)
@@ -458,8 +515,15 @@ class Game:
 	def apply_start_of_combat_effects(self, character):
 	
 		# TODO move innate cards to top of deck / starting hand
+		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
 	
 		if character is self.player:
+			# FIXME relics technically activate in order of acquisition
+
+			if self.player.current_hp / self.player.max_hp < 0.50:
+				self.below_half_health = True
+				if self.has_relic("Red Skull") and self.below_half_health:
+					self.player.add_power("Strength", 3)
 			if self.has_relic("Thread and Needle"):
 				character.add_power("Plated Armor", 4)
 			if self.has_relic("Anchor"):
@@ -474,7 +538,18 @@ class Game:
 				available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
 				for monster in available_monsters:
 					monster.add_power("Strength", 1)
-					
+			if self.has_relic("Bag of Preparation"):
+				random.shuffle(self.draw_pile)
+				self.hand += self.draw_pile.pop(0)
+				self.hand += self.draw_pile.pop(0)
+			if self.has_relic("Bag of Marbles"):
+				for monster in available_monsters:
+					monster.add_power("Vulnerable", 1)
+			if self.has_relic("Red Mask"):
+				for monster in available_monsters:
+					monster.add_power("Weakened", 1)
+			if self.has_relic("Snecko Eye"):
+				self.player.add_power("Confused", 1)
 				
 	def check_intents(self):
 		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
@@ -482,7 +557,6 @@ class Game:
 			pass	
 			
 
-	# TODO apply_start_of_turn_effects
 	def apply_start_of_turn_effects(self, character):
 	
 		if character.has_power("Barricade"):
@@ -493,21 +567,66 @@ class Game:
 			character.block = 0
 	
 		if character is self.player:
+		
+			self.block += self.next_turn_block
+			self.next_turn_block = 0
+			
+			if self.has_relic("Brimstone"):
+				self.player.add_power("Strength", 2)
+				available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+				for monster in available_monsters:
+					monster.add_power("Strength", 1)
+			
+			if self.has_relic("Pocketwatch") and self.cards_played_last_turn <= 3:
+				self.draw_card(3)
+		
+			if self.has_relic("Mercury Hourglass"):
+				available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+				for monster in available_monsters:
+					self.apply_damage(3, None, monster)
+		
 			if self.has_relic("Runic Dodecahedron") and character.current_hp == character.max_hp:
 				character.energy += 1
+			if self.has_relic("Art of War") and self.attacks_played_last_turn == 0:
+				character.energy += 1
+				
+			flower = self.get_relic("Happy Flower")
+			if flower:
+				flower.counter += 1
+				if flower.counter >= 3:
+					self.set_relic_counter("Happy Flower", 0)
+					self.player.energy += 1
+					
+			burner = self.get_relic("Incense Burner")
+			if burner:
+				burner.counter += 1
+				if burner.counter >= 6:
+					self.set_relic_counter("Incense Burner", 0)
+					self.player.add_power("Intangible", 1)
 				
 			if character.has_power("Brutality"):
 				self.lose_hp(character, 1, from_card=True)
 				self.draw_card()
 				
+			if self.has_relic("Warped Tongs"):
+				selected_card = random.choice(self.hand)
+				while selected_card.type == spirecomm.spire.card.CardType.CURSE or selected_card.type == spirecomm.spire.card.CardType.SPECIAL or (selected_card.upgrades > 0 and not selected_card.name.startswith("Searing Blow")):
+					selected_card = random.choice(self.hand)
+				selected_card.upgrade()
+				
 		self.decrement_duration_powers(character)
-		
 	
 	def apply_debuff(self, target, debuff, amount):
+		if debuff == "Weakened" and target is self.player and self.has_relic("Ginger"):
+			return
+		if debuff == "Frail" and target is self.player and self.has_relic("Turnip"):
+			return	
 		if debuff in spirecomm.spire.power.DEBUFFS and target.has_power("Artifact"):
 			target.decrement_power("Artifact")
 		else:
 			target.add_power(debuff, amount)
+			if debuff == "Vulnerable" and self.has_relic("Champion Belt"):
+				self.apply_debuff(target, "Weakened", 1)
 			if target is not self.player and self.player.has_power("SadisticNature"):
 				target.current_hp = max(target.current_hp - self.player.get_power_amount("SadisticNature"), 0)
 			
@@ -526,6 +645,8 @@ class Game:
 		if target.has_power("Vulnerable"):
 			if target is not self.player and self.has_relic("Paper Phrog"):
 				damage = int(math.floor(damage + (0.75 * damage)))
+			elif target is self.player and self.has_relic("Odd Mushroom"):
+				damage = int(math.floor(damage + (0.25 * damage)))
 			else:
 				damage = int(math.floor(damage + (0.50 * damage)))
 		return damage
@@ -534,16 +655,45 @@ class Game:
 	def apply_damage(self, damage, attacker, target, from_attack=False, ignores_block=False):
 		# TODO use this to replace all hp subtractions
 		# TODO check for changes to intent and effects on death
+		if target.has_power("Intangible") and not from_attack: # already adjusted for this in use_attack
+			damage = 1
 		if not ignores_block and target.block > 0:
 			unblocked_damage = max(damage - target.block, 0)
 			target.block = max(target.block - damage, 0)
+			if target.block == 0 and target is not self.player and self.has_relic("Hand Drill"):
+				self.apply_debuff(target, "Vulnerable", 2)
 		else:
 			unblocked_damage = damage
 		capped_damage = min(target.current_hp, unblocked_damage)
+		if unblocked_damage > 0 and unblocked_damage <= 5 and target is self.player and self.has_relic("Torii"):
+			unblocked_damage = 1
 		target.current_hp -= unblocked_damage
+		
+		if unblocked_damage > 0 and target is self.player:
+		
+			if self.has_relic("Runic Cube"):
+				self.draw_card()
+		
+			if self.has_relic("Self-Forming Clay"):
+				self.next_turn_block += 3
+		
+			if target.current_hp / target.max_hp < 0.50:
+				if self.has_relic("Red Skull") and not self.below_half_health:
+					self.player.add_power("Strength", 3)
+				self.below_half_health = True
+		
+			if self.times_lost_hp_this_combat == 0 and self.has_relic("Centennial Puzzle"):
+				self.draw_card(3)
+			self.times_lost_hp_this_combat += 1
+			# TODO reduce the cost of blood for blood wherever it is in our deck
 		
 		# death checks
 		if target.current_hp == 0 and unblocked_damage > 0: # just died
+		
+			if self.has_relic("Gremlin Horn"):
+				self.draw_card()
+				self.player.energy += 1
+		
 			if target.has_power("Fungal Spores"):
 				self.player.add_power("Vulnerable", target.get_power_amount("Fungal Spores"))
 			# TODO corpse explosion, that relic that shifts poison (specimen?)
@@ -552,12 +702,24 @@ class Game:
 				
 		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
 		# TODO add this in when we start pre-calculating intents (for MCTS). Right now we only calculate intents on their turn
-		#for monster in available_monsters:
+		for monster in available_monsters:
 			#if monster.monster_id == "GremlinTsundere" and len(available_monsters) < 2:
 				
 					
 				
-		# intent change checks
+			# intent change checks
+			# Check if Lagavulin should still be sleeping
+			
+			moveset = monster.intents["moveset"]
+			if monster.monster_id == "Lagavulin":
+				if monster.current_hp != monster.max_hp and moveset[selected_move]["intent_type"] == "SLEEP":
+					# wake up 
+					self.current_move = "Stunned"
+				if monster.has_power("Asleep") and moveset[self.current_move]["intent_type"] != "SLEEP":
+					monster.add_power("Metallicize", -8)
+					monster.remove_power("Asleep")
+		
+		
 		
 	# applies Damage attack and returns unblocked damage
 	# Note: this should only be used for ATTACK damage
@@ -565,6 +727,10 @@ class Game:
 	def use_attack(self, base_damage, attacker, target):
 		adjusted_damage = self.calculate_real_damage(base_damage, attacker, target)
 		adjusted_damage = max(adjusted_damage, 0)
+		pen_nib = self.get_relic("Pen Nib")
+		if pen_nib is not None and pen_nib.counter >= 10:
+			adjusted_damage *= 2 
+			self.set_relic_counter("Pen Nib", 0)
 		if attacker is not None:
 			if attacker.has_power("Thievery"):
 				gold_stolen = min(self.gold, attacker.get_power_amount("Thievery"))
@@ -579,6 +745,8 @@ class Game:
 		if unblocked_damage > 0:
 			if unblocked_damage <= 5 and attacker is self.player and self.has_relic("The Boot"):
 				unblocked_damage = 5
+			if target is not self.player and target.block > 0 and self.has_relic("Hand Drill"):
+				self.apply_debuff(target, "Vulnerable", 2)
 			target.block = 0
 			self.apply_damage(unblocked_damage, attacker, target, from_attack=True)
 			if target.has_power("Plated Armor"):
@@ -609,17 +777,27 @@ class Game:
 			
 	# HP lost from cards / relics
 	def lose_hp(self, target, amount, from_card=False):
-		target.current_hp = max(target.current_hp - amount, 0)
+		self.apply_damage(amount, None, target, ignores_block=True)
 		if target is self.player and from_card and target.has_power("Rupture"):
 			target.add_power("Strength", target.get_power_amount("Rupture"))
 		
-	def gain_hp(self, target, amount):
-		if target is self.player and self.has_relic("Magic Flower"):
-			amount = math.ceil(amount * 1.5)
+	def gain_hp(self, target, amount): # assumes we're in combat
+		if target is self.player:
+			if self.has_relic("Magic Flower"):
+				amount = math.ceil(amount * 1.5)
+			if target.current_hp / target.max_hp > 0.50:
+				if self.has_relic("Red Skull") and self.below_half_health:
+					self.player.add_power("Strength", -3)
+				self.below_half_health = False
+				
 		target.current_hp += amount
 		
 	def exhaust_card(self, card):
-		self.exhaust_pile.append(card)
+		if card.name != "Necronomicurse":
+			if self.has_relic("Strange Spoon") and random.random() > 0.50:
+				self.discard_pile.append(card)
+				return
+			self.exhaust_pile.append(card)
 		if self.player.has_power("DarkEmbrace"):
 			self.draw_card()
 		if self.player.has_power("Feel No Pain"):
@@ -632,15 +810,28 @@ class Game:
 			available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
 			for monster in available_monsters:
 				monster.current_hp = max(monster.current_hp - 3, 0)
+				
+	def reshuffle_deck(self):		
+		self.draw_pile = self.discard_pile
+		random.shuffle(self.draw_pile)
+		self.discard_pile = []
+		self.just_reshuffled = True
+				
+		sundial = self.get_relic("Sundial")
+		if sundial:
+			sundial.counter += 1
+			if sundial.counter >= 3:
+				self.set_relic_counter("Sundial", 0)
+				self.player.energy += 2
+				
+		if self.has_relic("The Abacus"):
+			self.block += 6
 	
-	def draw_card(self):
+	def draw_card(self, draw=1):
 		if self.player.has_power("No Draw"):
 			return
 		if len(self.draw_pile) == 0:
-			self.draw_pile = self.discard_pile
-			random.shuffle(self.draw_pile)
-			self.discard_pile = []
-			self.just_reshuffled = True
+			self.reshuffle_deck()
 		card = self.draw_pile.pop(0)
 		if len(self.hand) >= 10:
 			self.discard_pile.append(card)
@@ -649,10 +840,12 @@ class Game:
 		if card.type == spirecomm.spire.card.CardType.STATUS and self.player.has_power("Evolve"):
 			for _ in range(self.player.get_power_amount("Evolve")):
 				self.draw_card()
-		if self.has_relic("Snecko Eye"):
+		if self.has_power("Confused"):
 			card.cost = random.choice(range(4))
 		if card.type == spirecomm.spire.card.CardType.SKILL and self.player.has_power("Corruption"):
 			card.cost = 0
+		if draw > 1:
+			self.draw_card(draw - 1)
 	
 	# Returns a new state
 	def simulate_end_turn(self, action):
@@ -663,25 +856,6 @@ class Game:
 		
 		# end player's turn
 		self.apply_end_of_player_turn_effects()
-		
-		# Hand discarded
-		self.discard_pile += self.hand
-		for card in self.hand:
-			for effect in card.effects:
-				if effect["effect"] == "Ethereal":
-					self.hand.remove(card)
-					self.exhaust_card(card)
-					continue
-				elif effect["effect"] == "SelfWeakened":
-					self.apply_debuff(self.player, "Weakened", effect["amount"])
-				elif effect["effect"] == "SelfFrail":
-					self.apply_debuff(self.player, "Frail", effect["amount"])
-				elif effect["effect"] == "SelfDamage":
-					self.use_attack(effect["amount"], None, self.player)
-					
-		if not self.has_relic("Runic Pyramid"):
-			self.hand = []
-
 		
 		# MONSTER TURN / MONSTERS ATTACK
 		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
@@ -715,7 +889,7 @@ class Game:
 							move = self.choose_move(monster)
 							details = monster.intents["moveset"][move]
 							intent_str = details["intent_type"]
-							if spirecomm.spire.character.Intent[intent_str] == monster.intent:
+							if spirecomm.spire.character.Intent[intent_str] == monster.intent or self.has_relic("Runic Dome"):
 								# if it's an attack, check the number of hits also
 								if monster.intent.is_attack():
 									hits = 0
@@ -729,7 +903,10 @@ class Game:
 									monster.current_move = move
 									
 							if monster.current_move is not None:
-								self.debug_log.append("Recognized intent for " + str(monster) + " is " + str(monster.current_move))
+								if self.has_relic("Runic Dome"):
+									self.debug_log.append("Guessed intent for " + str(monster) + " is " + str(monster.current_move))
+								else:
+									self.debug_log.append("Recognized intent for " + str(monster) + " is " + str(monster.current_move))
 								break
 							timeout -= 1
 							
@@ -834,11 +1011,8 @@ class Game:
 			self.apply_end_of_turn_effects(monster)
 
 		
-		if self.has_relic("Ice Cream"):
-			self.player.energy += 3
-		else:
-			self.player.energy = 3
-		for relic in ["Coffee Dripper", "Mark of Pain", "Sozu", "Ectoplasm", "Cursed Key", "Runic Dome", "Philosopher's Stone"]:
+		self.player.energy += 3
+		for relic in ["Coffee Dripper", "Mark of Pain", "Sozu", "Ectoplasm", "Cursed Key", "Runic Dome", "Philosopher's Stone", "Fusion Hammer"]:
 			if self.has_relic(relic):
 				self.player.energy += 1
 		if self.player.has_power("Berserk"):
@@ -848,7 +1022,10 @@ class Game:
 		self.apply_start_of_turn_effects(self.player)
 
 		# Draw new hand - TODO consider relic modifiers and known information
-		while len(self.hand) < 5:
+		hand_size = 5
+		if self.has_relic("Snecko Eye"):
+			hand_size += 2
+		while len(self.hand) < hand_size:
 			self.draw_card()
 			
 			
@@ -900,18 +1077,23 @@ class Game:
 			self.player.add_power("Plated Armor", 4)
 		
 		elif action.potion.name == "Explosive Potion":
-			# TODO
-			pass
+			available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+			for monster in available_monsters:
+				self.apply_damage(10, None, monster)
 		
 		# TODO Fairy in a Bottle is not usable but should be considered in game state
 		
 		elif action.potion.name == "Fear Potion":
-			# TODO
-			pass
+			available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+			for monster in available_monsters:
+				if monster == action.target_monster:
+					monster.add_power("Vulnerable", 3)
 		
 		elif action.potion.name == "Fire Potion":
-			# TODO
-			pass
+			available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+			for monster in available_monsters:
+				if monster == action.target_monster:
+					self.apply_damage(20, None, monster)
 		
 		elif action.potion.name == "Focus Potion":
 			self.player.add_power("Focus", 2)
@@ -923,13 +1105,18 @@ class Game:
 		elif action.potion.name == "Gambler's Brew":
 			# TODO
 			pass
+			
+		elif action.potion.name == "Ghost In A Jar":
+			self.player.add_power("Intangible", 1)
 		
 		elif action.potion.name == "Liquid Bronze":
 			self.player.add_power("Thorns", 3)
 		
 		elif action.potion.name == "Poison Potion":
-			# TODO
-			pass
+			available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+			for monster in available_monsters:
+				if monster == action.target_monster:
+					monster.add_power("Poison", 6)
 		
 		elif action.potion.name == "Power Potion":
 			# TODO
@@ -947,8 +1134,8 @@ class Game:
 			pass
 		
 		elif action.potion.name == "Snecko Oil":
-			# TODO
-			pass
+			self.player.add_power("Confused")
+			self.draw_card(3)
 		
 		elif action.potion.name == "Speed Potion":
 			self.player.add_power("Dexterity", 5)
@@ -962,12 +1149,13 @@ class Game:
 			self.player.add_power("Strength", 3)
 		
 		elif action.potion.name == "Swift Potion":
-			# TODO
-			pass
+			self.draw_card(3)
 		
 		elif action.potion.name == "Weak Potion":
-			# TODO
-			pass
+			available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+			for monster in available_monsters:
+				if monster == action.target_monster:
+					monster.add_power("Weakened", 3)
 		
 		else:
 			self.debug_log.append("ERROR: No handler for potion: " + str(action.potion))
@@ -998,8 +1186,11 @@ class Game:
 		if not action.card.loadedFromJSON:
 			raise Exception("Card not loaded from JSON: " + str(action.card.name))
 			
-		self.increment_relic("Velvet Choker")
+		if action.card.type != spirecomm.spire.card.CardType.CURSE:
+			# Velvet Choker does count copies of free_play cards, but allows them to go off past 6
+			self.increment_relic("Velvet Choker") # doesn't count Blue Candle
 			
+		self.cards_played_this_turn += 1
 		
 		# Fix for IDs not matching
 		for c in self.hand:
@@ -1013,9 +1204,11 @@ class Game:
 			self.discard_pile.append(action.card)
 		
 		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
-
+		
 		
 		if action.card.type == spirecomm.spire.card.CardType.ATTACK:
+		
+			self.attacks_played_this_turn += 1
 		
 			if self.player.has_power("Rage"):
 				self.add_block(self.player, self.player.get_power_amount("Rage"))
@@ -1041,14 +1234,37 @@ class Game:
 					self.set_relic_counter("Shuriken", 0)
 					self.player.add_power("Strength", 1)
 			
-			# TODO pen nib double if 10
 			self.increment_relic("Pen Nib")
+			
+			nunchaku = self.get_relic("Nunchaku")
+			if nunchaku:
+				nunchaku.counter += 1
+				if nunchaku.counter >= 10:
+					self.set_relic_counter("Nunchaku", 0)
+					self.player.energy += 1
 				
 		if action.card.type == spirecomm.spire.card.CardType.SKILL:
+		
+			letter = self.get_relic("Letter Opener")
+			if letter:
+				letter.counter += 1
+				if letter.counter >= 3:
+					self.set_relic_counter("Letter Opener", 0)
+					for monster in available_monsters:
+						self.apply_damage(5, None, monster)
+		
 			for monster in available_monsters:
 				if monster.has_power("Enrage"):
 					monster.add_power("Strength", monster.get_power_amount("Enrage"))
 		
+			
+		X_cost = -1
+		if "X" in [effect["effect"] for effect in action.card.effects]:
+			X_cost = self.player.energy
+			if self.has_relic("Chemical X"):
+				X_cost += 2
+			self.player.energy = 0
+			
 			
 		effect_targets = []
 		for effect in action.card.effects:
@@ -1101,20 +1317,27 @@ class Game:
 					
 					self.use_attack(base_damage, self.player, target)
 					
+				elif effect["effect"] == "XDamage":
+					if X_cost < 0:
+						raise Exception("Non X-cost card using an X-cost ability")
+					for _ in range(X_cost):
+						base_damage = effect["amount"]
+						self.use_attack(base_damage, self.player, target)
+					
 				elif effect["effect"] == "Corruption":
 					cards = self.draw_pile + self.discard_pile + self.hand
 					for card in cards:
 						if card.type == spirecomm.spire.card.CardType.SKILL:
 							card.cost = 0
-					self.add_power(effect["effect"], effect["amount"])
+					self.player.add_power(effect["effect"], effect["amount"])
 					
 				elif effect["effect"] == "Armaments+":
 					for card in self.hand:
-						card.upgrades += 1
+						card.upgrade()
 					
 					
 				elif effect["effect"] in buffs:
-					self.add_power(effect["effect"], effect["amount"])
+					self.player.add_power(effect["effect"], effect["amount"])
 						
 				elif effect["effect"] in debuffs:
 					self.apply_debuff(target, effect["effect"], effect["amount"])
@@ -1157,7 +1380,7 @@ class Game:
 				
 				elif effect["effect"] == "SpotWeakness":
 					if target.intent.is_attack():
-						self.add_power("Strength", effect["amount"])
+						self.player.add_power("Strength", effect["amount"])
 						
 				elif effect["effect"] == "SecondWind":
 					hand = self.hand
@@ -1225,15 +1448,13 @@ class Game:
 					cards = self.draw_pile + self.discard_pile + self.hand
 					for card in cards:
 						if card is not action.card:
-							card.upgrades += 1 
+							card.upgrade()
 							
 				elif effect["effect"] == "Lose HP":
 					self.lose_hp(self.player, effect["amount"], from_card=True)
 					
 				elif effect["effect"] == "DiscardToDraw":
-					self.draw_pile += self.discard_pile
-					random.shuffle(self.draw_pile)
-					self.discard_pile = []
+					self.reshuffle_deck()
 					
 				elif effect["effect"] == "Exhaust":
 					self.discard_pile.remove(action.card)
@@ -1244,7 +1465,7 @@ class Game:
 					self.exhaust_card(exhausted_card)
 					
 				elif effect["effect"] == "Draw":
-					self.draw_card()
+					self.draw_card(draw=effect["amount"])
 						
 				elif effect["effect"] == "Madness":
 					selected_card = random.choice([c for c in self.hand if c.cost > 0])
@@ -1258,9 +1479,22 @@ class Game:
 				self.player.decrement_power("DoubleTap")
 				self.simulate_play(action, free_play=True)
 				
+			if action.card.type == spirecomm.spire.card.CardType.ATTACK and action.card.cost >= 2 and self.has_relic("Necronomicon") and not self.necronomicon_triggered:
+				self.necronomicon_triggered = True
+				self.simulate_play(action, free_play=True)
+				
 			if action.card.type == spirecomm.spire.card.CardType.SKILL and self.player.has_power("Corruption"):
 				self.discard_pile.remove(exhausted_card) # FIXME if might not have gone to discard
 				self.exhaust_card(action.card)
+				
+			if action.card.type == spirecomm.spire.card.CardType.POWER and self.has_relic("Mummified Hand"):
+				selected_card = random.choice(self.hand)
+				while selected_card.cost == 0: #or selected_card.type == spirecomm.spire.card.CardType.CURSE (should be covered by cost)
+					selected_card = random.choice(self.hand)
+				selected_card.cost = 0
+						
+		if self.hand == [] and self.has_relic("Unceasing Top"):
+			self.draw_card()
 						
 		# TODO check if any enemies died / half-health effects and if anything happens when they do (e.g. ritual dagger)
 		

@@ -86,8 +86,6 @@ class Card:
 			with open('err.log', 'a+') as err_file:
 				err_file.write("\nCard Error: " + str(self.get_clean_name(name)))
 				err_file.write(str(e))
-
-			#raise Exception(e)
 		
 		# Dynamic values
 		self.value["upgrade value"] = None # How much do we want to upgrade this card?
@@ -101,6 +99,22 @@ class Card:
 			new_name = new_name[:new_name.find('+')+1]
 		return new_name
 		
+	def upgrade(self): # FIXME I'm not sure that's how this works
+		self.upgrades += 1
+		if self.upgrades == 1:
+			self.name.append("+")
+			self.card_id.append("+")
+			
+		try:
+			with open(os.path.join(CARDS_PATH, self.get_clean_name() + ".json"),"r") as f:
+				jsonData = json.load(f)
+				self.value = jsonData["value"]
+				self.effects = jsonData["effects"]
+				self.loadedFromJSON = True
+		except Exception as e:
+			with open('err.log', 'a+') as err_file:
+				err_file.write("\nCard Error: " + str(self.get_clean_name(name)))
+				err_file.write(str(e))
 
 	@classmethod
 	def from_json(cls, json_object):

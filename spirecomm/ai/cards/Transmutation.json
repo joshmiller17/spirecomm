@@ -8,6 +8,11 @@
 	"effects": [
 		{
 		"target" : "self",
+		"effect" : "X",
+		"amount" : 1
+		},
+		{
+		"target" : "self",
 		"effect" : "Transmutation",
 		"amount" : 1
 		},

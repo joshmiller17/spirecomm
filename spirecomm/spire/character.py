@@ -198,7 +198,7 @@ class Monster(Character):
 	
 	def __eq__(self, other):
 			if self.monster_id == other.monster_id and self.name == other.name:
-				if (self.monster_index is None and other.monster_index is None) or (self.monster_index == other.monster_index):
+				if (self.monster_index is None or other.monster_index is None) or (self.monster_index == other.monster_index):
 					return True
 			return False
 

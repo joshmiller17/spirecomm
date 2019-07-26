@@ -12,8 +12,13 @@
 	
 	"effects": [
 		{
+		"target" : "self",
+		"effect" : "X",
+		"amount" : 1
+		},
+		{
 		"target" : "all",
-		"effect" : "Damage",
+		"effect" : "XDamage",
 		"amount" : 5
 		}
 	]
