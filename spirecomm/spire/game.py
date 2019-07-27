@@ -83,29 +83,34 @@ class Game:
 		self.proceed_available = False
 		self.cancel_available = False
 		
-		# Added state info - TODO this block needs to be stored more permanently
-		self.original_state = None # For MCTS simulations; FIXME might be a huge memory storage for in-depth simulations? Consider only storing values important for reward func
+		# Added state info
 		self.debug_file = "game.log"
-		self.visited_shop = False
-		self.previous_floor = 0 # used to recognize floor changes, i.e. when floor != previous_floor
-		self.possible_actions = None
-		self.monsters_last_attacks = {} # monster : [move name, times in a row]
-		self.is_simulation = False
-		self.known_top_cards = [] # cards which we know we will be drawing first go here
-		self.just_reshuffled = False
 		self.state_id = -1
 		self.debug_log = []
-		self.incoming_gold = 0 # gold we get back from thieves if we kill them
-		self.attacks_played_this_turn = 0
-		self.attacks_played_last_turn = 0
-		self.cards_played_this_turn = 0
-		self.cards_played_last_turn = 0
-		self.times_lost_hp_this_combat = 0
-		self.next_turn_block = 0
-		self.below_half_health = False
-		self.necronomicon_triggered = False
-		self.skills_played_this_turn = 0
-		self.powers_played_this_turn = 0
+		self.original_state = None # For MCTS simulations; FIXME might be a huge memory storage for in-depth simulations? Consider only storing values important for reward func
+		
+		
+		# Tracked state info - TODO this block needs to be stored more permanently
+		self.tracked_state = {
+		"visited_shop" : False,
+		"previous_floor" : 0,  # used to recognize floor changes, i.e. when floor != previous_floor
+		"possible_actions": None,
+		"monsters_last_attacks" : {}, # monster : [move name, times in a row]
+		"is_simulation" : False,
+		"known_top_cards" : [], # cards which we know we will be drawing first go here
+		"just_reshuffled" : False,
+		"incoming_gold" : 0, # gold we get back from thieves if we kill them
+		"attacks_played_this_turn" : 0,
+		"attacks_played_last_turn" : 0,
+		"cards_played_this_turn": 0,
+		"cards_played_last_turn" : 0,
+		"times_lost_hp_this_combat" : 0,
+		"next_turn_block" : 0,
+		"below_half_health" : False,
+		"necronomicon_triggered" : False,
+		"skills_played_this_turn" : 0,
+		"powers_played_this_turn" : 0
+		}
 	
 	# for some reason, pausing the game invalidates the state
 	def is_valid(self):
@@ -113,19 +118,23 @@ class Game:
 		
 	# do any internal state updates we need to do if we change floors
 	def on_floor_change(self):
-		self.visited_shop = False
 		self.combat_round = 1
 		self.original_state = None
-		self.just_reshuffled = False
-		self.attacks_played_this_turn = 0
-		self.attacks_played_last_turn = 0
-		self.cards_played_this_turn = 0
-		self.cards_played_last_turn = 0
-		self.times_lost_hp_this_combat = 0
-		self.next_turn_block = 0
-		self.necronomicon_triggered = False
-		self.skills_played_this_turn = 0
-		self.powers_played_this_turn = 0
+		
+		self.tracked_state["visited_shop"] = False
+		self.tracked_state["is_simulation"] = False
+		self.tracked_state["just_reshuffled"] = False
+		self.tracked_state["incoming_gold"] = 0
+		self.tracked_state["attacks_played_this_turn"] = 0
+		self.tracked_state["attacks_played_last_turn"] = 0
+		self.tracked_state["cards_played_this_turn"] = 0
+		self.tracked_state["cards_played_last_turn"] = 0
+		self.tracked_state["times_lost_hp_this_combat"] = 0
+		self.tracked_state["next_turn_block"] = 0
+		self.tracked_state["necronomicon_triggered"] = False
+		self.tracked_state["skills_played_this_turn"] = 0
+		self.tracked_state["powers_played_this_turn"] = 0
+
 		
 	# returns relic or None
 	def get_relic(self, name):
@@ -153,7 +162,7 @@ class Game:
 		string += "\nScreen: " + str(self.screen) + " (" + str(self.screen_type) + ") " + ("[UP]" if self.screen_up else "")
 		#string += "\nRoom: " + str(self.room_type)
 		string += "\nCurrent action: " + str(self.current_action)
-		string += "\nSimulation?: " + str(self.is_simulation)
+		string += "\nSimulation?: " + str(self.tracked_state["is_simulation"])
 		if self.in_combat:
 			string += "\nHP: " + str(self.player.current_hp) + "/" + str(self.player.max_hp)
 			string += "\nBlock: " + str(self.player.block)
@@ -161,7 +170,7 @@ class Game:
 			string += "\nEnergy: " + str(self.player.energy)
 			string += "\nMonsters:\n    "
 			available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
-			if self.is_simulation:
+			if self.tracked_state["is_simulation"]:
 				# FIXME when this gets called, we haven't simulated the attack yet, and we also don't calculate adjusted dmg
 				string += "\n    ".join([str(monster.monster_id) + " (" + str(monster.current_hp) + \
 						"/" + str(monster.max_hp) + ") using {}".format(str(monster.current_move)) for monster in available_monsters])
@@ -244,9 +253,9 @@ class Game:
 								or "return" in available_commands or "skip" in available_commands
 
 		# Added state info
-		if game.floor != game.previous_floor:
+		if game.floor != game.tracked_state["previous_floor"]:
 			game.on_floor_change()
-			game.previous_floor = game.floor
+			game.tracked_state["previous_floor"] = game.floor
 		
 		return game
 
@@ -300,7 +309,7 @@ class Game:
 
 
 	def getPossibleActions(self):
-		if self.possible_actions == None:
+		if self.tracked_state["possible_actions"] == None:
 		
 			possible_actions = [EndTurnAction()]
 			available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
@@ -334,9 +343,9 @@ class Game:
 					d.write("\n".join([str(a) for a in possible_actions]))
 					d.write('\n')
 
-			self.possible_actions = possible_actions
+			self.tracked_state["possible_actions"] = possible_actions
 				
-		return self.possible_actions
+		return self.tracked_state["possible_actions"]
 	
 	
 	# Returns a new state
@@ -354,14 +363,12 @@ class Game:
 		new_state.original_state = self
 		new_state.state_id += 1
 		
-		new_state.just_reshuffled = False
+		new_state.tracked_state["just_reshuffled"] = False
 		
 		if action.command.startswith("end"):
 			return new_state.simulate_end_turn(action)
 		elif action.command.startswith("potion"):
 			# assumes we have this potion, will throw an error if we don't I think
-			new_state.potions.remove(action.potion) # fixme? might need to match on name rather than ID
-			new_state.potions.append(spirecomm.spire.potion.Potion("Potion Slot", "Potion Slot", False, False, False))
 			return new_state.simulate_potion(action)
 		elif action.command.startswith("play"):
 			return new_state.simulate_play(action)
@@ -386,8 +393,8 @@ class Game:
 				moveset = monster.intents["moveset"]
 				
 				# change moveset to next move if exists
-				if str(monster) in self.monsters_last_attacks:
-					last_move = self.monsters_last_attacks[str(monster)][0]
+				if str(monster) in self.tracked_state["monsters_last_attacks"]:
+					last_move = self.tracked_state["monsters_last_attacks"][str(monster)][0]
 					self.debug_log.append("Last move was " + str(last_move))
 					if "next_move" in moveset[last_move]:
 						list_of_next_moves = moveset[last_move]["next_move"]
@@ -404,14 +411,14 @@ class Game:
 				selected_move = random.choices(population=moves, weights=move_weights)[0] # choices returns as a list of size 1
 				
 				# check limits
-				if "limits" not in monster.intents or str(monster) not in self.monsters_last_attacks:
+				if "limits" not in monster.intents or str(monster) not in self.tracked_state["monsters_last_attacks"]:
 					# don't worry about limits, choose a random attack
 					break
 				else:
 					exceeds_limit = False
 					for limited_move, limited_times in monster.intents["limits"].items():
-						if selected_move == limited_move and selected_move == self.monsters_last_attacks[str(monster)][0]:
-							if self.monsters_last_attacks[str(monster)][1] + 1 >= limited_times: # selecting this would exceed limit:
+						if selected_move == limited_move and selected_move == self.tracked_state["monsters_last_attacks"][str(monster)][0]:
+							if self.tracked_state["monsters_last_attacks"][str(monster)][1] + 1 >= limited_times: # selecting this would exceed limit:
 								exceeds_limit = True
 					if not exceeds_limit:
 						break
@@ -435,13 +442,13 @@ class Game:
 		self.set_relic_counter("Ornamental Fan", 0)
 		self.set_relic_counter("Velvet Choker", 0)
 		self.set_relic_counter("Letter Opener", 0)
-		self.attacks_played_last_turn = self.attacks_played_this_turn
-		self.attacks_played_this_turn = 0
-		self.cards_played_last_turn = self.cards_played_this_turn
-		self.cards_played_this_turn = 0
-		self.skills_played_this_turn = 0
-		self.powers_played_this_turn = 0
-		self.necronomicon_triggered = False
+		self.tracked_state["attacks_played_last_turn"] = self.tracked_state["attacks_played_this_turn"]
+		self.tracked_state["attacks_played_this_turn"] = 0
+		self.tracked_state["cards_played_last_turn"] = self.tracked_state["cards_played_this_turn"]
+		self.tracked_state["cards_played_this_turn"] = 0
+		self.tracked_state["skills_played_this_turn"] = 0
+		self.tracked_state["powers_played_this_turn"] = 0
+		self.tracked_state["necronomicon_triggered"] = False
 		
 		self.decrement_duration_powers(self.player)
 		
@@ -553,8 +560,8 @@ class Game:
 			# FIXME relics technically activate in order of acquisition
 
 			if self.player.current_hp / self.player.max_hp < 0.50:
-				self.below_half_health = True
-				if self.has_relic("Red Skull") and self.below_half_health:
+				self.tracked_state["below_half_health"] = True
+				if self.has_relic("Red Skull") and self.tracked_state["below_half_health"]:
 					self.player.add_power("Strength", 3)
 			if self.has_relic("Thread and Needle"):
 				character.add_power("Plated Armor", 4)
@@ -606,8 +613,8 @@ class Game:
 	
 		if character is self.player:
 		
-			self.player.block += self.next_turn_block
-			self.next_turn_block = 0
+			self.player.block += self.tracked_state["next_turn_block"]
+			self.tracked_state["next_turn_block"] = 0
 			
 			if self.has_relic("Brimstone"):
 				self.player.add_power("Strength", 2)
@@ -615,7 +622,7 @@ class Game:
 				for monster in available_monsters:
 					monster.add_power("Strength", 1)
 			
-			if self.has_relic("Pocketwatch") and self.cards_played_last_turn <= 3:
+			if self.has_relic("Pocketwatch") and self.tracked_state["cards_played_last_turn"] <= 3:
 				self.draw_card(3)
 		
 			if self.has_relic("Mercury Hourglass"):
@@ -625,7 +632,7 @@ class Game:
 		
 			if self.has_relic("Runic Dodecahedron") and character.current_hp == character.max_hp:
 				character.energy += 1
-			if self.has_relic("Art of War") and self.attacks_played_last_turn == 0:
+			if self.has_relic("Art of War") and self.tracked_state["attacks_played_last_turn"] == 0:
 				character.energy += 1
 				
 			flower = self.get_relic("Happy Flower")
@@ -717,16 +724,16 @@ class Game:
 				self.draw_card()
 		
 			if self.has_relic("Self-Forming Clay"):
-				self.next_turn_block += 3
+				self.tracked_state["next_turn_block"] += 3
 		
 			if target.current_hp / target.max_hp < 0.50:
-				if self.has_relic("Red Skull") and not self.below_half_health:
+				if self.has_relic("Red Skull") and not self.tracked_state["below_half_health"]:
 					self.player.add_power("Strength", 3)
-				self.below_half_health = True
+				self.tracked_state["below_half_health"] = True
 		
-			if self.times_lost_hp_this_combat == 0 and self.has_relic("Centennial Puzzle"):
+			if self.tracked_state["times_lost_hp_this_combat"] == 0 and self.has_relic("Centennial Puzzle"):
 				self.draw_card(3)
-			self.times_lost_hp_this_combat += 1
+			self.tracked_state["times_lost_hp_this_combat"] += 1
 			# TODO reduce the cost of blood for blood wherever it is in our deck
 		
 		# death checks
@@ -743,7 +750,7 @@ class Game:
 				target.remove_power("Spore Cloud")
 			# TODO corpse explosion, that relic that shifts poison (specimen?)
 			if target.has_power("Thievery"):
-				self.incoming_gold += target.misc
+				self.tracked_state["incoming_gold"] += target.misc
 				
 		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
 		
@@ -832,9 +839,9 @@ class Game:
 			if self.has_relic("Magic Flower"):
 				amount = math.ceil(amount * 1.5)
 			if target.current_hp / target.max_hp > 0.50:
-				if self.has_relic("Red Skull") and self.below_half_health:
+				if self.has_relic("Red Skull") and self.tracked_state["below_half_health"]:
 					self.player.add_power("Strength", -3)
-				self.below_half_health = False
+				self.tracked_state["below_half_health"] = False
 				
 		target.current_hp += amount
 		
@@ -861,7 +868,7 @@ class Game:
 		self.draw_pile = self.discard_pile
 		random.shuffle(self.draw_pile)
 		self.discard_pile = []
-		self.just_reshuffled = True
+		self.tracked_state["just_reshuffled"] = True
 				
 		sundial = self.get_relic("Sundial")
 		if sundial:
@@ -1002,7 +1009,7 @@ class Game:
 							monster.current_move = "Beam"
 						self.debug_log.append("Known initial intent for " + str(monster) + " is " + str(monster.current_move))
 
-					elif self.is_simulation: # generate random move
+					elif self.tracked_state["is_simulation"]: # generate random move
 						monster.current_move = self.choose_move(monster)
 						self.debug_log.append("Simulated intent for " + str(monster) + " is " + str(monster.current_move))
 					else: # figure out move from what we know about it
@@ -1114,10 +1121,10 @@ class Game:
 							self.debug_log.append("WARN: Unknown effect " + effect["name"])
 						
 					# increment count of moves in a row
-					if str(monster) in self.monsters_last_attacks:
-						self.monsters_last_attacks[str(monster)][1] += 1
+					if str(monster) in self.tracked_state["monsters_last_attacks"]:
+						self.tracked_state["monsters_last_attacks"][str(monster)][1] += 1
 					else:
-						self.monsters_last_attacks[str(monster)] = [monster.current_move, 1]
+						self.tracked_state["monsters_last_attacks"][str(monster)] = [monster.current_move, 1]
 
 			
 			if monster.intents == {} or monster.current_move is None:
@@ -1165,7 +1172,7 @@ class Game:
 				#d.write("\nNew State:\n")
 				#d.write(str(self))
 			
-		self.is_simulation = True
+		self.tracked_state["is_simulation"] = True
 		
 		return self
 		
@@ -1178,6 +1185,9 @@ class Game:
 		
 	# Returns a new state
 	def simulate_potion(self, action):
+	
+		self.potions.remove(action.potion) # fixme? might need to match on name rather than ID
+		self.potions.append(spirecomm.spire.potion.Potion("Potion Slot", "Potion Slot", False, False, False))
 		
 		if action.potion.name == "Artifact Potion":
 			self.player.add_power("Artifact", 1)
@@ -1304,7 +1314,7 @@ class Game:
 				#d.write("\nNew State:\n")
 				#d.write(str(self))
 		
-		self.is_simulation = True
+		self.tracked_state["is_simulation"] = True
 		
 		return self
 		
@@ -1319,12 +1329,16 @@ class Game:
 			# Velvet Choker does count copies of free_play cards, but allows them to go off past 6
 			self.increment_relic("Velvet Choker") # doesn't count Blue Candle
 			
-		self.cards_played_this_turn += 1
+		self.tracked_state["cards_played_this_turn"] += 1
 		
 		# Fix for IDs not matching
+		found = False # test
 		for c in self.hand:
 			if action.card == c:
 				action.card = c
+				found = True 
+		if not found:
+			raise Exception("Could not find " + action.card.get_id_str() + " in " + str([card.get_id_str() for card in self.hand]))
 							
 		if not free_play:
 			# move card to discard
@@ -1556,8 +1570,8 @@ class Game:
 					
 		if action.card.type == spirecomm.spire.card.CardType.ATTACK:
 	
-			self.attacks_played_this_turn += 1
-			if self.attacks_played_this_turn == 1 and self.skills_played_this_turn > 0 and self.powers_played_this_turn > 0 and self.has_relic("Orange Pellets"):
+			self.tracked_state["attacks_played_this_turn"] += 1
+			if self.tracked_state["attacks_played_this_turn"] == 1 and self.tracked_state["skills_played_this_turn"] > 0 and self.tracked_state["powers_played_this_turn"] > 0 and self.has_relic("Orange Pellets"):
 				self.remove_all_debuffs()
 		
 			if self.player.has_power("Rage"):
@@ -1597,16 +1611,16 @@ class Game:
 				self.player.decrement_power("DoubleTap")
 				self.simulate_play(action, free_play=True)
 			
-		if action.card.cost >= 2 and self.has_relic("Necronomicon") and not self.necronomicon_triggered:
-			self.necronomicon_triggered = True
+		if action.card.cost >= 2 and self.has_relic("Necronomicon") and not self.tracked_state["necronomicon_triggered"]:
+			self.tracked_state["necronomicon_triggered"] = True
 			self.simulate_play(action, free_play=True)
 				
 				
 				
 		if action.card.type == spirecomm.spire.card.CardType.SKILL:
 		
-			self.skills_played_this_turn += 1
-			if self.skills_played_this_turn == 1 and self.attacks_played_this_turn > 0 and self.powers_played_this_turn > 0 and self.has_relic("Orange Pellets"):
+			self.tracked_state["skills_played_this_turn"] += 1
+			if self.tracked_state["skills_played_this_turn"] == 1 and self.tracked_state["attacks_played_this_turn"] > 0 and self.tracked_state["powers_played_this_turn"] > 0 and self.has_relic("Orange Pellets"):
 				self.remove_all_debuffs()
 	
 			letter = self.get_relic("Letter Opener")
@@ -1627,8 +1641,8 @@ class Game:
 			
 		if action.card.type == spirecomm.spire.card.CardType.POWER:
 		
-			self.powers_played_this_turn += 1
-			if self.powers_played_this_turn == 1 and self.attacks_played_this_turn > 0 and self.skills_played_this_turn > 0 and self.has_relic("Orange Pellets"):
+			self.tracked_state["powers_played_this_turn"] += 1
+			if self.tracked_state["powers_played_this_turn"] == 1 and self.tracked_state["attacks_played_this_turn"] > 0 and self.tracked_state["skills_played_this_turn"] > 0 and self.has_relic("Orange Pellets"):
 				self.remove_all_debuffs()
 		
 			if self.has_relic("Mummified Hand"):
@@ -1659,7 +1673,7 @@ class Game:
 				#d.write("\nNew State:\n")
 				#d.write(str(self))
 			
-		self.is_simulation = True
+		self.tracked_state["is_simulation"] = True
 			
 		return self
 		

@@ -41,6 +41,7 @@ class SimpleAgent:
 		self.behaviour_tree = py_trees.trees.BehaviourTree(self.root)
 		self.blackboard = py_trees.blackboard.Blackboard()
 		self.blackboard.game = Game()
+		self.blackboard.tracked_state = {} # game state info that the agent chooses to track
 		self.blackboard.game.player = spirecomm.spire.character.Player(0)
 		self.last_game_state = None
 		# call behaviour_tree.tick() for one tick
@@ -273,6 +274,7 @@ class SimpleAgent:
 			# self.note(str(self.blackboard.game))
 		else:
 			self.log("Simulation sanity check success!", debug=5)
+		return simulated_state
 		
 	# Returns a dict of what changed between game states
 	# ignore_randomness is used by simulation_sanity_check and ignores poor simulations due to chance
@@ -665,6 +667,7 @@ class SimpleAgent:
 		self.log("ERR: no choices available. Game paused?", debug=2)
 		self.last_action = StateAction()
 		return StateAction()
+		
 
 	def get_next_action_in_game(self, game_state):
 		self.last_game_state = self.blackboard.game
@@ -678,13 +681,13 @@ class SimpleAgent:
 		self.state_id += 1
 		self.blackboard.game.state_id = self.state_id
 		self.blackboard.game.combat_round = self.combat_round
-		
-		#self.think("state " + str(self.state_id))
-		
+				
 		# Check difference from last state
 		self.log("True Diff: " + str(self.state_diff(self.last_game_state, self.blackboard.game)), debug=6)
 		if self.blackboard.game.in_combat and self.last_game_state.in_combat and self.last_action is not None:
-			self.simulation_sanity_check(self.last_game_state, self.last_action) # check if we predicted this
+			simulated_state = self.simulation_sanity_check(self.last_game_state, self.last_action) # check if we predicted this
+			self.blackboard.tracked_state = simulated_state.tracked_state # FIXME this assumes we always simulate well, we'll need a fallback option for a way to figure out the correct tracked state when our simulation is wrong due to random chance
+			self.blackboard.game.tracked_state = self.blackboard.tracked_state
 		
 		# Sleep if needed
 		time.sleep(self.action_delay)
