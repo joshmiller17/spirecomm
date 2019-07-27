@@ -65,6 +65,10 @@ class EventOption:
 		disabled = json_object.get("disabled")
 		choice_index = json_object.get("choice_index", None)
 		return cls(text, label, disabled, choice_index)
+		
+	def __str__(self):
+		eo = "[EventOption] " if not self.disabled else "[--EventOption--] "
+		return eo + str(self.text) + " (" + str(self.label) + ") [" + str(self.choice_index) + "]"
 
 
 class Screen:
@@ -77,6 +81,9 @@ class Screen:
 	@classmethod
 	def from_json(cls, json_object):
 		return cls()
+		
+	def __str__(self):
+		return "[Default Screen]"
 
 
 class ChestScreen(Screen):
@@ -103,6 +110,17 @@ class ChestScreen(Screen):
 			chest_type = ChestType.UNKNOWN
 		chest_open = json_object.get("chest_open")
 		return cls(chest_type, chest_open)
+		
+	def __str__(self):
+		if self.chest_type == ChestType.SMALL:
+			return "[Small Chest Screen]"
+		elif self.chest_type == ChestType.MEDIUM:
+			return "[Medium Chest Screen]"
+		elif self.chest_type == ChestType.LARGE:
+			return "[Large Chest Screen]"
+		elif self.chest_type == ChestType.BOSS:
+			return "[Boss Chest Screen]"
+		return "[Unknown Chest Screen]"
 
 
 class EventScreen(Screen):
@@ -123,6 +141,12 @@ class EventScreen(Screen):
 			event.options.append(EventOption.from_json(json_option))
 		return event
 
+	def __str__(self):
+		ret = "[Event Screen] " + str(self.event_name) + " (" + str(self.event_id) + ") "
+		for opt in self.options:
+			ret += "> " + str(opt)
+		return ret
+		
 
 class ShopRoomScreen(Screen):
 
@@ -142,6 +166,15 @@ class RestScreen(Screen):
 	def from_json(cls, json_object):
 		rest_options = [RestOption[option.upper()] for option in json_object.get("rest_options")]
 		return cls(json_object.get("has_rested"), rest_options)
+		
+	def __str__(self):
+		if self.has_rested:
+			return "[Finished Rest Screen]"
+		else:
+			ret = "[Rest Screen] "
+			for opt in self.rest_options:
+				ret += "> " + str(opt)
+			return ret
 
 
 class CardRewardScreen(Screen):
@@ -160,6 +193,16 @@ class CardRewardScreen(Screen):
 		can_bowl = json_object.get("bowl_available")
 		can_skip = json_object.get("skip_available")
 		return cls(cards, can_bowl, can_skip)
+		
+	def __str__(self):
+		ret = "[Card Reward Screen] "
+		for opt in self.cards:
+			ret += "> " + str(opt)
+		if self.can_skip:
+			ret += "> [Skip]"
+		if self.can_bowl:
+			ret += "> [+2 max HP]"
+		return ret
 
 
 class CombatReward:
@@ -200,6 +243,9 @@ class CombatRewardScreen(Screen):
 			else:
 				rewards.append(CombatReward(reward_type))
 		return cls(rewards)
+		
+	def __str__(self):
+		return "[Combat Reward Screen]"
 
 
 class MapScreen(Screen):
@@ -226,6 +272,9 @@ class MapScreen(Screen):
 		else:
 			next_nodes = []
 		return cls(current_node, next_nodes, boss_available)
+		
+	def __str__(self):
+		return "[Map Screen]"
 
 
 class BossRewardScreen(Screen):
@@ -240,6 +289,9 @@ class BossRewardScreen(Screen):
 	def from_json(cls, json_object):
 		relics = [Relic.from_json(relic) for relic in json_object.get("relics")]
 		return cls(relics)
+		
+	def __str__(self):
+		return "[Boss Reward Screen]"
 
 
 class ShopScreen(Screen):
@@ -262,6 +314,9 @@ class ShopScreen(Screen):
 		purge_available = json_object.get("purge_available")
 		purge_cost = json_object.get("purge_cost")
 		return cls(cards, relics, potions, purge_available, purge_cost)
+		
+	def __str__(self):
+		return "[Shop Screen]"
 
 
 class GridSelectScreen(Screen):
@@ -270,13 +325,13 @@ class GridSelectScreen(Screen):
 
 	def __init__(self, cards, selected_cards, num_cards, confirm_up, for_upgrade, for_transform, for_purge):
 		super().__init__()
-		self.cards = cards
-		self.selected_cards = selected_cards
+		self.cards = cards # list of card objects available
+		self.selected_cards = selected_cards # list of card objects selected so far
 		self.num_cards = num_cards
 	#	self.any_number = any_number # TODO add this back in when CommMod gets updated
 		self.confirm_up = confirm_up
 		self.for_upgrade = for_upgrade
-		self.for_tranform = for_transform
+		self.for_transform = for_transform
 		self.for_purge = for_purge
 
 	@classmethod
@@ -286,9 +341,26 @@ class GridSelectScreen(Screen):
 		num_cards = json_object.get("num_cards")
 		confirm_up = json_object.get("confirm_up")
 		for_upgrade = json_object.get("for_upgrade")
-		for_transform = json_object.get("for_tranform")
+		for_transform = json_object.get("for_transform")
 		for_purge = json_object.get("for_purge")
 		return cls(cards, selected_cards, num_cards, confirm_up, for_upgrade, for_transform, for_purge)
+		
+	def __str__(self):
+		ret = "[Grid Select Screen, "
+		if self.confirm_up:
+			ret += " confirm "
+		if self.for_upgrade and self.for_transform:
+			ret += " transform and upgrade"
+		elif self.for_upgrade:
+			ret += " upgrade"
+		elif self.for_transform:
+			ret += " transform"
+		elif self.for_purge:
+			ret += " purge"
+		ret += "]"
+		return ret
+		
+		
 
 
 class HandSelectScreen(Screen):
@@ -309,6 +381,18 @@ class HandSelectScreen(Screen):
 		num_cards = json_object.get("max_cards")
 		can_pick_zero = json_object.get("can_pick_zero")
 		return cls(cards, selected_cards, num_cards, can_pick_zero)
+		
+	def __str__(self):
+		ret = "[Hand Select Screen, "
+		
+		# I think these are bool but double check
+		ret += " can pick 0: " + str(self.can_pick_zero)
+		
+		ret += " num cards: " + str(self.num_cards)
+		ret += " selected cards: " + str(self.selected_cards)
+		ret += " cards: " + str(self.cards)
+		ret += "]"
+		return ret
 
 
 class GameOverScreen(Screen):
@@ -323,6 +407,12 @@ class GameOverScreen(Screen):
 	@classmethod
 	def from_json(cls, json_object):
 		return cls(json_object.get("score"), json_object.get("victory"))
+		
+	def __str__(self):
+		if self.victory:
+			return "[Victory Screen] Score: " + str(self.score)
+		else:
+			return "[Defeat Screen] Score: " + str(self.score)
 
 
 class CompleteScreen(Screen):

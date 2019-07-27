@@ -195,6 +195,11 @@ class Base(BoxLayout):
 			self.agent.print_tree()
 			return True
 			
+		if msg == "relics":
+			relics = self.agent.blackboard.game.relics
+			self.in_history.append("\n".join(relics))
+			return True
+			
 		if msg == "auto pause":
 			self.agent.auto_pause = not self.agent.auto_pause
 			self.in_history.append("Auto pause: " + ("ON" if self.agent.auto_pause else "OFF"))

@@ -24,6 +24,9 @@ MCTS_ROUND_COST = 0.5 # penalize long fights
 # TODO eventually add: value for deck changes (e.g. cost for gaining parasite)
 # TODO eventually add: value for card misc changes (e.g., genetic algorithm, ritual dagger)
 
+BUFFS = ["Ritual", "Strength", "Dexterity", "Incantation", "Enrage", "Metallicize", "SadisticNature", "Juggernaut", "DoubleTap", "DemonForm", "DarkEmbrace", "Brutality", "Berserk", "Rage", "Feel No Pain", "Flame Barrier", "Corruption", "Combust"]
+DEBUFFS = ["Frail", "Vulnerable", "Weakened", "Entangled", "Shackles", "NoBlock", "No Draw"]
+
 class RoomPhase(Enum):
 	COMBAT = 1,
 	EVENT = 2,
@@ -80,7 +83,7 @@ class Game:
 		self.proceed_available = False
 		self.cancel_available = False
 		
-		# Added state info
+		# Added state info - TODO this block needs to be stored more permanently
 		self.original_state = None # For MCTS simulations; FIXME might be a huge memory storage for in-depth simulations? Consider only storing values important for reward func
 		self.debug_file = "game.log"
 		self.visited_shop = False
@@ -101,6 +104,8 @@ class Game:
 		self.next_turn_block = 0
 		self.below_half_health = False
 		self.necronomicon_triggered = False
+		self.skills_played_this_turn = 0
+		self.powers_played_this_turn = 0
 	
 	# for some reason, pausing the game invalidates the state
 	def is_valid(self):
@@ -119,6 +124,8 @@ class Game:
 		self.times_lost_hp_this_combat = 0
 		self.next_turn_block = 0
 		self.necronomicon_triggered = False
+		self.skills_played_this_turn = 0
+		self.powers_played_this_turn = 0
 		
 	# returns relic or None
 	def get_relic(self, name):
@@ -143,8 +150,9 @@ class Game:
 	
 	def __str__(self):
 		string = "\n\n<---- Game State " + str(self.state_id) + " ----"
-		string += "\nScreen: " + str(self.screen) + " (" + str(self.screen_type) + ")"
+		string += "\nScreen: " + str(self.screen) + " (" + str(self.screen_type) + ") " + ("[UP]" if self.screen_up else "")
 		#string += "\nRoom: " + str(self.room_type)
+		string += "\nCurrent action: " + str(self.current_action)
 		string += "\nSimulation?: " + str(self.is_simulation)
 		if self.in_combat:
 			string += "\nHP: " + str(self.player.current_hp) + "/" + str(self.player.max_hp)
@@ -258,10 +266,10 @@ class Game:
 
 # ---------- MCTS SIMULATIONS -----------		
 
-	# True iff either we're dead or the monsters are
+	# True iff either we're dead or the monsters are (or we smoke bomb)
 	def isTerminal(self):
 		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
-		return self.player.current_hp <= 0 or len(available_monsters) < 1
+		return self.player.current_hp <= 0 or len(available_monsters) < 1 or not self.in_combat
 		
 	# return value of terminal state
 	def getReward(self):
@@ -353,6 +361,7 @@ class Game:
 		elif action.command.startswith("potion"):
 			# assumes we have this potion, will throw an error if we don't I think
 			new_state.potions.remove(action.potion) # fixme? might need to match on name rather than ID
+			new_state.potions.append(spirecomm.spire.potion.Potion("Potion Slot", "Potion Slot", False, False, False))
 			return new_state.simulate_potion(action)
 		elif action.command.startswith("play"):
 			return new_state.simulate_play(action)
@@ -367,7 +376,7 @@ class Game:
 		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
 		if self.combat_round == 1 and "startswith" in monster.intents:
 			selected_move = monster.intents["startswith"]
-		elif monster.monster_id == "GremlinShield" and len(available_monsters) > 1:
+		elif monster.monster_id == "GremlinTsundere" and len(available_monsters) > 1:
 			selected_move == "Protect"
 		else:
 			# make sure the attack we pick is not limited
@@ -410,8 +419,8 @@ class Game:
 		# Check if Lagavulin should still be sleeping
 		moveset = monster.intents["moveset"]
 		if monster.monster_id == "Lagavulin":
-			if monster.current_hp != monster.max_hp and monster.intent == spirecomm.spire.character.Intent.SLEEP:
-				# wake up 
+			if monster.current_hp != monster.max_hp and monster.has_power("Asleep"):
+				# wake up
 				selected_move = "Stunned"
 				monster.add_power("Metallicize", -8)
 				monster.remove_power("Asleep")
@@ -430,7 +439,13 @@ class Game:
 		self.attacks_played_this_turn = 0
 		self.cards_played_last_turn = self.cards_played_this_turn
 		self.cards_played_this_turn = 0
+		self.skills_played_this_turn = 0
+		self.powers_played_this_turn = 0
 		self.necronomicon_triggered = False
+		
+		self.decrement_duration_powers(self.player)
+		
+		self.increment_relic("Stone Calendar")
 		
 		if self.combat_round == 7 and self.has_relic("Stone Calendar"):
 			available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
@@ -495,7 +510,14 @@ class Game:
 			elif power.power_name == "DemonForm":
 				character.add_power("Strength", power.amount)
 				
-		self.decrement_duration_powers(self.player)
+	# orange pellets
+	def remove_all_debuffs(self):
+		for power in self.player.powers:
+			if power.power_name in DEBUFFS:
+				self.remove_power(power.power_name)
+			if (power.power_name is "Strength" or power.power_name is "Dexterity" or power.power_name is "Focus") and power.amount < 0:
+				self.remove_power(power.power_name)
+			
 				
 	def decrement_duration_powers(self, character):
 		turn_based_powers = ["Vulnerable", "Frail", "Weakened", "No Block", "No Draw"]
@@ -653,17 +675,17 @@ class Game:
 			damage -= attacker.get_power_amount("Shackles")
 			if attacker.has_power("Weakened"):
 				if attacker is not self.player and self.has_relic("Paper Krane"):
-					damage = int(math.floor(damage - (0.40 * damage)))
+					damage = damage - (0.40 * damage)
 				else:
-					damage = int(math.floor(damage - (0.25 * damage)))
+					damage = damage - (0.25 * damage)
 		if target.has_power("Vulnerable"):
 			if target is not self.player and self.has_relic("Paper Phrog"):
-				damage = int(math.floor(damage + (0.75 * damage)))
+				damage = damage + (0.75 * damage)
 			elif target is self.player and self.has_relic("Odd Mushroom"):
-				damage = int(math.floor(damage + (0.25 * damage)))
+				damage = damage + (0.25 * damage)
 			else:
-				damage = int(math.floor(damage + (0.50 * damage)))
-		return damage
+				damage = damage + (0.50 * damage)
+		return int(math.floor(damage))
 		
 	# Note attacker may be None, e.g. from Burn card
 	def apply_damage(self, damage, attacker, target, from_attack=False, ignores_block=False):
@@ -690,7 +712,7 @@ class Game:
 				target.current_hp -= unblocked_damage
 		
 		if unblocked_damage > 0 and target is self.player:
-		
+				
 			if self.has_relic("Runic Cube"):
 				self.draw_card()
 		
@@ -708,7 +730,9 @@ class Game:
 			# TODO reduce the cost of blood for blood wherever it is in our deck
 		
 		# death checks
-		if target.current_hp == 0 and unblocked_damage > 0: # just died
+		if target.current_hp <= 0 and unblocked_damage > 0: # just died
+		
+			self.debug_log.append("Killed " + str(target))
 		
 			if self.has_relic("Gremlin Horn"):
 				self.draw_card()
@@ -716,26 +740,28 @@ class Game:
 		
 			if target.has_power("Spore Cloud"):
 				self.player.add_power("Vulnerable", target.get_power_amount("Spore Cloud"))
+				target.remove_power("Spore Cloud")
 			# TODO corpse explosion, that relic that shifts poison (specimen?)
 			if target.has_power("Thievery"):
 				self.incoming_gold += target.misc
 				
 		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+		
+		
 		# TODO add this in when we start pre-calculating intents (for MCTS). Right now we only calculate intents on their turn
 		for monster in available_monsters:
 			#if monster.monster_id == "GremlinTsundere" and len(available_monsters) < 2:
 				
-					
+			
 				
 			# intent change checks
 			# Check if Lagavulin should still be sleeping
 			
 			moveset = monster.intents["moveset"]
 			if monster.monster_id == "Lagavulin":
-				if monster.current_hp != monster.max_hp and moveset[self.current_move]["intent_type"] == "SLEEP":
+				if monster.current_hp != monster.max_hp and monster.has_power("Asleep"):
 					# wake up 
-					self.current_move = "Stunned"
-				if monster.has_power("Asleep") and moveset[self.current_move]["intent_type"] != "SLEEP":
+					monster.current_move = "Stunned"
 					monster.add_power("Metallicize", -8)
 					monster.remove_power("Asleep")
 		
@@ -871,6 +897,79 @@ class Game:
 		
 		if draw > 1:
 			self.draw_card(draw - 1)
+			
+	# used to simulate entropic brew
+	def generate_random_potion(self, player_class=spirecomm.spire.character.PlayerClass.IRONCLAD):
+		# fixme not sure if entropic brew can generate fruit juice
+		possible_potions = [ 
+		spirecomm.spire.potion.Potion("Ancient Potion", "Ancient Potion", True, True, False),
+		spirecomm.spire.potion.Potion("Attack Potion", "Attack Potion", True, True, False),
+		spirecomm.spire.potion.Potion("Block Potion", "Block Potion", True, True, False),
+		spirecomm.spire.potion.Potion("Dexterity Potion", "Dexterity Potion", True, True, False),
+		spirecomm.spire.potion.Potion("Essence of Steel", "Essence of Steel", True, True, False),
+		spirecomm.spire.potion.Potion("Explosive Potion", "Explosive Potion", True, True, False),
+		spirecomm.spire.potion.Potion("Fairy in a Bottle", "Fairy in a Bottle", False, True, False),
+		spirecomm.spire.potion.Potion("Fear Potion", "Fear Potion", True, True, True),
+		spirecomm.spire.potion.Potion("Fire Potion", "Fire Potion", True, True, True),
+		spirecomm.spire.potion.Potion("Gambler's Brew", "Gambler's Brew", True, True, False),
+		spirecomm.spire.potion.Potion("Liquid Bronze", "Liquid Bronze", True, True, False),
+		spirecomm.spire.potion.Potion("Power Potion", "Power Potion", True, True, False),
+		spirecomm.spire.potion.Potion("Regen Potion", "Regen Potion", True, True, False),
+		spirecomm.spire.potion.Potion("Skill Potion", "Skill Potion", True, True, False),
+		spirecomm.spire.potion.Potion("Smoke Bomb", "Smoke Bomb", True, True, False),
+		spirecomm.spire.potion.Potion("Snecko Oil", "Snecko Oil", True, True, False),
+		spirecomm.spire.potion.Potion("Speed Potion", "Speed Potion", True, True, False),
+		spirecomm.spire.potion.Potion("Steroid Potion", "Steroid Potion", True, True, False),
+		spirecomm.spire.potion.Potion("Strength Potion", "Strength Potion", True, True, False),
+		spirecomm.spire.potion.Potion("Swift Potion", "Swift Potion", True, True, False),
+		spirecomm.spire.potion.Potion("Weak Potion", "Weak Potion", True, True, True),
+		]
+	
+	
+		if player_class == spirecomm.spire.character.PlayerClass.IRONCLAD:
+			possible_potions.append(spirecomm.spire.potion.Potion("Blood Potion", "Blood Potion", True, True, False))
+		if player_class == spirecomm.spire.character.PlayerClass.THE_SILENT:
+			possible_potions.append(spirecomm.spire.potion.Potion("Ghost In A Jar", "Ghost In A Jar", True, True, False))
+		if player_class == spirecomm.spire.character.PlayerClass.DEFECT:
+			possible_potions.append(spirecomm.spire.potion.Potion("Focus Potion", "Focus Potion", True, True, False))
+		
+		return random.choice(possible_potions)
+		
+	def generate_random_attack_card(self, player_class=spirecomm.spire.character.PlayerClass.IRONCLAD):
+	
+		if player_class == spirecomm.spire.character.PlayerClass.IRONCLAD:
+			pass # TODO
+		if player_class == spirecomm.spire.character.PlayerClass.THE_SILENT:
+			pass # TODO
+		if player_class == spirecomm.spire.character.PlayerClass.DEFECT:
+			pass # TODO
+	
+		return # TODO
+	
+	def generate_random_skill_card(self, player_class=spirecomm.spire.character.PlayerClass.IRONCLAD):
+	
+	
+		if player_class == spirecomm.spire.character.PlayerClass.IRONCLAD:
+			pass # TODO
+		if player_class == spirecomm.spire.character.PlayerClass.THE_SILENT:
+			pass # TODO
+		if player_class == spirecomm.spire.character.PlayerClass.DEFECT:
+			pass # TODO
+	
+		return # TODO
+	
+	def generate_random_power_card(self, player_class=spirecomm.spire.character.PlayerClass.IRONCLAD):
+	
+	
+		if player_class == spirecomm.spire.character.PlayerClass.IRONCLAD:
+			pass # TODO
+		if player_class == spirecomm.spire.character.PlayerClass.THE_SILENT:
+			pass # TODO
+		if player_class == spirecomm.spire.character.PlayerClass.DEFECT:
+			pass # TODO
+	
+		return # TODO
+		
 	
 	# Returns a new state
 	def simulate_end_turn(self, action):
@@ -955,8 +1054,6 @@ class Game:
 								
 					# Finally, apply the intended move
 					effects = monster.intents["moveset"][monster.current_move]["effects"]
-					buffs = ["Ritual", "Strength", "Incantation", "Enrage"]
-					debuffs = ["Frail", "Vulnerable", "Weakened", "Entangled", "Shackles"]
 					for effect in effects:
 						
 						if effect["name"] == "Damage":
@@ -976,10 +1073,10 @@ class Game:
 								selected_ally = random.choice(available_monsters)
 							self.add_block(selected_ally, effect["amount"])
 							
-						elif effect["name"] in buffs:
+						elif effect["name"] in BUFFS:
 							monster.add_power(effect["name"], effect["amount"])
 							
-						elif effect["name"] in debuffs:
+						elif effect["name"] in DEBUFFS:
 							self.apply_debuff(self.player, effect["name"], effect["amount"])
 														
 						elif effect["name"] == "AddSlimedToDiscard":
@@ -1006,6 +1103,9 @@ class Game:
 						
 						elif effect["name"] == "Sleep":
 							pass # take one (1) snoozle
+							
+						elif effect["name"] == "Charge":
+							pass # i'ma chargin' mah fireball!
 						
 						elif effect["name"] == "Escape":
 							monster.is_gone = True
@@ -1101,8 +1201,9 @@ class Game:
 			self.player.energy += 2
 		
 		elif action.potion.name == "Entropic Brew":
-			# TODO
-			pass
+			for i in range(len(self.potions)):
+				if self.potions[i].potion_id == "Potion Slot":
+					self.potions[i] = self.generate_random_potion()
 		
 		elif action.potion.name == "Essence of Steel":
 			self.player.add_power("Plated Armor", 4)
@@ -1161,8 +1262,8 @@ class Game:
 			pass
 		
 		elif action.potion.name == "Smoke Bomb":
-			# TODO
-			pass
+			if self.blackboard.game.room_type != "MonsterRoomBoss":
+				self.in_combat = False
 		
 		elif action.potion.name == "Snecko Oil":
 			self.player.add_power("Confused")
@@ -1210,9 +1311,6 @@ class Game:
 		
 	# Returns a new state
 	def simulate_play(self, action, free_play=False):
-		
-		buffs = ["Strength", "Dexterity", "Metallicize", "SadisticNature", "Juggernaut", "DoubleTap", "DemonForm", "DarkEmbrace", "Brutality", "Berserk", "Rage", "Feel No Pain", "Flame Barrier", "Corruption", "Combust"]
-		debuffs = ["Vulnerable", "Weakened", "NoBlock", "No Draw"]
 		
 		if not action.card.loadedFromJSON:
 			raise Exception("Card not loaded from JSON: " + str(action.card.name))
@@ -1315,10 +1413,10 @@ class Game:
 						card.upgrade()
 					
 					
-				elif effect["effect"] in buffs:
+				elif effect["effect"] in BUFFS:
 					self.player.add_power(effect["effect"], effect["amount"])
 						
-				elif effect["effect"] in debuffs:
+				elif effect["effect"] in DEBUFFS:
 					self.apply_debuff(target, effect["effect"], effect["amount"])
 					
 				elif effect["effect"] == "Block as Damage":
@@ -1456,82 +1554,94 @@ class Game:
 					
 					
 					
-			if action.card.type == spirecomm.spire.card.CardType.ATTACK:
+		if action.card.type == spirecomm.spire.card.CardType.ATTACK:
+	
+			self.attacks_played_this_turn += 1
+			if self.attacks_played_this_turn == 1 and self.skills_played_this_turn > 0 and self.powers_played_this_turn > 0 and self.has_relic("Orange Pellets"):
+				self.remove_all_debuffs()
 		
-				self.attacks_played_this_turn += 1
+			if self.player.has_power("Rage"):
+				self.add_block(self.player, self.player.get_power_amount("Rage"))
+		
+			fan = self.get_relic("Ornamental Fan")
+			if fan:
+				fan.counter += 1
+				if fan.counter >= 3:
+					self.set_relic_counter("Ornamental Fan", 0)
+					self.add_block(self.player, 4)
+					
+			kunai = self.get_relic("Kunai")
+			if kunai:
+				kunai.counter += 1
+				if kunai.counter >= 3:
+					self.set_relic_counter("Kunai", 0)
+					self.player.add_power("Dexterity", 1)
 			
-				if self.player.has_power("Rage"):
-					self.add_block(self.player, self.player.get_power_amount("Rage"))
+			shuriken = self.get_relic("Shuriken")
+			if shuriken:
+				shuriken.counter += 1
+				if shuriken.counter >= 3:
+					self.set_relic_counter("Shuriken", 0)
+					self.player.add_power("Strength", 1)
 			
-				fan = self.get_relic("Ornamental Fan")
-				if fan:
-					fan.counter += 1
-					if fan.counter >= 3:
-						self.set_relic_counter("Ornamental Fan", 0)
-						self.add_block(self.player, 4)
-						
-				kunai = self.get_relic("Kunai")
-				if kunai:
-					kunai.counter += 1
-					if kunai.counter >= 3:
-						self.set_relic_counter("Kunai", 0)
-						self.player.add_power("Dexterity", 1)
-				
-				shuriken = self.get_relic("Shuriken")
-				if shuriken:
-					shuriken.counter += 1
-					if shuriken.counter >= 3:
-						self.set_relic_counter("Shuriken", 0)
-						self.player.add_power("Strength", 1)
-				
-				self.increment_relic("Pen Nib")
-				
-				nunchaku = self.get_relic("Nunchaku")
-				if nunchaku:
-					nunchaku.counter += 1
-					if nunchaku.counter >= 10:
-						self.set_relic_counter("Nunchaku", 0)
-						self.player.energy += 1
-				
-				if self.player.has_power("DoubleTap"):
-					self.player.decrement_power("DoubleTap")
-					self.simulate_play(action, free_play=True)
-				
-			if action.card.cost >= 2 and self.has_relic("Necronomicon") and not self.necronomicon_triggered:
-				self.necronomicon_triggered = True
+			self.increment_relic("Pen Nib")
+			
+			nunchaku = self.get_relic("Nunchaku")
+			if nunchaku:
+				nunchaku.counter += 1
+				if nunchaku.counter >= 10:
+					self.set_relic_counter("Nunchaku", 0)
+					self.player.energy += 1
+			
+			if self.player.has_power("DoubleTap"):
+				self.player.decrement_power("DoubleTap")
 				self.simulate_play(action, free_play=True)
-				
-				
-				
-			if action.card.type == spirecomm.spire.card.CardType.SKILL:
-		
-				letter = self.get_relic("Letter Opener")
-				if letter:
-					letter.counter += 1
-					if letter.counter >= 3:
-						self.set_relic_counter("Letter Opener", 0)
-						for monster in available_monsters:
-							self.apply_damage(5, None, monster)
 			
-				for monster in available_monsters:
-					if monster.has_power("Enrage"):
-						monster.add_power("Strength", monster.get_power_amount("Enrage"))
-
-				if self.player.has_power("Corruption"):
-					self.discard_pile.remove(exhausted_card) # FIXME if might not have gone to discard
-					self.exhaust_card(action.card)
+		if action.card.cost >= 2 and self.has_relic("Necronomicon") and not self.necronomicon_triggered:
+			self.necronomicon_triggered = True
+			self.simulate_play(action, free_play=True)
 				
-			if action.card.type == spirecomm.spire.card.CardType.POWER and self.has_relic("Mummified Hand"):
+				
+				
+		if action.card.type == spirecomm.spire.card.CardType.SKILL:
+		
+			self.skills_played_this_turn += 1
+			if self.skills_played_this_turn == 1 and self.attacks_played_this_turn > 0 and self.powers_played_this_turn > 0 and self.has_relic("Orange Pellets"):
+				self.remove_all_debuffs()
+	
+			letter = self.get_relic("Letter Opener")
+			if letter:
+				letter.counter += 1
+				if letter.counter >= 3:
+					self.set_relic_counter("Letter Opener", 0)
+					for monster in available_monsters:
+						self.apply_damage(5, None, monster)
+		
+			for monster in available_monsters:
+				if monster.has_power("Enrage"):
+					monster.add_power("Strength", monster.get_power_amount("Enrage"))
+
+			if self.player.has_power("Corruption"):
+				self.discard_pile.remove(exhausted_card) # FIXME if might not have gone to discard
+				self.exhaust_card(action.card)
+			
+		if action.card.type == spirecomm.spire.card.CardType.POWER:
+		
+			self.powers_played_this_turn += 1
+			if self.powers_played_this_turn == 1 and self.attacks_played_this_turn > 0 and self.skills_played_this_turn > 0 and self.has_relic("Orange Pellets"):
+				self.remove_all_debuffs()
+		
+			if self.has_relic("Mummified Hand"):
 				selected_card = random.choice(self.hand)
 				while selected_card.cost == 0: #or selected_card.type == spirecomm.spire.card.CardType.CURSE (should be covered by cost)
 					selected_card = random.choice(self.hand)
 				selected_card.cost = 0
-				
-				
-			for card in self.hand:
-				for effect in card.effects:
-					if effect["effect"] == "Pain":
-						self.lose_hp(self.player, 1, from_card=True)
+			
+			
+		for card in self.hand:
+			for effect in card.effects:
+				if effect["effect"] == "Pain":
+					self.lose_hp(self.player, 1, from_card=True)
 						
 		if self.hand == [] and self.has_relic("Unceasing Top"):
 			self.draw_card()
