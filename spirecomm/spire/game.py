@@ -359,7 +359,7 @@ class Game:
 				d.write("\nSimulating taking action: " + str(action) + "\n")
 		
 		new_state = copy.deepcopy(self)
-		new_state.possible_actions = None
+		new_state.tracked_state["possible_actions"] = None
 		new_state.original_state = self
 		new_state.state_id += 1
 		
@@ -942,7 +942,16 @@ class Game:
 		
 		return random.choice(possible_potions)
 		
+	def generate_random_colorless_card(self):
+		cards = []
+		
+		# card_id, name, card_type, rarity, upgrades=0, has_target=False, cost=0, misc=0, is_playable=False, exhausts=False
+		
+	
+		return cards
+		
 	def generate_random_attack_card(self, player_class=spirecomm.spire.character.PlayerClass.IRONCLAD):
+		cards = []
 	
 		if player_class == spirecomm.spire.character.PlayerClass.IRONCLAD:
 			pass # TODO
@@ -951,10 +960,10 @@ class Game:
 		if player_class == spirecomm.spire.character.PlayerClass.DEFECT:
 			pass # TODO
 	
-		return # TODO
+		return cards
 	
 	def generate_random_skill_card(self, player_class=spirecomm.spire.character.PlayerClass.IRONCLAD):
-	
+		cards = []
 	
 		if player_class == spirecomm.spire.character.PlayerClass.IRONCLAD:
 			pass # TODO
@@ -963,10 +972,10 @@ class Game:
 		if player_class == spirecomm.spire.character.PlayerClass.DEFECT:
 			pass # TODO
 	
-		return # TODO
+		return cards
 	
 	def generate_random_power_card(self, player_class=spirecomm.spire.character.PlayerClass.IRONCLAD):
-	
+		cards = []
 	
 		if player_class == spirecomm.spire.character.PlayerClass.IRONCLAD:
 			pass # TODO
@@ -975,7 +984,7 @@ class Game:
 		if player_class == spirecomm.spire.character.PlayerClass.DEFECT:
 			pass # TODO
 	
-		return # TODO
+		return cards
 		
 	
 	# Returns a new state
@@ -1321,7 +1330,7 @@ class Game:
 		
 	# Returns a new state
 	def simulate_play(self, action, free_play=False):
-		
+	
 		if not action.card.loadedFromJSON:
 			raise Exception("Card not loaded from JSON: " + str(action.card.name))
 			
