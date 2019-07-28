@@ -1,4 +1,15 @@
 {
+
+	"class" : "COLORLESS",
+	"type" : "SKILL",
+	"rarity" : "UNCOMMON",
+	"upgrades" : 1,
+	"has_target" : false,
+	"cost" : 0,
+	"misc" : 0,
+	"is_playable" : true,
+	"exhausts" : true,
+
 	"value": {
 		"synergies": [
 		]
