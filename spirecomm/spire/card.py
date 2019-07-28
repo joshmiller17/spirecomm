@@ -5,6 +5,7 @@ import spirecomm.config as config
 
 CARDS_PATH = os.path.join(config.SPIRECOMM_PATH, "spirecomm", "ai", "cards")
 
+VALID_CLASSES = ["COLORLESS", "IRONCLAD", "THE_SILENT", "DEFECT"]
 
 class CardType(Enum):
 	ATTACK = 1
@@ -82,9 +83,37 @@ class Card:
 				self.value = jsonData["value"]
 				self.effects = jsonData["effects"]
 				self.loadedFromJSON = True
+				if not jsonData["class"] or not jsonData["cost"] or not jsonData["has_target"] or not jsonData["is_playable"] or not jsonData["exhausts"]:
+					with open(os.path.join(CARDS_PATH, "temp", str(self.card_id)), "a+") as jf:
+						d = {}
+						d["card_id"] = self.card_id
+						d["type"] = self.card_type
+						d["rarity"] = self.rarity
+						d["upgrades"] = self.upgrades
+						d["has_target"] = self.has_target
+						d["cost"] = self.cost
+						d["misc"] = self.misc
+						d["is_playable"] = self.is_playable
+						d["exhausts"] = self.exhausts
+						#json.dump(d, jf) # TODO fix and uncomment
+					#raise Exception("missing data; written to temp/" + str(self.card_id) + ".json for you")  # TODO fix and uncomment
+				else:
+					if jsonData["class"] not in VALID_CLASSES:
+						raise Exception("invalid class")
+					if not any(jsonData["type"] == type for type in CardType):
+						raise Exception("invalid type")
+					if not any(jsonData["rarity"] == rarity for rarity in CardRarity):
+						raise Exception("invalid rarity")
+				actually_exhausts = False
+				for effect in self.effects:
+					if effect["effect"] == "Exhaust":
+						actually_exhausts = True 
+				if self.exhausts != actually_exhausts:
+					raise Exception("invalid exhaust")
+				
 		except Exception as e:
 			with open('err.log', 'a+') as err_file:
-				err_file.write("\nCard Error: " + str(self.get_clean_name(name)))
+				err_file.write("\nCard Error: " + str(self.get_clean_name()))
 				err_file.write(str(e))
 		
 		# Dynamic values
@@ -113,7 +142,7 @@ class Card:
 				self.loadedFromJSON = True
 		except Exception as e:
 			with open('err.log', 'a+') as err_file:
-				err_file.write("\nCard Error: " + str(self.get_clean_name(name)))
+				err_file.write("\nCard Error: " + str(self.get_clean_name()))
 				err_file.write(str(e))
 
 	@classmethod
@@ -137,7 +166,7 @@ class Card:
 		return str(self) + " <" + str(self.uuid)[:4] + "...>"
 		
 	def __str__(self):
-		name = self.get_clean_name()
+		name = self.get_clean_name() + " (" + str(self.card_id) +")"
 		if self.upgrades > 1:
 			name += str(self.upgrades)
 		playcost = str(self.cost) if self.is_playable else "-" + str(self.cost) + "-"

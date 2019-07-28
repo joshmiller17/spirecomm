@@ -21,6 +21,15 @@ class DefaultBehaviour(py_trees.behaviour.Behaviour):
 		
 	def log(self, msg, debug=4):
 		self.agent.log(str(self.name) + " [" + str(self.__class__.__name__) + "]: " + msg, debug=debug)
+		
+	# get an attr from either the game state or the tracked state
+	def from_game(self, attr):
+		try:
+			value = getattr(self.agent.blackboard.game, attr)
+		except AttributeError:
+			state = getattr(self.agent.blackboard.game, "tracked_state")
+			value = state[attr]
+		return value
 
 	def setup(self):
 		"""
@@ -183,7 +192,7 @@ class BoolCheckBehaviour(DefaultBehaviour):
 		self.success = success
 	
 	def update(self):
-		value = getattr(self.agent.blackboard.game, self.boolean)
+		value = self.from_game(self.boolean)
 		ret = value if self.success else not value # invert bool if that's what we want to check
 		retStr = "SUCCESS" if ret else "FAILURE"
 		self.log(str(self.boolean) + " is " + str(value) + ": " + retStr, debug=7)
@@ -255,7 +264,7 @@ class CompareToConstBehaviour(EqualityCheckBehaviour):
 		self.static = static
 		
 	def update(self):
-		self.first = getattr(self.agent.blackboard.game, self.attr)
+		self.first = self.from_game(self.attr)
 		return super().update()
 
 	def to_json(self):

@@ -12,7 +12,7 @@
 		"amount" : 15
 		},
 		{
-		"target" : "self",
+		"target" : "one",
 		"effect" : "RitualDagger",
 		"amount" : 5
 		}

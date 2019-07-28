@@ -12,6 +12,19 @@
 						}
 					]
 					},
+					
+				"Split" :
+					{
+					"intent_type": "UNKNOWN",
+					"probability" : 0.00,
+					"effects" : [
+						{
+							"name" : "Split",
+							"amount" : ["SpikeSlime_M", "SpikeSlime_M"]
+						}
+					]
+					},
+					
 				"Flame Tackle" :
 					{
 					"intent_type": "ATTACK_DEBUFF",

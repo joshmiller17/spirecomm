@@ -16,6 +16,19 @@
 						}
 					]
 					},
+					
+				"Split" :
+					{
+					"intent_type": "UNKNOWN",
+					"probability" : 0.00,
+					"effects" : [
+						{
+							"name" : "Split",
+							"amount" : ["AcidSlime_M", "AcidSlime_M"]
+						}
+					]
+					},
+					
 				"Lick" :
 					{
 					"intent_type": "DEBUFF",

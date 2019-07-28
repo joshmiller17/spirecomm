@@ -136,6 +136,7 @@ class Monster(Character):
 		self.move_adjusted_damage = move_adjusted_damage # the damage number the player sees
 		self.move_hits = move_hits
 		self.monster_index = 0
+		self.used_half_health_ability = False
 		
 		self.misc = 0 # used by Louses to track their bonus damage. Used by thieves to track gold stolen
 

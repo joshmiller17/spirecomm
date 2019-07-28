@@ -863,7 +863,7 @@ class SimpleAgent:
 		
 	# TODO
 	def handle_shop_screen(self):
-		self.game.visited_shop = True
+		self.game.tracked_state["visited_shop"] = True
 		if self.blackboard.game.screen.purge_available and self.blackboard.game.gold >= self.blackboard.game.screen.purge_cost:
 			return ChooseAction(name="purge")
 		for card in self.blackboard.game.screen.cards:

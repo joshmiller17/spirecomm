@@ -24,7 +24,7 @@ MCTS_ROUND_COST = 0.5 # penalize long fights
 # TODO eventually add: value for deck changes (e.g. cost for gaining parasite)
 # TODO eventually add: value for card misc changes (e.g., genetic algorithm, ritual dagger)
 
-BUFFS = ["Ritual", "Strength", "Dexterity", "Incantation", "Enrage", "Metallicize", "SadisticNature", "Juggernaut", "DoubleTap", "DemonForm", "DarkEmbrace", "Brutality", "Berserk", "Rage", "Feel No Pain", "Flame Barrier", "Corruption", "Combust"]
+BUFFS = ["Ritual", "Strength", "Dexterity", "Incantation", "Enrage", "Metallicize", "SadisticNature", "Juggernaut", "DoubleTap", "DemonForm", "DarkEmbrace", "Brutality", "Berserk", "Rage", "Feel No Pain", "Flame Barrier", "Corruption", "Combust", "Fire Breathing"]
 DEBUFFS = ["Frail", "Vulnerable", "Weakened", "Entangled", "Shackles", "NoBlock", "No Draw"]
 
 class RoomPhase(Enum):
@@ -454,6 +454,13 @@ class Game:
 		
 		self.increment_relic("Stone Calendar")
 		
+		if self.player.has_power("Fire Breathing"):
+			available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+			amt = self.player.get_power_amount("Fire Breathing") * self.attacks_played_this_turn
+			if amt > 0:
+				for monster in available_monsters:
+					self.apply_damage(amt, None, monster)
+		
 		if self.combat_round == 7 and self.has_relic("Stone Calendar"):
 			available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
 			for monster in available_monsters:
@@ -596,10 +603,64 @@ class Game:
 			if self.has_relic("Snecko Eye"):
 				self.player.add_power("Confused", 1)
 				
+			# TODO bottled cards are waiting on patch to CommMod
+			
+			# TODO gambling chip? Hand Select Screen, can pick 0, num cards 99, current action GamblingChipAction
+				
+			draw = self.draw_pile
+			for card in draw:
+				for effect in card.effects:
+					if effect["effect"] == "Innate":
+						self.hand += card
+						if self.has_power("Confused"):
+							card.cost = random.choice(range(4))
+						self.draw_pile.remove(card)
+						continue
+				
+	def check_effects_on_kill(self, target):
+		# Note: Ritual Dagger and Feed tracked by the card effects
+		
+		if target.current_hp > 0:
+			return
+		
+		self.debug_log.append("Killed " + str(target))
+		
+		if self.has_relic("Gremlin Horn"):
+			self.draw_card()
+			self.player.energy += 1
+	
+		if target.has_power("Spore Cloud"):
+			self.player.add_power("Vulnerable", target.get_power_amount("Spore Cloud"))
+			target.remove_power("Spore Cloud")
+		if target.has_power("Thievery"):
+			self.tracked_state["incoming_gold"] += target.misc
+		
+			
+			
+		# TODO corpse explosion, that relic that shifts poison (specimen?)
+		
+		
+
+				
 	def check_intents(self):
+	
 		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+		
 		for monster in available_monsters:
-			pass	
+		
+			if monster.monster_id == "GremlinTsundere" and len(available_monsters) < 2:
+				monster.current_move = None # reset to attacking
+									
+			if monster.monster_id == "Lagavulin":
+				if monster.current_hp != monster.max_hp and monster.has_power("Asleep"):
+					# wake up 
+					monster.current_move = "Stunned"
+					monster.add_power("Metallicize", -8)
+					monster.remove_power("Asleep")
+		
+			if "half_health" in monster.intents and not monster.used_half_health_ability:
+				monster.used_half_health_ability = True
+				monster.current_move = monster.intents["half_health"]
 			
 
 	def apply_start_of_turn_effects(self, character):
@@ -696,8 +757,6 @@ class Game:
 		
 	# Note attacker may be None, e.g. from Burn card
 	def apply_damage(self, damage, attacker, target, from_attack=False, ignores_block=False):
-		# TODO use this to replace all hp subtractions
-		# TODO check for changes to intent and effects on death
 		if target.has_power("Intangible") and not from_attack: # already adjusted for this in use_attack
 			damage = 1
 		if not ignores_block and target.block > 0:
@@ -717,6 +776,7 @@ class Game:
 				target.decrement_power("Buffer")
 			else:
 				target.current_hp -= unblocked_damage
+				self.check_effects_on_kill(target) # see if we killed them and if we do something about that
 		
 		if unblocked_damage > 0 and target is self.player:
 				
@@ -736,41 +796,8 @@ class Game:
 			self.tracked_state["times_lost_hp_this_combat"] += 1
 			# TODO reduce the cost of blood for blood wherever it is in our deck
 		
-		# death checks
-		if target.current_hp <= 0 and unblocked_damage > 0: # just died
 		
-			self.debug_log.append("Killed " + str(target))
-		
-			if self.has_relic("Gremlin Horn"):
-				self.draw_card()
-				self.player.energy += 1
-		
-			if target.has_power("Spore Cloud"):
-				self.player.add_power("Vulnerable", target.get_power_amount("Spore Cloud"))
-				target.remove_power("Spore Cloud")
-			# TODO corpse explosion, that relic that shifts poison (specimen?)
-			if target.has_power("Thievery"):
-				self.tracked_state["incoming_gold"] += target.misc
-				
-		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
-		
-		
-		# TODO add this in when we start pre-calculating intents (for MCTS). Right now we only calculate intents on their turn
-		for monster in available_monsters:
-			#if monster.monster_id == "GremlinTsundere" and len(available_monsters) < 2:
-				
-			
-				
-			# intent change checks
-			# Check if Lagavulin should still be sleeping
-			
-			moveset = monster.intents["moveset"]
-			if monster.monster_id == "Lagavulin":
-				if monster.current_hp != monster.max_hp and monster.has_power("Asleep"):
-					# wake up 
-					monster.current_move = "Stunned"
-					monster.add_power("Metallicize", -8)
-					monster.remove_power("Asleep")
+		self.check_intents()
 		
 		
 		
@@ -1057,13 +1084,13 @@ class Game:
 				
 					if monster.intent == spirecomm.spire.character.Intent.ATTACK and (monster.monster_id == "FuzzyLouseNormal" or monster.monster_id == "FuzzyLouseDefensive"):
 						# louses have a variable base attack
-						effs = monster.intents["moveset"][move]["effects"]
+						effs = monster.intents["moveset"][monster.current_move]["effects"]
 						json_base = None
 						for eff in effs:
 							if eff["name"] == "Damage":
 								json_base = eff["amount"]
 						if not json_base:
-							raise Exception("Malformed Louse json when calculating base damage")
+							raise Exception("Malformed Louse JSON when calculating base damage for " + str(monster.current_move))
 						attack_adjustment = monster.move_base_damage - json_base
 						monster.misc = attack_adjustment
 						self.debug_log.append("Adjusted damage for louse: " + str(monster.misc))
@@ -1108,7 +1135,7 @@ class Game:
 						elif effect["name"] == "GainBurnToDiscard" or effect["name"] == "AddBurnToDiscard":
 							for _ in range(effect["amount"]):
 								self.discard_pile.append(spirecomm.spire.card.Card("Burn", "Burn", spirecomm.spire.card.CardType.STATUS, spirecomm.spire.card.CardRarity.SPECIAL))
-								
+							1	
 						elif effect["name"] == "GainBurn+ToDiscard" or effect["name"] == "AddBurn+ToDiscard":
 							for _ in range(effect["amount"]):
 								self.discard_pile.append(spirecomm.spire.card.Card("Burn+", "Burn+", spirecomm.spire.card.CardType.STATUS, spirecomm.spire.card.CardRarity.SPECIAL, upgrades=1))
@@ -1122,6 +1149,11 @@ class Game:
 							
 						elif effect["name"] == "Charge":
 							pass # i'ma chargin' mah fireball!
+							
+						elif effect["name"] == "Split":
+							for new_monster in effect["amount"]:
+								m = spirecomm.spire.character.Monster(new_monster, new_monster, monster.current_hp,  monster.current_hp, 0, None, False, False)
+								self.monsters.append(m)
 						
 						elif effect["name"] == "Escape":
 							monster.is_gone = True
@@ -1144,7 +1176,7 @@ class Game:
 						# are weak and vulnerable accounted for in default logic?
 						for _ in range(monster.move_hits):
 							unblocked_damage = self.use_attack(monster.move_base_damage, monster, self.player)
-							self.debug_log.append("Taking " + str(unblocked_damage) + " damage from " + str(monster))						
+							self.debug_log.append("Taking " + str(unblocked_damage) + " damage from " + str(monster))
 							
 			monster.current_move = None # now that we used the move, clear it
 							
@@ -1168,10 +1200,6 @@ class Game:
 			hand_size += 2
 		while len(self.hand) < hand_size:
 			self.draw_card()
-			
-			
-		# TODO check if any enemies died / half-health effects and if anything happens when they do, e.g. thieves return gold
-		
 			
 		if self.debug_file and self.debug_log != []:
 			with open(self.debug_file, 'a+') as d:
@@ -1312,9 +1340,6 @@ class Game:
 			self.debug_log.append("ERROR: No handler for potion: " + str(action.potion))
 			
 			
-		# TODO check if any enemies died and if anything happens when they do
-			
-		
 		if self.debug_file and self.debug_log != []:
 			with open(self.debug_file, 'a+') as d:
 				d.write('\n')
@@ -1431,6 +1456,12 @@ class Game:
 							card.cost = 0
 					self.player.add_power(effect["effect"], effect["amount"])
 					
+				elif effect["effect"] == "Armaments":
+					self.screen = spirecomm.spire.Screen.HandSelectScreen(cards=self.hand, selected=[], num_cards=1, can_pick_zero=False)
+					self.screen_up = True
+					self.screen_type = spirecomm.spire.Screen.ScreenType.HAND_SELECT
+					self.current_action = "UpgradeAction" # FIXME?
+					
 				elif effect["effect"] == "Armaments+":
 					for card in self.hand:
 						card.upgrade()
@@ -1529,6 +1560,15 @@ class Game:
 					
 				elif effect["effect"] == "LimitBreak":
 					target.add_power("Strength", target.get_power_amount("Strength"))
+					
+				elif effect["effect"] == "Feed":
+					if monster.current_hp <= 0 and not monster.half_dead and not monster.has_power("Minion"):
+						self.player.max_hp += effect["amount"]
+						self.player.current_hp += effect["amount"]
+					
+				elif effect["effect"] == "RitualDagger":
+					if monster.current_hp <= 0 and not monster.half_dead:
+						action.card.misc += effect["amount"]
 						
 				elif effect["effect"] == "Havoc":
 					havoc_card = self.draw_pile.pop(0)
@@ -1669,7 +1709,6 @@ class Game:
 		if self.hand == [] and self.has_relic("Unceasing Top"):
 			self.draw_card()
 						
-		# TODO check if any enemies died / half-health effects and if anything happens when they do (e.g. ritual dagger)
 		
 		self.check_intents()
 					

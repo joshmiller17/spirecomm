@@ -359,6 +359,7 @@ def verifyJSONFolder(directory,kind):
 	for f in files:
 		try:
 			loaded = json.load(open(os.path.join(directory,f),"r"))
+			spirecomm.spire.card.Card(f, f, -1, -1) # try loading card as a test
 		except Exception as e:
 			lineNum = re.search("line (\d+) ",str(e),0).group(1)
 			error += "\nMalformed %s JSON in %s at line %s"%(kind,f,lineNum)

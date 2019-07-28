@@ -93,7 +93,7 @@ class mcts():
 				if rounds_certainty > COGITATION_LEVEL:
 					break
 				
-				if rounds > 100:
+				if rounds > 20 * len(self.root.children):
 					break
 
 		else:
