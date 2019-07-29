@@ -25,7 +25,7 @@ class CardRarity(Enum):
 
 
 class Card:
-	def __init__(self, card_id, name, card_type, rarity, upgrades=0, has_target=False, cost=0, uuid="", misc=0, price=0, is_playable=False, exhausts=False):
+	def __init__(self, card_id, name, card_type, rarity, upgrades=0, has_target=False, cost=0, uuid="", misc=0, price=0, is_playable=False, exhausts=False, test_only=False):
 		self.card_id = card_id
 		self.name = name
 		self.type = card_type
@@ -38,6 +38,8 @@ class Card:
 		self.price = price
 		self.is_playable = is_playable
 		self.exhausts = exhausts
+		
+		self.test_only = test_only
 		
 		
 		# Static values, load from cards/[name].json
@@ -83,37 +85,46 @@ class Card:
 				self.value = jsonData["value"]
 				self.effects = jsonData["effects"]
 				self.loadedFromJSON = True
-				if not jsonData["class"] or not jsonData["cost"] or not jsonData["has_target"] or not jsonData["is_playable"] or not jsonData["exhausts"]:
-					with open(os.path.join(CARDS_PATH, "temp", str(self.card_id)), "a+") as jf:
-						d = {}
-						d["card_id"] = self.card_id
-						d["type"] = self.card_type
-						d["rarity"] = self.rarity
-						d["upgrades"] = self.upgrades
-						d["has_target"] = self.has_target
-						d["cost"] = self.cost
-						d["misc"] = self.misc
-						d["is_playable"] = self.is_playable
-						d["exhausts"] = self.exhausts
-						#json.dump(d, jf) # TODO fix and uncomment
-					#raise Exception("missing data; written to temp/" + str(self.card_id) + ".json for you")  # TODO fix and uncomment
+				try:
+					jsonData["class"] and jsonData["cost"] and jsonData["has_target"] and jsonData["is_playable"] and jsonData["exhausts"]
+				except Exception as e:
+					if not test_only:
+						if not os.path.exists(os.path.join(CARDS_PATH, "temp")):
+							os.makedirs(os.path.join(CARDS_PATH, "temp"))
+						with open(os.path.join(CARDS_PATH, "temp", str(self.card_id) + ".json"), "a+") as jf:
+							d = {}
+							d["card_id"] = self.card_id
+							d["type"] = self.type
+							d["rarity"] = self.rarity
+							d["upgrades"] = self.upgrades
+							d["has_target"] = self.has_target
+							d["cost"] = self.cost
+							d["misc"] = self.misc
+							d["is_playable"] = self.is_playable
+							d["exhausts"] = self.exhausts
+							json.dump(d, jf)
+						raise Exception("missing data; written to cards/temp/" + str(self.card_id) + ".json for you")
+					else:
+						raise Exception("missing data")
 				else:
 					if jsonData["class"] not in VALID_CLASSES:
 						raise Exception("invalid class")
-					if not any(jsonData["type"] == type for type in CardType):
+					if not any(jsonData["type"] == type.name for type in CardType):
 						raise Exception("invalid type")
-					if not any(jsonData["rarity"] == rarity for rarity in CardRarity):
+					if not any(jsonData["rarity"] == rarity.name for rarity in CardRarity):
 						raise Exception("invalid rarity")
 				actually_exhausts = False
 				for effect in self.effects:
 					if effect["effect"] == "Exhaust":
 						actually_exhausts = True 
-				if self.exhausts != actually_exhausts:
-					raise Exception("invalid exhaust")
+				if jsonData["exhausts"] != actually_exhausts:
+					raise Exception("invalid exhaust: JSON says " + str(self.exhausts) + " but effects say " + str(actually_exhausts))
 				
 		except Exception as e:
 			with open('err.log', 'a+') as err_file:
-				err_file.write("\nCard Error: " + str(self.get_clean_name()))
+				if e in ['class', 'cost', 'has_target', 'is_playable', 'exhausts']:
+					e = "missing data"
+				err_file.write("\nCard Error: (" + str(self.get_clean_name() + ") "))
 				err_file.write(str(e))
 		
 		# Dynamic values

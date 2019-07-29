@@ -346,10 +346,20 @@ class Game:
 			self.tracked_state["possible_actions"] = possible_actions
 				
 		return self.tracked_state["possible_actions"]
+		
+		
+	# a test bed for checking our surroundings
+	def debug_game_state(self):
+		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+		for monster in available_monsters:
+			if monster.monster_id == "Lagavulin":
+				self.debug_log.append("Lagavulin's powers: " + str(monster.powers))
 	
 	
 	# Returns a new state
 	def takeAction(self, action):
+	
+		self.debug_game_state()
 	
 		self.debug_log.append("Simulating taking action: " + str(action))
 		#self.debug_log.append("Combat round: " + str(self.combat_round))
@@ -1412,6 +1422,12 @@ class Game:
 			
 			# Do effect
 			for target in effect_targets:
+			
+				effects_that_can_target_unavailable = ["Feed", "RitualDagger"]
+			
+				available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+				if target is not self.player and target not in available_monsters and effect["effect"] not in effects_that_can_target_unavailable:
+					continue # we probably killed it, just ignore remaining effects
 			
 				if effect["effect"] == "Block":
 					real_amount = effect["amount"]
