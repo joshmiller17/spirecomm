@@ -1,0 +1,62 @@
+{
+	"half_health":"Split",
+	"startswith":"Goop Spray",
+	"moveset" : {
+				"Split" :
+					{
+					"intent_type": "UNKNOWN",
+					"probability" : 0.00,
+					"effects" : [
+						{
+							"name" : "Split",
+							"amount" : ["AcidSlime_L", "SpikeSlime_L"]
+						}
+					]
+					},
+				"Goop Spray" :
+					{
+					"intent_type": "DEBUFF",
+					"probability" : 0.0,
+					"effects" : [
+						{
+							"name" : "AddSlimedToDiscard",
+							"amount" : 3
+						}
+					],
+					"next_move":[
+						{
+							"name" : "Preparing",
+							"probability" : 1.0
+						}
+					]
+					},
+				"Preparing" :
+					{
+					"intent_type": "UNKNOWN",
+					"probability" : 0.0,
+					"next_move":[
+						{
+							"name" : "Slam",
+							"probability" : 1.0
+						}
+					]
+					},
+				"Slam" :
+					{
+					"intent_type": "ATTACK",
+						"probability" : 0.0,
+						"effects" : [
+							{
+								"name" : "Damage",
+								"amount" : 35
+							}
+						],
+					"next_move":[
+							{
+								"name" : "Goop Spray",
+								"probability" : 1.0
+							}
+						]
+					}
+			}
+}
