@@ -91,7 +91,7 @@ class Card:
 					if not test_only:
 						if not os.path.exists(os.path.join(CARDS_PATH, "temp")):
 							os.makedirs(os.path.join(CARDS_PATH, "temp"))
-						with open(os.path.join(CARDS_PATH, "temp", str(self.card_id) + ".json"), "a+") as jf:
+						with open(os.path.join(CARDS_PATH, "temp", str(self.card_id) + ".json"), "w") as jf:
 							d = {}
 							d["card_id"] = self.card_id
 							d["type"] = self.type
