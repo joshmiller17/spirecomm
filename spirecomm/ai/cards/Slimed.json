@@ -1,4 +1,6 @@
 {
+"type": "STATUS", "rarity": "SPECIAL", "upgrades": 0, "has_target": false, "cost": 0, "misc": 0, "is_playable": false, "exhausts": false,
+
 	"value": {
 		"synergies": [
 

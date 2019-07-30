@@ -1,4 +1,6 @@
 {
+"type": "ATTACK", "rarity": "COMMON", "upgrades": 0, "has_target": true, "cost": 2, "misc": 0, "is_playable": false, "exhausts": false,
+
 	"value": {
 		"synergies": [
 			{

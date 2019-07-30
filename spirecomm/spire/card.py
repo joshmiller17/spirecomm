@@ -94,8 +94,8 @@ class Card:
 						with open(os.path.join(CARDS_PATH, "temp", str(self.card_id) + ".json"), "w") as jf:
 							d = {}
 							d["card_id"] = self.card_id
-							d["type"] = self.type
-							d["rarity"] = self.rarity
+							d["type"] = self.type.name
+							d["rarity"] = self.rarity.name
 							d["upgrades"] = self.upgrades
 							d["has_target"] = self.has_target
 							d["cost"] = self.cost

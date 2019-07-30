@@ -97,6 +97,7 @@ class Game:
 		"possible_actions": None,
 		"monsters_last_attacks" : {}, # monster : [move name, times in a row]
 		"is_simulation" : False,
+		"lagavulin_is_asleep" : False,
 		"known_top_cards" : [], # cards which we know we will be drawing first go here
 		"just_reshuffled" : False,
 		"incoming_gold" : 0, # gold we get back from thieves if we kill them
@@ -124,6 +125,7 @@ class Game:
 		self.tracked_state["visited_shop"] = False
 		self.tracked_state["is_simulation"] = False
 		self.tracked_state["just_reshuffled"] = False
+		self.tracked_state["lagavulin_is_asleep"] = False
 		self.tracked_state["incoming_gold"] = 0
 		self.tracked_state["attacks_played_this_turn"] = 0
 		self.tracked_state["attacks_played_last_turn"] = 0
@@ -353,7 +355,7 @@ class Game:
 		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
 		for monster in available_monsters:
 			if monster.monster_id == "Lagavulin":
-				self.debug_log.append("Lagavulin's powers: " + str(monster.powers))
+				self.debug_log.append("Lagavulin's powers: " + str([str(power) for power in monster.powers]))
 	
 	
 	# Returns a new state
@@ -436,11 +438,12 @@ class Game:
 		# Check if Lagavulin should still be sleeping
 		moveset = monster.intents["moveset"]
 		if monster.monster_id == "Lagavulin":
-			if monster.current_hp != monster.max_hp and monster.has_power("Asleep"):
+			if monster.current_hp != monster.max_hp and self.tracked_state["lagavulin_is_asleep"]:
 				# wake up
 				selected_move = "Stunned"
 				monster.add_power("Metallicize", -8)
-				monster.remove_power("Asleep")
+				monster.remove_power("Asleep") # I think this doesn't actually exist in the code
+				self.tracked_state["lagavulin_is_asleep"] = False
 		
 		return selected_move
 		
@@ -572,6 +575,11 @@ class Game:
 	
 		# TODO move innate cards to top of deck / starting hand
 		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+		
+		for monster in available_monsters:
+			if monster.monster_id == "Lagavulin" and monster.move_base_damage == 0:
+				self.tracked_state["lagavulin_is_asleep"] = True
+				
 	
 		if character is self.player:
 			# FIXME relics technically activate in order of acquisition
@@ -661,12 +669,14 @@ class Game:
 			if monster.monster_id == "GremlinTsundere" and len(available_monsters) < 2:
 				monster.current_move = None # reset to attacking
 									
+			# Check if Lagavulin should still be sleeping
 			if monster.monster_id == "Lagavulin":
-				if monster.current_hp != monster.max_hp and monster.has_power("Asleep"):
-					# wake up 
-					monster.current_move = "Stunned"
+				if monster.current_hp != monster.max_hp and self.tracked_state["lagavulin_is_asleep"]:
+					# wake up
+					selected_move = "Stunned"
 					monster.add_power("Metallicize", -8)
-					monster.remove_power("Asleep")
+					monster.remove_power("Asleep") # I think this doesn't actually exist in the code
+					self.tracked_state["lagavulin_is_asleep"] = False
 		
 			if "half_health" in monster.intents and not monster.used_half_health_ability:
 				monster.used_half_health_ability = True
