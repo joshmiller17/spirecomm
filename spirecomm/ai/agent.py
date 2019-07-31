@@ -429,7 +429,8 @@ class SimpleAgent:
 						
 			
 			if monster_changes != {}:
-				diff["monsters"] = monster_changes
+				for key, value in monster_changes.items():
+					diff[key] = value
 			
 			# general fixme?: better record linking between state1 and state2? right now most record linking is by name or ID (which might not be the same necessarily)
 			
