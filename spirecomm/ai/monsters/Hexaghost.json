@@ -157,7 +157,7 @@
 					"amount" : "2x6"
 				},
 				{
-					"name" : "AddBurnToDiscard",
+					"name" : "AddBurn+ToDiscard",
 					"amount" : 3
 				},
 				{
@@ -296,7 +296,7 @@
 					"amount" : 6
 				},
 				{
-					"name" : "AddBurnToDiscard",
+					"name" : "AddBurn+ToDiscard",
 					"amount" : 1
 				}
 			],
