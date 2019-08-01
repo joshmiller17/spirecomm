@@ -23,7 +23,7 @@ class treeNode():
 		self.isFullyExpanded = self.isTerminal
 		self.parent = parent
 		self.numVisits = 0
-		self.totalReward = 0
+		self.reward = None
 		self.children = {}
 		
 	# Returns a tree that explains its decision-making process
@@ -31,9 +31,8 @@ class treeNode():
 		pass # TODO
 		
 	def __str__(self):
-		# TEST
-		print(str(self.state))
-		print("Reward is " + str(self.totalReward))
+		#print(str(self.state))
+		print("Reward is " + str(self.reward.getTotalReward()))
 		print("Visited " + str(self.numVisits))
 		for action, node in self.children.items():
 			if action:
@@ -106,7 +105,7 @@ class mcts():
 	def get_values_of_children(self):
 		vals = []
 		for action, node in self.root.children.items():
-			vals.append(node.totalReward / node.numVisits)
+			vals.append(node.reward.getTotalReward() / node.numVisits)
 		return vals
 
 	def executeRound(self):
@@ -124,7 +123,7 @@ class mcts():
 			second_highest = -999
 		for action, node in self.root.children.items():
 			if node is bestChild:
-				best_value = node.totalReward / node.numVisits
+				best_value = node.reward.getTotalReward() / node.numVisits
 				val_diff = best_value - second_highest
 				face = "-_-"
 				if second_highest != -999:
@@ -138,6 +137,7 @@ class mcts():
 						face = "^_^"
 					else:
 						face = "\(^o^)/"
+				#print("Considering " + str(action) + " [" + str(val_diff) + "]" + " " * 20, end='\r')
 				print("Considering " + str(action) + " [" + face + "]" + " " * 20, end='\r')
 
 	def selectNode(self, node):
@@ -163,14 +163,17 @@ class mcts():
 	def backpropogate(self, node, reward):
 		while node is not None:
 			node.numVisits += 1
-			node.totalReward += reward
+			if node.reward is None:
+				node.reward = reward
+			else:
+				node.reward.addReward(reward)
 			node = node.parent
 
 	def getBestChild(self, node, explorationValue):
 		bestValue = float("-inf")
 		bestNodes = []
 		for child in node.children.values():
-			nodeValue = child.totalReward / child.numVisits + explorationValue * math.sqrt(
+			nodeValue = (child.reward.getTotalReward() / child.numVisits) + explorationValue * math.sqrt(
 				2 * math.log(node.numVisits) / child.numVisits)
 			if nodeValue > bestValue:
 				bestValue = nodeValue

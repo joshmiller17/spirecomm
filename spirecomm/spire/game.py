@@ -32,6 +32,36 @@ class RoomPhase(Enum):
 	EVENT = 2,
 	COMPLETE = 3,
 	INCOMPLETE = 4
+	
+
+class Reward:
+	
+	def __init__(self, reward={}):
+		self.totalItemized = reward
+		
+	def __str__(self):
+		ret = ", ".join([key + ": " + str(value) for key, value in self.totalItemized.items()])
+		return ret
+		
+	def addReward(self, reward):
+		if reward is None:
+			return self
+		for key, value in reward.totalItemized.items():
+			if key in self.totalItemized:
+				self.totalItemized[key] += value
+			else:
+				self.totalItemized[key] = value
+		return self
+		
+	def getTotalReward(self):
+		ret = 0
+		for key, value in self.totalItemized.items():
+			ret += value
+		return ret
+		
+	def getTotalItemized(self):
+		return self.totalItemized
+	
 
 
 class Game:
@@ -97,6 +127,7 @@ class Game:
 		"possible_actions": None,
 		"monsters_last_attacks" : {}, # monster : [move name, times in a row]
 		"is_simulation" : False,
+		"lagavulin_is_asleep" : False,
 		"known_top_cards" : [], # cards which we know we will be drawing first go here
 		"just_reshuffled" : False,
 		"incoming_gold" : 0, # gold we get back from thieves if we kill them
@@ -124,6 +155,7 @@ class Game:
 		self.tracked_state["visited_shop"] = False
 		self.tracked_state["is_simulation"] = False
 		self.tracked_state["just_reshuffled"] = False
+		self.tracked_state["lagavulin_is_asleep"] = False
 		self.tracked_state["incoming_gold"] = 0
 		self.tracked_state["attacks_played_this_turn"] = 0
 		self.tracked_state["attacks_played_last_turn"] = 0
@@ -273,7 +305,267 @@ class Game:
 		return potions
 		
 
-# ---------- MCTS SIMULATIONS -----------		
+# ---------- MCTS SIMULATIONS -----------	
+
+	# related to agent.state_diff(), this function takes a key, value pair from state_diff and creates that change to the state
+	def changeState(self, key, value):
+		set_attrs = ["room_phase", "room_type", "current_action", "act_boss", "floor", "act", "in_combat"]
+		if key in set_attrs:
+			setattr(self, key, value)
+		if key == "choices_added":
+			for v in value:
+				self.choice_list.append(v)
+		if key == "choices_removed":
+			for v in value:
+				self.choice_list.remove(v)
+		change_attrs = ["gold", "state_id", "combat_round"]
+		if key in change_attrs:
+			setattr(self, key, self.key + value)
+		if key == "relics":
+			for v in value:
+				if type(v) is tuple and len(v) == 2:
+					self.set_relic_counter(v[0], self.get_relic(v[0].counter) + v[1])
+				else:
+					if self.has_relic(v):
+						self.relics.remove(v)
+					else:
+						self.relics.append(v)
+			
+
+		# FIXME state_diff gives string, not the actual card object we would need to do this
+		# if key == "cards_added":
+			# for v in value:
+				# self.deck.append(v)
+		# if key == "cards_removed":
+			# for v in value:
+				# self.deck.remove(v)
+		# if key == "cards_upgraded":
+			# pass
+			
+
+		if key == "potions_added":
+			for v in value:
+				for p in self.potions:
+					if p.name == "Potion Slot":
+						p.name = v
+						break
+		
+		if key == "potions_removed":
+			for v in value:
+				for p in self.potions:
+					if p.name == v:
+						p.name = "Potion Slot"
+						break
+
+		
+	
+			
+			# monsters1 = [monster for monster in state1.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+			# monsters2 = [monster for monster in state2.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+
+			# checked_monsters = []
+			# for monster1 in monsters1:
+				# for monster2 in monsters2:
+					# if monster1 == monster2 and monster1 not in checked_monsters:
+						# checked_monsters.append(monster1) # avoid checking twice
+						# m_id = monster1.monster_id + str(monster1.monster_index)
+						# if monster1.current_hp != monster2.current_hp:
+							# monster_changes[m_id + "_hp"] = monster2.current_hp - monster1.current_hp
+						# if monster1.block != monster2.block:
+								# monster_changes[m_id + "_block"] = monster2.block - monster1.block
+							
+						# if monster1.powers != monster2.powers:
+							# monster_changes[m_id + "_powers_changed"] = []
+							# monster_changes[m_id + "_powers_added"] = []
+							# monster_changes[m_id + "_powers_removed"] = []
+							# powers_changed = set([p.power_name for p in set(monster2.powers).symmetric_difference(set(monster1.powers))])
+							# for name in powers_changed:
+								# powers1 = [p.power_name for p in monster1.powers]
+								# powers2 = [p.power_name for p in monster2.powers]
+								# if name in powers1 and name in powers2:
+									# monster_changes[m_id + "_powers_changed"].append((name, monster2.get_power(name).amount - monster1.get_power(name).amount))
+									# continue
+								# elif name in powers2:
+									# monster_changes[m_id + "_powers_added"].append((name, monster2.get_power(name).amount))
+									# continue
+								# elif name in powers1:
+									# monster_changes[m_id + "_powers_removed"].append((name, monster1.get_power(name).amount))
+									# continue
+								
+							# if monster_changes[m_id + "_powers_added"] == []:
+								# monster_changes.pop(m_id + "_powers_added", None)
+							# if monster_changes[m_id + "_powers_removed"] == []:
+								# monster_changes.pop(m_id + "_powers_removed", None)
+							# if monster_changes[m_id + "_powers_changed"] == []:
+								# monster_changes.pop(m_id + "_powers_changed", None)
+						# break
+						
+					# elif monster1 not in monsters2:
+						# try:
+							# unavailable_monster = [monster for monster in state2.monsters if monster1 == monster][0]
+							# cause = "unknown"
+							# if unavailable_monster.half_dead:
+								# cause = "half dead"
+							# elif unavailable_monster.is_gone or unavailable_monster.current_hp <= 0:
+								# cause = "is gone / dead"
+						# except:
+							# cause = "no longer exists"
+						
+						# monster_changes[monster1.monster_id + str(monster1.monster_index) + "_not_available"] = cause
+					# elif monster2 not in monsters1:
+						# monster_changes[monster1.monster_id + str(monster1.monster_index) + "_returned_with_hp"] = monster2.current_hp
+								
+						
+			
+			# if monster_changes != {}:
+				# for key, value in monster_changes.items():
+					# diff[key] = value
+			
+			# # general fixme?: better record linking between state1 and state2? right now most record linking is by name or ID (which might not be the same necessarily)
+			
+			# delta_hand = len(state2.hand) - len(state1.hand)
+			# delta_draw_pile = len(state2.draw_pile) - len(state1.draw_pile)
+			# delta_discard = len(state2.discard_pile) - len(state1.discard_pile)
+			# delta_exhaust = len(state2.exhaust_pile) - len(state1.exhaust_pile)
+			# if delta_hand != 0:
+				# diff["delta_hand"] = delta_hand
+			# if delta_draw_pile != 0:
+				# diff["delta_draw_pile"] = delta_draw_pile
+			# if delta_discard != 0:
+				# diff["delta_discard"] = delta_discard
+			# if delta_exhaust != 0:
+				# diff["delta_exhaust"] = delta_exhaust
+			
+			# if not ignore_randomness:
+		
+				# cards_changed_from_hand = set(state2.hand).symmetric_difference(set(state1.hand))
+				# cards_changed_from_draw = set(state2.draw_pile).symmetric_difference(set(state1.draw_pile))
+				# cards_changed_from_discard = set(state2.discard_pile).symmetric_difference(set(state1.discard_pile))
+				# cards_changed_from_exhaust = set(state2.exhaust_pile).symmetric_difference(set(state1.exhaust_pile))
+				# cards_changed = cards_changed_from_hand | cards_changed_from_draw | cards_changed_from_discard | cards_changed_from_exhaust
+				# cards_changed_outside_hand = cards_changed_from_draw | cards_changed_from_discard | cards_changed_from_exhaust
+				
+				# card_actions = ["drawn", "hand_to_deck", "discovered", "exhausted", "exhumed", "discarded",
+								# "discard_to_hand", "deck_to_discard", "discard_to_deck",
+								# "discovered_to_deck", "discovered_to_discard", # "playability_changed", <- deprecated
+								 # "power_played", "upgraded", "unknown_change", "err_pc"]
+				
+				# for a in card_actions:
+					# diff[a] = []
+					
+				# # TODO some checks if none of these cases are true
+				# for card in cards_changed:
+					# if card in cards_changed_from_draw and card in cards_changed_from_hand:
+						# # draw
+						# if card in state2.hand:
+							# diff["drawn"].append(card.get_id_str())
+							# continue
+						# # hand to deck
+						# elif card in state1.hand:
+							# diff["hand_to_deck"].append(card.get_id_str())
+							# continue	
+					# elif card in cards_changed_from_hand and card in cards_changed_from_discard:
+						# # discard
+						# if card in state1.hand:
+							# diff["discarded"].append(card.get_id_str())
+							# continue
+						# # discard to hand
+						# elif card in state2.hand:
+							# diff["discard_to_hand"].append(card.get_id_str())
+							# continue	
+					# elif card in cards_changed_from_exhaust and card in cards_changed_from_hand:
+						# #exhaust
+						# if card in state1.hand:
+							# diff["exhausted"].append(card.get_id_str())
+							# continue
+						# #exhume
+						# elif card in state2.hand:
+							# diff["exhumed"].append(card.get_id_str())
+							# continue
+					# elif card in cards_changed_from_discard and card in cards_changed_from_draw:
+						# #deck to discard
+						# if card in state2.discard_pile:
+							# diff["deck_to_discard"].append(card.get_id_str())
+							# continue
+						# # discard to draw_pile
+						# elif card in state1.discard_pile:
+							# diff["discard_to_deck"].append(card.get_id_str())
+							# continue
+					# elif card in cards_changed_from_hand and card in state2.hand and card not in cards_changed_outside_hand:
+						# #discovered
+						# if card not in state1.hand and card not in state1.draw_pile and card not in state1.discard_pile and card not in state1.exhaust_pile:
+							# diff["discovered"].append(card.get_id_str())
+							# continue
+					# elif card in cards_changed_from_hand and card in state1.hand and card not in cards_changed_outside_hand:
+						# if card.type is spirecomm.spire.card.CardType.POWER and card not in state2.hand:
+							# # power played
+							# diff["power_played"].append(card.get_id_str())
+							# continue
+						# elif card.upgrades > 0: # assume upgrading it was the different thing
+							# diff["upgraded"].append(card.get_id_str()) # FIXME check this more strongly
+							# continue	
+					# elif card in state2.draw_pile and card not in state1.draw_pile and card not in state1.hand and card not in state1.discard_pile and card not in state1.exhaust_pile:
+						# # discovered to draw pile, e.g. status effect
+						# diff["discovered_to_deck"].append(card.get_id_str())
+						# continue
+					# elif card in state2.discard_pile and card not in state1.discard_pile and card not in state1.hand and card not in state1.draw_pile and card not in state1.exhaust_pile:
+						# # discovered to discard, e.g. status effect
+						# diff["discovered_to_discard"].append(card.get_id_str())
+						# continue
+					# else:
+						# self.log("WARN: unknown card change " + card.get_id_str(), debug=3)
+						# diff["unknown_change"].append(card.get_id_str())
+						# if card in state1.draw_pile:
+							# self.log("card was in state1 draw pile")
+						# if card in state2.draw_pile:
+							# self.log("card is in state2 draw pile")
+						# if card in state1.discard_pile:
+							# self.log("card was in state1 discard")
+						# if card in state2.discard_pile:
+							# self.log("card is in state2 discard")
+						# if card in state1.hand:
+							# self.log("card was in state1 hand")
+						# if card in state2.hand:
+							# self.log("card is in state2 hand")
+						# if card in state1.exhaust_pile:
+							# self.log("card was in state1 exhaust")
+						# if card in state2.exhaust_pile:
+							# self.log("card is in state2 exhaust")
+				
+				# for a in card_actions:
+					# if diff[a] == []:
+						# diff.pop(a, None)
+		
+			# if state1.player.block != state2.player.block:
+				# diff["block"] = state2.player.block - state1.player.block
+				
+			# if state1.player.powers != state2.player.powers:
+				# diff["powers_changed"] = []
+				# diff["powers_added"] = []
+				# diff["powers_removed"] = []
+				# powers_changed = set(state2.player.powers).symmetric_difference(set(state1.player.powers))
+				# for power in powers_changed:
+					# #power1 = next(p for p in state1.player.powers if p.power_name == power.power_name)
+					# #power2 = next(p for p in state2.player.powers if p.power_name == power.power_name)
+					# if power in state1.player.powers and power in state2.player.powers:
+							# diff["powers_changed"].append((power.power_name, power2.amount - power1.amount))
+					# elif power in state2.player.powers:
+						# for p2 in state2.player.powers:
+							# if p2.power_name == power.power_name:
+								# diff["powers_added"].append((p2.power_name, p2.amount))
+								# continue
+					# elif power in state1.player.powers:
+						# for p1 in state1.player.powers:
+							# if p1.power_name == power.power_name:
+								# diff["powers_added"].append((p1.power_name, p1.amount))
+								# continue
+									
+				# if diff["powers_added"] == []:
+					# diff.pop("powers_added", None)
+				# if diff["powers_removed"] == []:
+					# diff.pop("powers_removed", None)
+				# if diff["powers_changed"] == []:
+					# diff.pop("powers_changed", None)
 
 	# True iff either we're dead or the monsters are (or we smoke bomb)
 	def isTerminal(self):
@@ -290,18 +582,26 @@ class Game:
 			
 		delta_hp = self.player.current_hp - original_game_state.player.current_hp
 		delta_max_hp = self.player.max_hp - original_game_state.player.max_hp
-		delta_potions = len(self.potions) - len(original_game_state.potions)
+		orig_potions = 0
+		for p in original_game_state.potions:
+			if p.name != "Potion Slot":
+				orig_potions += 1
+		delta_potions = -1 * orig_potions
+		for p in original_game_state.potions:
+			if p.name != "Potion Slot":
+				delta_potions += 1
 		
-		reward = 0
-		reward += delta_hp * MCTS_HP_VALUE
-		reward += delta_max_hp * MCTS_MAX_HP_VALUE
-		reward += delta_potions * MCTS_POTION_VALUE
-		reward -= self.combat_round * MCTS_ROUND_COST
+		r = {}
+		r["HP"] = delta_hp * MCTS_HP_VALUE
+		r["max HP"] = delta_max_hp * MCTS_MAX_HP_VALUE
+		#r["potions"] = delta_potions * MCTS_POTION_VALUE
+		#r -= self.combat_round * MCTS_ROUND_COST
+		reward = Reward(r)
 		
 		if self.debug_file:
 			with open(self.debug_file, 'a+') as d:
 				d.write("\n~~~~~~~~~~~~~~\n")
-				d.write("\nTerminal state reached, reward: " + str(reward) + "\n")
+				d.write("\nTerminal state reached, reward: " + str(reward.getTotalItemized()) + "\n")
 				d.write(str(self))
 				d.write("\n~~~~~~~~~~~~~~\n")
 		
@@ -353,7 +653,7 @@ class Game:
 		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
 		for monster in available_monsters:
 			if monster.monster_id == "Lagavulin":
-				self.debug_log.append("Lagavulin's powers: " + str(monster.powers))
+				self.debug_log.append("Lagavulin's powers: " + str([str(power) for power in monster.powers]))
 	
 	
 	# Returns a new state
@@ -436,11 +736,12 @@ class Game:
 		# Check if Lagavulin should still be sleeping
 		moveset = monster.intents["moveset"]
 		if monster.monster_id == "Lagavulin":
-			if monster.current_hp != monster.max_hp and monster.has_power("Asleep"):
+			if monster.current_hp != monster.max_hp and self.tracked_state["lagavulin_is_asleep"]:
 				# wake up
 				selected_move = "Stunned"
 				monster.add_power("Metallicize", -8)
-				monster.remove_power("Asleep")
+				monster.remove_power("Asleep") # I think this doesn't actually exist in the code
+				self.tracked_state["lagavulin_is_asleep"] = False
 		
 		return selected_move
 		
@@ -572,6 +873,11 @@ class Game:
 	
 		# TODO move innate cards to top of deck / starting hand
 		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+		
+		for monster in available_monsters:
+			if monster.monster_id == "Lagavulin" and monster.move_base_damage == 0:
+				self.tracked_state["lagavulin_is_asleep"] = True
+				
 	
 		if character is self.player:
 			# FIXME relics technically activate in order of acquisition
@@ -661,12 +967,14 @@ class Game:
 			if monster.monster_id == "GremlinTsundere" and len(available_monsters) < 2:
 				monster.current_move = None # reset to attacking
 									
+			# Check if Lagavulin should still be sleeping
 			if monster.monster_id == "Lagavulin":
-				if monster.current_hp != monster.max_hp and monster.has_power("Asleep"):
-					# wake up 
-					monster.current_move = "Stunned"
+				if monster.current_hp != monster.max_hp and self.tracked_state["lagavulin_is_asleep"]:
+					# wake up
+					selected_move = "Stunned"
 					monster.add_power("Metallicize", -8)
-					monster.remove_power("Asleep")
+					monster.remove_power("Asleep") # I think this doesn't actually exist in the code
+					self.tracked_state["lagavulin_is_asleep"] = False
 		
 			if "half_health" in monster.intents and not monster.used_half_health_ability:
 				monster.used_half_health_ability = True
@@ -1103,7 +1411,7 @@ class Game:
 							raise Exception("Malformed Louse JSON when calculating base damage for " + str(monster.current_move))
 						attack_adjustment = monster.move_base_damage - json_base
 						monster.misc = attack_adjustment
-						self.debug_log.append("Adjusted damage for louse: " + str(monster.misc))
+						self.debug_log.append("Adjusted damage for louse: " + str(monster.misc), debug=5)
 								
 					# Finally, apply the intended move
 					effects = monster.intents["moveset"][monster.current_move]["effects"]

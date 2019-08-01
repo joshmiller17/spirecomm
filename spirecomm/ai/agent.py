@@ -429,7 +429,8 @@ class SimpleAgent:
 						
 			
 			if monster_changes != {}:
-				diff["monsters"] = monster_changes
+				for key, value in monster_changes.items():
+					diff[key] = value
 			
 			# general fixme?: better record linking between state1 and state2? right now most record linking is by name or ID (which might not be the same necessarily)
 			
@@ -863,7 +864,7 @@ class SimpleAgent:
 		
 	# TODO
 	def handle_shop_screen(self):
-		self.game.tracked_state["visited_shop"] = True
+		self.blackboard.game.tracked_state["visited_shop"] = True
 		if self.blackboard.game.screen.purge_available and self.blackboard.game.gold >= self.blackboard.game.screen.purge_cost:
 			return ChooseAction(name="purge")
 		for card in self.blackboard.game.screen.cards:
