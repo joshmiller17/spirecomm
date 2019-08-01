@@ -86,7 +86,7 @@
 			"probability" : 0.0,
 			"effects" :[
 				{
-					"name" : "Sharp Hide",
+					"name" : "Thorns",
 					"amount" : 3
 				}
 			],
@@ -121,11 +121,15 @@
 			"effects" :[
 				{
 					"name" : "Damage",
-					"amount" : "8x2"
+					"amount" : "8"
 				},
 				{
-					"name" : "Remove Sharp Hide",
-					"amount" : 3
+					"name" : "Damage",
+					"amount" : "8"
+				},
+				{
+					"name" : "Thorns",
+					"amount" : -3
 				}
 			],
 			"next_move" :[

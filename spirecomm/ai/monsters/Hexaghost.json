@@ -57,8 +57,12 @@
 			"effects" :[
 				{
 					"name" : "Damage",
-					"amount" : "5x2"
-				}
+					"amount" : "5"
+				},
+				{
+					"name" : "Damage",
+					"amount" : "5"
+				},
 			],
 			"next_move" :[
 				{
@@ -116,8 +120,12 @@
 			"effects" :[
 				{
 					"name" : "Damage",
-					"amount" : "5x2"
-				}
+					"amount" : "5"
+				},
+				{
+					"name" : "Damage",
+					"amount" : "5"
+				},
 			],
 			"next_move" :[
 				{
