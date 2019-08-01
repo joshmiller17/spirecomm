@@ -1411,7 +1411,7 @@ class Game:
 							raise Exception("Malformed Louse JSON when calculating base damage for " + str(monster.current_move))
 						attack_adjustment = monster.move_base_damage - json_base
 						monster.misc = attack_adjustment
-						self.debug_log.append("Adjusted damage for louse: " + str(monster.misc))
+						self.debug_log.append("Adjusted damage for louse: " + str(monster.misc), debug=5)
 								
 					# Finally, apply the intended move
 					effects = monster.intents["moveset"][monster.current_move]["effects"]
