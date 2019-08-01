@@ -1,5 +1,12 @@
 {
 	"startswith" : "Bolt",
+	"powers" : 
+		[
+			{
+				"name" : "Artifact",
+				"amount" : 3
+			}
+		],
 	"moveset" : {
 		"Bolt" :
 			{

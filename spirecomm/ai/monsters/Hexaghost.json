@@ -1,0 +1,312 @@
+{
+	"startswith" : "Activate",
+	"moveset" : {
+		"Activate" :
+			{
+			"intent_type": "UNKNOWN",
+			"probability" : 0.0,
+			"next_move" :[
+				{
+					"name" : "Divider_1",
+					"probability" : 1.0
+				}
+			]
+			},
+		"Divider_1" :
+			{
+			"intent_type": "ATTACK",
+			"probability" : 0.0,
+			"effects" :[
+				{
+					"name" : "HexAttack",
+					"amount" : 6
+				}
+			],
+			"next_move" :[
+				{
+					"name" : "Sear_1",
+					"probability" : 1.0
+				}
+			]
+			},
+		"Sear_1" :
+			{
+			"intent_type": "ATTACK",
+			"probability" : 0.0,
+			"effects" :[
+				{
+					"name" : "Damage",
+					"amount" : 6
+				},
+				{
+					"name" : "AddBurnToDiscard",
+					"amount" : 1
+				}
+			],
+			"next_move" :[
+				{
+					"name" : "Tackle_1",
+					"probability" : 1.0
+				}
+			]
+			},
+		"Tackle_1" :
+			{
+			"intent_type": "ATTACK",
+			"probability" : 0.0,
+			"effects" :[
+				{
+					"name" : "Damage",
+					"amount" : "5x2"
+				}
+			],
+			"next_move" :[
+				{
+					"name" : "Sear_2",
+					"probability" : 1.0
+				}
+			]
+			},
+		"Sear_2" :
+			{
+			"intent_type": "ATTACK",
+			"probability" : 0.0,
+			"effects" :[
+				{
+					"name" : "Damage",
+					"amount" : 6
+				},
+				{
+					"name" : "AddBurnToDiscard",
+					"amount" : 1
+				}
+			],
+			"next_move" :[
+				{
+					"name" : "Inflame_1",
+					"probability" : 1.0
+				}
+			]
+			},
+		"Inflame_1" :
+			{
+			"intent_type": "DEFEND_BUFF",
+			"probability" : 0.0,
+			"effects" :[
+				{
+					"name" : "Strength",
+					"amount" : 2
+				},
+				{
+					"name" : "Block",
+					"amount" : 12
+				}
+			],
+			"next_move" :[
+				{
+					"name" : "Tackle_2",
+					"probability" : 1.0
+				}
+			]
+			},
+		"Tackle_2" :
+			{
+			"intent_type": "ATTACK",
+			"probability" : 0.0,
+			"effects" :[
+				{
+					"name" : "Damage",
+					"amount" : "5x2"
+				}
+			],
+			"next_move" :[
+				{
+					"name" : "Sear_3",
+					"probability" : 1.0
+				}
+			]
+			},
+		"Sear_3" :
+			{
+			"intent_type": "ATTACK",
+			"probability" : 0.0,
+			"effects" :[
+				{
+					"name" : "Damage",
+					"amount" : 6
+				},
+				{
+					"name" : "AddBurnToDiscard",
+					"amount" : 1
+				}
+			],
+			"next_move" :[
+				{
+					"name" : "Inferno_1",
+					"probability" : 1.0
+				}
+			]
+			},
+		"Inferno_1" :
+			{
+			"intent_type": "ATTACK_DEBUFF",
+			"probability" : 0.0,
+			"effects" :[
+				{
+					"name" : "Damage",
+					"amount" : "2x6"
+				},
+				{
+					"name" : "AddBurnToDiscard",
+					"amount" : 3
+				},
+				{
+					"name":"UpgradeAllBurns",
+					"amount":1
+				}
+			],
+			"next_move" :[
+				{
+					"name" : "Divider_2",
+					"probability" : 1.0
+				}
+			]
+			},
+		"Divider_2" :
+			{
+			"intent_type": "ATTACK",
+			"probability" : 0.0,
+			"effects" :[
+				{
+					"name" : "HexAttack",
+					"amount" : 6
+				}
+			],
+			"next_move" :[
+				{
+					"name" : "Sear_4",
+					"probability" : 1.0
+				}
+			]
+			},
+		"Sear_4" :
+			{
+			"intent_type": "ATTACK",
+			"probability" : 0.0,
+			"effects" :[
+				{
+					"name" : "Damage",
+					"amount" : 6
+				},
+				{
+					"name" : "AddBurn+ToDiscard",
+					"amount" : 1
+				}
+			],
+			"next_move" :[
+				{
+					"name" : "Tackle_3",
+					"probability" : 1.0
+				}
+			]
+			},
+		"Tackle_3" :
+			{
+			"intent_type": "ATTACK",
+			"probability" : 0.0,
+			"effects" :[
+				{
+					"name" : "Damage",
+					"amount" : "5x2"
+				}
+			],
+			"next_move" :[
+				{
+					"name" : "Sear_5",
+					"probability" : 1.0
+				}
+			]
+			},
+		"Sear_5" :
+			{
+			"intent_type": "ATTACK",
+			"probability" : 0.0,
+			"effects" :[
+				{
+					"name" : "Damage",
+					"amount" : 6
+				},
+				{
+					"name" : "AddBurn+ToDiscard",
+					"amount" : 1
+				}
+			],
+			"next_move" :[
+				{
+					"name" : "Inflame_2",
+					"probability" : 1.0
+				}
+			]
+			},
+		"Inflame_2" :
+			{
+			"intent_type": "DEFEND_BUFF",
+			"probability" : 0.0,
+			"effects" :[
+				{
+					"name" : "Strength",
+					"amount" : 2
+				},
+				{
+					"name" : "Block",
+					"amount" : 12
+				}
+			],
+			"next_move" :[
+				{
+					"name" : "Tackle_4",
+					"probability" : 1.0
+				}
+			]
+			},
+		"Tackle_4" :
+			{
+			"intent_type": "ATTACK",
+			"probability" : 0.0,
+			"effects" :[
+				{
+					"name" : "Damage",
+					"amount" : "5x2"
+				}
+			],
+			"next_move" :[
+				{
+					"name" : "Sear_6",
+					"probability" : 1.0
+				}
+			]
+			},
+		"Sear_6" :
+			{
+			"intent_type": "ATTACK",
+			"probability" : 0.0,
+			"effects" :[
+				{
+					"name" : "Damage",
+					"amount" : 6
+				},
+				{
+					"name" : "AddBurnToDiscard",
+					"amount" : 1
+				}
+			],
+			"next_move" :[
+				{
+					"name" : "Inferno_1",
+					"probability" : 1.0
+				}
+			]
+			}
+	}
+	
+}

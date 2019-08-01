@@ -1,0 +1,140 @@
+{
+	"startswith" : "Charging Up",
+	"powers" : 
+		[
+			{
+				"name" : "Mode Shift",
+				"amount" : 30
+			}
+		],
+	"moveset" : {
+		"Charging Up" :
+			{
+			"intent_type": "DEFEND",
+			"probability" : 0.0,
+			"effects" : [
+				{
+					"name" : "Block",
+					"amount" : 9
+				}
+			],
+			"next_move" :[
+				{
+					"name" : "Fierce Bash",
+					"probability" : 1.0
+				}
+			]
+			},
+		"Fierce Bash" :
+			{
+			"intent_type": "ATTACK",
+			"probability" : 0.0,
+			"effects" :[
+				{
+					"name" : "Damage",
+					"amount" : 32
+				}
+			],
+			"next_move" :[
+				{
+					"name" : "Vent Steam",
+					"probability" : 1.0
+				}
+			]
+			},
+		"Vent Steam" :
+			{
+			"intent_type": "DEBUFF",
+			"probability" : 0.0,
+			"effects" :[
+				{
+					"name" : "Weakened",
+					"amount" : 2
+				},
+				{
+					"name" : "Vulnerable",
+					"amount" : 2
+				}
+			],
+			"next_move" :[
+				{
+					"name" : "Whirlwind",
+					"probability" : 1.0
+				}
+			]
+			},
+		"Whirlwind" :
+			{
+			"intent_type": "ATTACK",
+			"probability" : 0.0,
+			"effects" :[
+				{
+					"name" : "Damage",
+					"amount" : "5x4"
+				}
+			],
+			"next_move" :[
+				{
+					"name" : "Charging Up",
+					"probability" : 1.0
+				}
+			]
+			},
+		"Defensive Mode" :
+			{
+			"intent_type": "BUFF",
+			"probability" : 0.0,
+			"effects" :[
+				{
+					"name" : "Sharp Hide",
+					"amount" : 3
+				}
+			],
+			"next_move" :[
+				{
+					"name" : "Roll Attack",
+					"probability" : 1.0
+				}
+			]
+			},
+		"Roll Attack" :
+			{
+			"intent_type": "ATTACK",
+			"probability" : 0.0,
+			"effects" :[
+				{
+					"name" : "Damage",
+					"amount" : 9
+				}
+			],
+			"next_move" :[
+				{
+					"name" : "Twin Slam",
+					"probability" : 1.0
+				}
+			]
+			},
+		"Twin Slam" :
+			{
+			"intent_type": "ATTACK",
+			"probability" : 0.0,
+			"effects" :[
+				{
+					"name" : "Damage",
+					"amount" : "8x2"
+				},
+				{
+					"name" : "Remove Sharp Hide",
+					"amount" : 3
+				}
+			],
+			"next_move" :[
+				{
+					"name" : "Whirlwind",
+					"probability" : 1.0
+				}
+			]
+			}
+	}
+	
+}
