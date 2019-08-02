@@ -1381,6 +1381,7 @@ class Game:
 									effects = details["effects"]
 									for effect in effects:
 										if effect["name"] == "Damage":
+											amount, hits = self.read_damage(effect["amount"])
 											hits += 1
 									if hits == monster.move_hits:
 										monster.current_move = move
