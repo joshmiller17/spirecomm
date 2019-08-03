@@ -1331,6 +1331,14 @@ class Game:
 	
 		return cards
 		
+	# parses damage in the form of amount or amount x hits, returns amounts and hits
+	def read_damage(string):
+		if 'x' in string:
+			list = string.split('x')
+			return list[0], list[1]
+		else:
+			return string, 1
+		
 	
 	# Returns a new state
 	def simulate_end_turn(self, action):
@@ -1381,8 +1389,8 @@ class Game:
 									effects = details["effects"]
 									for effect in effects:
 										if effect["name"] == "Damage":
-											amount, hits = self.read_damage(effect["amount"])
-											hits += 1
+											amt, h = self.read_damage(effect["amount"])
+											hits += h
 									if hits == monster.move_hits:
 										monster.current_move = move
 								else:
@@ -1419,12 +1427,14 @@ class Game:
 					for effect in effects:
 						
 						if effect["name"] == "Damage":
-							base_damage = effect["amount"]
+							amount, hits = self.read_damage(effect["amount"])
+							base_damage = amount
 							if monster.monster_id == "FuzzyLouseNormal" or monster.monster_id == "FuzzyLouseDefensive":
 								base_damage += monster.misc # adjustment because louses are variable
 								self.debug_log.append("Adjusted damage for louse: " + str(monster.misc))
-							unblocked_damage = self.use_attack(base_damage, monster, self.player)
-							self.debug_log.append("Taking " + str(unblocked_damage) + " damage from " + str(monster))
+							for _ in hits:
+								unblocked_damage = self.use_attack(base_damage, monster, self.player)
+								self.debug_log.append("Taking " + str(unblocked_damage) + " damage from " + str(monster))
 								
 						elif effect["name"] == "Block":
 							self.add_block(monster, effect["amount"])
