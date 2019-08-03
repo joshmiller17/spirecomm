@@ -761,7 +761,8 @@ class SimpleAgent:
 # ---------------------------------------------
 
 	def handle_combat(self):
-		if self.blackboard.game.room_type == "MonsterRoomBoss" and len(self.blackboard.game.get_real_potions()) > 0:
+		# Drink potions whenever we get one to see what they do lulz
+		if self.blackboard.game.room_type == "MonsterRoomBoss" or self.blackboard.game.room_type == "MonsterRoom" and len(self.blackboard.game.get_real_potions()) > 0:
 			potion_action = self.use_next_potion()
 			if potion_action is not None:
 				return self.decide(potion_action)
@@ -885,6 +886,7 @@ class SimpleAgent:
 				continue
 			else:
 				return CombatRewardAction(reward_item)
+		self.skipping_card = False;
 		return ProceedAction()
 		
 	# TODO
@@ -974,19 +976,11 @@ class SimpleAgent:
 		return count
 
 	def choose_card_reward(self):
+		# always take a card lulz
 		reward_cards = self.blackboard.game.screen.cards
-		if self.blackboard.game.screen.can_skip and not self.blackboard.game.in_combat:
-			pickable_cards = [card for card in reward_cards if self.priorities.needs_more_copies(card, self.count_copies_in_deck(card))]
-		else:
-			pickable_cards = reward_cards
-		if len(pickable_cards) > 0:
-			potential_pick = self.priorities.get_best_card(pickable_cards)
-			return CardRewardAction(potential_pick)
-		elif self.blackboard.game.screen.can_bowl:
-			return CardRewardAction(bowl=True)
-		else:
-			self.skipping_card = True
-			return CancelAction()
+		potential_pick = self.priorities.get_best_card(reward_cards)
+		return CardRewardAction(card=potential_pick)
+		
 			
 	# TODO generate_map_route, then get the actual symbols in order that we'll encounter them
 	def get_informative_path(self):

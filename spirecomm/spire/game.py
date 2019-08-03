@@ -942,7 +942,7 @@ class Game:
 			if self.has_relic("Gambling Chip"):
 				self.current_action = "GamblingChipAction"
 				self.screen = HandSelectScreen(self.hand, selected=[], num_cards=99, can_pick_zero=True)
-				self.screen_type = spirecomm.spire.Screen.ScreenType.HAND_SELECT
+				self.screen_type = spirecomm.spire.screen.Screen.ScreenType.HAND_SELECT
 				self.screen_up = True
 				
 				
@@ -1312,7 +1312,7 @@ class Game:
 		spirecomm.spire.potion.Potion("Smoke Bomb", "Smoke Bomb", True, True, False),
 		spirecomm.spire.potion.Potion("Snecko Oil", "Snecko Oil", True, True, False),
 		spirecomm.spire.potion.Potion("Speed Potion", "Speed Potion", True, True, False),
-		spirecomm.spire.potion.Potion("Steroid Potion", "Steroid Potion", True, True, False),
+		spirecomm.spire.potion.Potion("Flex Potion", "Flex Potion", True, True, False),
 		spirecomm.spire.potion.Potion("Strength Potion", "Strength Potion", True, True, False),
 		spirecomm.spire.potion.Potion("Swift Potion", "Swift Potion", True, True, False),
 		spirecomm.spire.potion.Potion("Weak Potion", "Weak Potion", True, True, True),
@@ -1379,8 +1379,8 @@ class Game:
 		return cards
 		
 	# parses damage in the form of amount or amount x hits, returns amounts and hits
-	def read_damage(string):
-		if 'x' in string:
+	def read_damage(self, string):
+		if 'x' in str(string):
 			list = string.split('x')
 			return list[0], list[1]
 		else:
@@ -1455,7 +1455,6 @@ class Game:
 				if monster.current_move is None:
 					self.debug_log.append("ERROR: Could not determine " + monster.name + "\'s intent of " + str(monster.intent))
 				else:
-				
 					if monster.intent == spirecomm.spire.character.Intent.ATTACK and (monster.monster_id == "FuzzyLouseNormal" or monster.monster_id == "FuzzyLouseDefensive"):
 						# louses have a variable base attack
 						effs = monster.intents["moveset"][monster.current_move]["effects"]
@@ -1467,7 +1466,7 @@ class Game:
 							raise Exception("Malformed Louse JSON when calculating base damage for " + str(monster.current_move))
 						attack_adjustment = monster.move_base_damage - json_base
 						monster.misc = attack_adjustment
-						self.debug_log.append("Adjusted damage for louse: " + str(monster.misc), debug=5)
+						self.debug_log.append("Adjusted damage for louse: " + str(monster.misc))
 								
 					# Finally, apply the intended move
 					effects = monster.intents["moveset"][monster.current_move]["effects"]
@@ -1594,43 +1593,43 @@ class Game:
 		# TODO
 		
 	
-		return new_state
+		return self
 		
 	def simulate_exhaust(self, action):
 		self.hand.remove(action.card)
 		self.exhaust_card(action.card)
-		return new_state
+		return self
 		
 	def simulate_headbutt(self, action):
 		self.discard_pile.remove(action.card)
 		self.draw_pile.insert(0, action.card)
-		return new_state
+		return self
 		
 	def simulate_hand_to_topdeck(self, action):
 		self.hand.remove(action.card)
 		self.draw_pile.insert(0, action.card)
-		return new_state
+		return self
 		
 	def simulate_upgrade(self, action):
 		action.card.upgrade()
-		return new_state
+		return self
 
 	def simulate_exhume(self, action):
 		self.exhaust_pile.remove(action.card)
 		self.hand.append(action.card)
-		return new_state
+		return self
 		
 	def simulate_dual_wield(self, action):
 		# TODO how to do dualwield+?
 		
 	
-		return new_state
+		return self
 		
 	def simulate_forethought(self, action):
 		# TODO
 		
 	
-		return new_state
+		return self
 		
 		
 	# Returns a new state
@@ -1639,7 +1638,7 @@ class Game:
 		self.potions.remove(action.potion) # fixme? might need to match on name rather than ID
 		self.potions.append(spirecomm.spire.potion.Potion("Potion Slot", "Potion Slot", False, False, False))
 		
-		if action.potion.name == "Artifact Potion":
+		if action.potion.name == "Ancient Potion":
 			self.player.add_power("Artifact", 1)
 		
 		elif action.potion.name == "Attack Potion":
@@ -1650,7 +1649,7 @@ class Game:
 			self.add_block(self.player, 12)
 		
 		elif action.potion.name == "Blood Potion":
-			hp_gained = int(math.ceil(self.player.max_hp * 0.10)) # FIXME updated to 0.25 in a recent patch, but we're not on that patch yet
+			hp_gained = int(math.ceil(self.player.max_hp * 0.25))
 			new_hp = min(self.player.max_hp, self.player.current_hp + hp_gained)
 			self.player.current_hp = new_hp
 		
@@ -1733,7 +1732,7 @@ class Game:
 			self.player.add_power("Dexterity", 5)
 			self.player.add_power("Dexterity Down", 5)
 		
-		elif action.potion.name == "Steroid Potion":
+		elif action.potion.name == "Flex Potion":
 			self.player.add_power("Strength", 5)
 			self.player.add_power("Strength Down", 5)
 		
@@ -1894,9 +1893,9 @@ class Game:
 						action = CardSelectAction(cards=self.hand)
 						self.simulate_upgrade(action)
 					else:
-						self.screen = spirecomm.spire.Screen.HandSelectScreen(cards=self.hand, selected=[], num_cards=1, can_pick_zero=False)
+						self.screen = spirecomm.spire.screen.Screen.HandSelectScreen(cards=self.hand, selected=[], num_cards=1, can_pick_zero=False)
 						self.screen_up = True
-						self.screen_type = spirecomm.spire.Screen.ScreenType.HAND_SELECT
+						self.screen_type = spirecomm.spire.screen.Screen.ScreenType.HAND_SELECT
 						self.current_action = "ArmamentsAction"
 					
 				elif effect["effect"] == "Armaments+":
@@ -1910,33 +1909,33 @@ class Game:
 						action = CardSelectAction(cards=self.hand)
 						self.simulate_hand_to_topdeck(action)
 					else:
-						self.screen = spirecomm.spire.Screen.HandSelectScreen(cards=self.hand, selected=[], num_cards=effect["amount"], can_pick_zero=False)
+						self.screen = spirecomm.spire.screen.Screen.HandSelectScreen(cards=self.hand, selected=[], num_cards=effect["amount"], can_pick_zero=False)
 						self.screen_up = True
-						self.screen_type = spirecomm.spire.Screen.ScreenType.HAND_SELECT
+						self.screen_type = spirecomm.spire.screen.Screen.ScreenType.HAND_SELECT
 						self.current_action = "PutOnDeckAction"
 						
-				elif effect["Headbutt"]:
+				elif effect["effect"] == "Headbutt":
 					if len(self.discard_pile) == 0:
 						pass
 					elif len(self.discard_pile) == 1:
 						action = CardSelectAction(cards=self.discard_pile)
 						self.simulate_headbutt(action)
 					else:
-						self.screen = spirecomm.spire.Screen.GridSelectScreen(cards=self.discard_pile, selected=[], num_cards=1, can_pick_zero=False)
+						self.screen = spirecomm.spire.screen.Screen.GridSelectScreen(cards=self.discard_pile, selected=[], num_cards=1, can_pick_zero=False)
 						self.screen_up = True
-						self.screen_type = spirecomm.spire.Screen.ScreenType.GRID_SELECT
+						self.screen_type = spirecomm.spire.screen.Screen.ScreenType.GRID_SELECT
 						self.current_action = "PutOnDeckAction"
 						
-				elif effect["Exhume"]:
+				elif effect["effect"] == "Exhume":
 					if len(self.exhaust_pile) == 0:
 						pass
 					elif len(self.exhaust_pile) == 1:
 						action = CardSelectAction(cards=self.exhaust_pile)
 						self.simulate_exhume(action)
 					else:
-						self.screen = spirecomm.spire.Screen.GridSelectScreen(cards=self.hand, selected=[], num_cards=1, can_pick_zero=False)
+						self.screen = spirecomm.spire.screen.Screen.GridSelectScreen(cards=self.hand, selected=[], num_cards=1, can_pick_zero=False)
 						self.screen_up = True
-						self.screen_type = spirecomm.spire.Screen.ScreenType.GRID_SELECT
+						self.screen_type = spirecomm.spire.screen.Screen.ScreenType.GRID_SELECT
 						self.current_action = "ExhumeAction"
 					
 					
@@ -2090,9 +2089,9 @@ class Game:
 						action = CardSelectAction(cards=self.hand)
 						self.simulate_exhaust(action)
 					else:
-						self.screen = spirecomm.spire.Screen.HandSelectScreen(cards=self.hand, selected=[], num_cards=effect["amount"], can_pick_zero=False)
+						self.screen = spirecomm.spire.screen.Screen.HandSelectScreen(cards=self.hand, selected=[], num_cards=effect["amount"], can_pick_zero=False)
 						self.screen_up = True
-						self.screen_type = spirecomm.spire.Screen.ScreenType.HAND_SELECT
+						self.screen_type = spirecomm.spire.screen.Screen.ScreenType.HAND_SELECT
 						self.current_action = "ExhaustAction"
 					
 				elif effect["effect"] == "Draw":
