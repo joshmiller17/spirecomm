@@ -878,6 +878,10 @@ class Game:
 			if monster.monster_id == "Lagavulin" and monster.move_base_damage == 0:
 				self.tracked_state["lagavulin_is_asleep"] = True
 				
+			if "powers" in monster.intents:
+				for power in monster.intents["powers"]:
+					monster.add_power(power["name"], power["amount"])
+				
 	
 		if character is self.player:
 			# FIXME relics technically activate in order of acquisition
