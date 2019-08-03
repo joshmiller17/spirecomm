@@ -5,7 +5,7 @@ import spirecomm.config as config
 
 CARDS_PATH = os.path.join(config.SPIRECOMM_PATH, "spirecomm", "ai", "cards")
 
-VALID_CLASSES = ["COLORLESS", "IRONCLAD", "THE_SILENT", "DEFECT"]
+VALID_CLASSES = ["EVENT", "COLORLESS", "IRONCLAD", "THE_SILENT", "DEFECT"]
 
 class CardType(Enum):
 	ATTACK = 1
@@ -94,6 +94,7 @@ class Card:
 						with open(os.path.join(CARDS_PATH, "temp", str(self.card_id) + ".json"), "w") as jf:
 							d = {}
 							d["card_id"] = self.card_id
+							d["class"] = "FIXME"
 							d["type"] = self.type.name
 							d["rarity"] = self.rarity.name
 							d["upgrades"] = self.upgrades
