@@ -13,7 +13,7 @@
 		},
 		{
 		"target" : "self",
-		"effect" : "ThinkingAhead",
+		"effect" : "HandToDeck",
 		"amount" : 1
 		},
 		{

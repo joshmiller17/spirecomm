@@ -28,7 +28,7 @@
 		},
 		{
 		"target" : "self",
-		"effect" : "Warcry",
+		"effect" : "HandToDeck",
 		"amount" : 1
 		},
 		{

@@ -24,7 +24,7 @@ MCTS_ROUND_COST = 0.5 # penalize long fights
 # TODO eventually add: value for deck changes (e.g. cost for gaining parasite)
 # TODO eventually add: value for card misc changes (e.g., genetic algorithm, ritual dagger)
 
-BUFFS = ["Ritual", "Strength", "Dexterity", "Incantation", "Enrage", "Metallicize", "SadisticNature", "Juggernaut", "DoubleTap", "DemonForm", "DarkEmbrace", "Brutality", "Berserk", "Rage", "Feel No Pain", "Flame Barrier", "Corruption", "Combust", "Fire Breathing"]
+BUFFS = ["Ritual", "Strength", "Dexterity", "Incantation", "Enrage", "Metallicize", "SadisticNature", "Juggernaut", "DoubleTap", "DemonForm", "DarkEmbrace", "Brutality", "Berserk", "Rage", "Feel No Pain", "Flame Barrier", "Corruption", "Combust", "Fire Breathing", "Mayhem"]
 DEBUFFS = ["Frail", "Vulnerable", "Weakened", "Entangled", "Shackles", "NoBlock", "No Draw"]
 
 class RoomPhase(Enum):
@@ -973,7 +973,7 @@ class Game:
 		if target.has_power("Spore Cloud"):
 			self.player.add_power("Vulnerable", target.get_power_amount("Spore Cloud"))
 			target.remove_power("Spore Cloud")
-		if target.has_power("Thievery"):
+		if target.has_power("Thievery") and not self.has_relic("Ectoplasm"):
 			self.tracked_state["incoming_gold"] += target.misc
 		
 			
@@ -1062,6 +1062,14 @@ class Game:
 				while selected_card.type == spirecomm.spire.card.CardType.CURSE or selected_card.type == spirecomm.spire.card.CardType.SPECIAL or (selected_card.upgrades > 0 and not selected_card.name.startswith("Searing Blow")):
 					selected_card = random.choice(self.hand)
 				selected_card.upgrade()
+				
+			if character.has_power("Mayhem"):
+				for _ in range(character.get_power_amount("Mayhem")):
+					card = self.draw_top_card()
+					play_action = self.get_random_play(card)
+					self.simulate_play(play_action)
+					
+				
 	
 	def apply_debuff(self, target, debuff, amount):
 		if debuff == "Weakened" and target is self.player and self.has_relic("Ginger"):
@@ -1203,6 +1211,10 @@ class Game:
 		self.apply_damage(amount, None, target, ignores_block=True)
 		if target is self.player and from_card and target.has_power("Rupture"):
 			target.add_power("Strength", target.get_power_amount("Rupture"))
+			
+	def gain_gold(self, gold):
+		if not self.has_relic("Ectoplasm"):
+			self.gold += gold
 		
 	def gain_hp(self, target, amount): # assumes we're in combat
 		if target is self.player:
@@ -1249,13 +1261,17 @@ class Game:
 				
 		if self.has_relic("The Abacus"):
 			self.player.block += 6
+			
+	def draw_top_card(self):
+		if len(self.draw_pile) == 0:
+			self.reshuffle_deck()
+		card = self.draw_pile.pop(0)
+		return card
 	
 	def draw_card(self, draw=1):
 		if self.player.has_power("No Draw"):
 			return
-		if len(self.draw_pile) == 0:
-			self.reshuffle_deck()
-		card = self.draw_pile.pop(0)
+		card = self.draw_top_card()
 		if len(self.hand) >= 10:
 			self.discard_pile.append(card)
 		else:
@@ -1749,6 +1765,18 @@ class Game:
 		
 		return self
 		
+	
+	def get_random_play(self, card):
+		# randomly play the card
+		play_action = PlayCardAction(card)
+		if card.has_target:
+			available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+			selected_monster = random.choice(available_monsters)
+			play_action.target_index = selected_monster.monster_index
+			play_action.target_monster = selected_monster
+		return play_action
+		
+		
 		
 	# Returns a new state
 	def simulate_play(self, action, free_play=False):
@@ -1810,7 +1838,7 @@ class Game:
 			# Do effect
 			for target in effect_targets:
 			
-				effects_that_can_target_unavailable = ["Feed", "RitualDagger"]
+				effects_that_can_target_unavailable = ["Feed", "RitualDagger", "Greed"]
 			
 				available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
 				if target is not self.player and target not in available_monsters and effect["effect"] not in effects_that_can_target_unavailable:
@@ -1875,14 +1903,26 @@ class Game:
 					for card in self.hand:
 						card.upgrade()
 						
+				elif effect["effect"] == "HandToDeck":
+					if len(self.hand) == 0:
+						pass
+					elif len(self.hand) == 1:
+						action = CardSelectAction(cards=self.hand)
+						self.simulate_hand_to_topdeck(action)
+					else:
+						self.screen = spirecomm.spire.Screen.HandSelectScreen(cards=self.hand, selected=[], num_cards=effect["amount"], can_pick_zero=False)
+						self.screen_up = True
+						self.screen_type = spirecomm.spire.Screen.ScreenType.HAND_SELECT
+						self.current_action = "PutOnDeckAction"
+						
 				elif effect["Headbutt"]
 					if len(self.discard_pile) == 0:
 						pass
 					elif len(self.discard_pile) == 1:
 						action = CardSelectAction(cards=self.discard_pile)
-						self.simulate_hand_to_topdeck(action)
+						self.simulate_headbutt(action)
 					else:
-						self.screen = spirecomm.spire.Screen.GridSelectScreen(cards=self.hand, selected=[], num_cards=1, can_pick_zero=False)
+						self.screen = spirecomm.spire.Screen.GridSelectScreen(cards=self.discard_pile, selected=[], num_cards=1, can_pick_zero=False)
 						self.screen_up = True
 						self.screen_type = spirecomm.spire.Screen.ScreenType.GRID_SELECT
 						self.current_action = "PutOnDeckAction"
@@ -1998,6 +2038,19 @@ class Game:
 					if monster.current_hp <= 0 and not monster.half_dead and not monster.has_power("Minion"):
 						self.player.max_hp += effect["amount"]
 						self.player.current_hp += effect["amount"]
+						
+				elif effect["effect"] == "Impatience":
+					no_attacks = True
+					for card in self.hand:
+						if card.type == spirecomm.spire.card.CardType.ATTACK:
+							no_attacks = False
+							break
+					if no_attacks:
+						self.draw_card(2)
+						
+				elif effect["effect"] == "Greed":
+					if monster.current_hp <= 0 and not monster.half_dead and not monster.has_power("Minion"):
+						self.player.gain_gold(20)
 					
 				elif effect["effect"] == "RitualDagger":
 					if monster.current_hp <= 0 and not monster.half_dead:
@@ -2005,14 +2058,7 @@ class Game:
 						
 				elif effect["effect"] == "Havoc":
 					havoc_card = self.draw_pile.pop(0)
-					# randomly play the card
-					play_action = PlayCardAction(havoc_card)
-					if havoc_card.has_target:
-						available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
-						selected_monster = random.choice(available_monsters)
-						play_action.target_index = selected_monster.monster_index
-						play_action.target_monster = selected_monster
-						
+					play_action = self.get_random_play(havoc_card)
 					self.simulate_play(play_action)
 					self.discard_pile.remove(havoc_card)
 					self.exhaust_card(havoc_card)
