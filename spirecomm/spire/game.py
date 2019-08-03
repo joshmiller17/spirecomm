@@ -675,19 +675,33 @@ class Game:
 		
 		new_state.tracked_state["just_reshuffled"] = False
 		
-		if action.command.startswith("end"):
+		if action.command.startswith("end") and not self.screen_up:
 			return new_state.simulate_end_turn(action)
-		elif action.command.startswith("potion"):
+		elif action.command.startswith("potion") and not self.screen_up:
 			# assumes we have this potion, will throw an error if we don't I think
 			return new_state.simulate_potion(action)
-		elif action.command.startswith("play"):
+		elif action.command.startswith("play") and not self.screen_up:
 			return new_state.simulate_play(action)
 		elif action.command.startswith("state"):
 			return new_state
-		elif action.command.startswith("choose") and new_state.current_action == "DiscoveryAction":
+		elif action.command.startswith("choose") and self.screen_up and new_state.current_action == "DiscoveryAction":
 			return new_state.simulate_discovery(action)
+		elif action.command.startswith("choose") and self.screen_up and new_state.current_action == "ExhaustAction":
+			return new_state.simulate_exhaust(action)
+		elif action.command.startswith("choose") and self.screen_up and new_state.current_action == "DiscardPileToTopOfDeckAction":
+			return new_state.simulate_headbutt(action)
+		elif action.command.startswith("choose") and self.screen_up and new_state.current_action == "PutOnDeckAction":
+			return new_state.simulate_hand_to_topdeck(action)
+		elif action.command.startswith("choose") and self.screen_up and new_state.current_action == "ArmamentsAction":
+			return new_state.simulate_upgrade(action)
+		elif action.command.startswith("choose") and self.screen_up and new_state.current_action == "DualWieldAction": # FIXME?
+			return new_state.simulate_dual_wield(action)
+		elif action.command.startswith("choose") and self.screen_up and new_state.current_action == "ExhumeAction": # FIXME?
+			return new_state.simulate_exhume(action)
+		elif action.command.startswith("choose") and self.screen_up and new_state.current_action == "ForethoughtAction": # FIXME?
+			return new_state.simulate_forethought(action)
 		else:
-			raise Exception("Chosen simulated action is not a valid combat action: " + str(action))
+			raise Exception("Chosen simulated action is not a valid combat action in the current state: " + str(action) + ", " + str(self.screen) + " (" + str(self.screen_type) + ") " + ("[UP]" if self.screen_up else ""))
 		
 	def choose_move(self, monster):
 		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
@@ -809,6 +823,9 @@ class Game:
 		if not self.has_relic("Runic Pyramid"):
 			self.discard_pile += self.hand
 			self.hand = []
+			
+		if self.has_relic("Nilry's Codex"):
+			pass # TODO discovery
 		
 		for power in self.player.powers:
 			if power.power_name == "Strength Down":
@@ -884,7 +901,7 @@ class Game:
 				
 	
 		if character is self.player:
-			# FIXME relics technically activate in order of acquisition
+			# FIXME relics technically activate in order of acquisition (?)
 
 			if self.player.current_hp / self.player.max_hp < 0.50:
 				self.tracked_state["below_half_health"] = True
@@ -922,11 +939,15 @@ class Game:
 					monster.add_power("Weakened", 1)
 			if self.has_relic("Snecko Eye"):
 				self.player.add_power("Confused", 1)
+			if self.has_relic("Gambling Chip"):
+				self.current_action = "GamblingChipAction"
+				self.screen = HandSelectScreen(self.hand, selected=[], num_cards=99, can_pick_zero=True)
+				self.screen_type = spirecomm.spire.Screen.ScreenType.HAND_SELECT
+				self.screen_up = True
+				
 				
 			# TODO bottled cards are waiting on patch to CommMod
-			
-			# TODO gambling chip? Hand Select Screen, can pick 0, num cards 99, current action GamblingChipAction
-				
+							
 			draw = self.draw_pile
 			for card in draw:
 				for effect in card.effects:
@@ -1291,6 +1312,12 @@ class Game:
 		
 		return random.choice(possible_potions)
 		
+	def discover(self, player_class, card_type, rarity=""):
+		# TODO change screen, screen_type, screen_up, current_action
+		
+		return self
+
+		
 	def generate_random_colorless_card(self):
 		cards = []
 		
@@ -1545,8 +1572,45 @@ class Game:
 		self.tracked_state["is_simulation"] = True
 		
 		return self
+				
 		
 	def simulate_discovery(self, action):
+		# TODO
+		
+	
+		return new_state
+		
+	def simulate_exhaust(self, action):
+		self.hand.remove(action.card)
+		self.exhaust_card(action.card)
+		return new_state
+		
+	def simulate_headbutt(self, action):
+		self.discard_pile.remove(action.card)
+		self.draw_pile.insert(0, action.card)
+		return new_state
+		
+	def simulate_hand_to_topdeck(self, action):
+		self.hand.remove(action.card)
+		self.draw_pile.insert(0, action.card)
+		return new_state
+		
+	def simulate_upgrade(self, action):
+		action.card.upgrade()
+		return new_state
+
+	def simulate_exhume(self, action):
+		self.exhaust_pile.remove(action.card)
+		self.hand.append(action.card)
+		return new_state
+		
+	def simulate_dual_wield(self, action):
+		# TODO how to do dualwield+?
+		
+	
+		return new_state
+		
+	def simulate_forethought(self, action):
 		# TODO
 		
 	
@@ -1796,14 +1860,44 @@ class Game:
 					self.player.add_power(effect["effect"], effect["amount"])
 					
 				elif effect["effect"] == "Armaments":
-					self.screen = spirecomm.spire.Screen.HandSelectScreen(cards=self.hand, selected=[], num_cards=1, can_pick_zero=False)
-					self.screen_up = True
-					self.screen_type = spirecomm.spire.Screen.ScreenType.HAND_SELECT
-					self.current_action = "UpgradeAction" # FIXME?
+					if len(self.hand) == 0:
+						pass
+					elif len(self.hand) == 1:
+						action = CardSelectAction(cards=self.hand)
+						self.simulate_upgrade(action)
+					else:
+						self.screen = spirecomm.spire.Screen.HandSelectScreen(cards=self.hand, selected=[], num_cards=1, can_pick_zero=False)
+						self.screen_up = True
+						self.screen_type = spirecomm.spire.Screen.ScreenType.HAND_SELECT
+						self.current_action = "ArmamentsAction"
 					
 				elif effect["effect"] == "Armaments+":
 					for card in self.hand:
 						card.upgrade()
+						
+				elif effect["Headbutt"]
+					if len(self.discard_pile) == 0:
+						pass
+					elif len(self.discard_pile) == 1:
+						action = CardSelectAction(cards=self.discard_pile)
+						self.simulate_hand_to_topdeck(action)
+					else:
+						self.screen = spirecomm.spire.Screen.GridSelectScreen(cards=self.hand, selected=[], num_cards=1, can_pick_zero=False)
+						self.screen_up = True
+						self.screen_type = spirecomm.spire.Screen.ScreenType.GRID_SELECT
+						self.current_action = "PutOnDeckAction"
+						
+				elif effect["Exhume"]
+					if len(self.exhaust_pile) == 0:
+						pass
+					elif len(self.exhaust_pile) == 1:
+						action = CardSelectAction(cards=self.exhaust_pile)
+						self.simulate_exhume(action)
+					else:
+						self.screen = spirecomm.spire.Screen.GridSelectScreen(cards=self.hand, selected=[], num_cards=1, can_pick_zero=False)
+						self.screen_up = True
+						self.screen_type = spirecomm.spire.Screen.ScreenType.GRID_SELECT
+						self.current_action = "ExhumeAction"
 					
 					
 				elif effect["effect"] in BUFFS:
@@ -1942,6 +2036,18 @@ class Game:
 					exhausted_card = random.choice(self.hand)
 					self.hand.remove(exhausted_card)
 					self.exhaust_card(exhausted_card)
+					
+				elif effect["effect"] == "ExhaustSelect":
+					if len(self.hand) == 0:
+						pass
+					elif len(self.hand) == 1:
+						action = CardSelectAction(cards=self.hand)
+						self.simulate_exhaust(action)
+					else:
+						self.screen = spirecomm.spire.Screen.HandSelectScreen(cards=self.hand, selected=[], num_cards=effect["amount"], can_pick_zero=False)
+						self.screen_up = True
+						self.screen_type = spirecomm.spire.Screen.ScreenType.HAND_SELECT
+						self.current_action = "ExhaustAction"
 					
 				elif effect["effect"] == "Draw":
 					self.draw_card(draw=effect["amount"])

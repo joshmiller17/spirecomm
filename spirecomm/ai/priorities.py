@@ -490,7 +490,7 @@ class IroncladPriority(Priority):
 		"Flash of Steel",
 		"Flex",
 		"Anger",
-		"Skip",
+		# SKIP was here, moved to bottom to see more stuff
 		"Secret Weapon",
 		"Finesse",
 		"Mayhem",
@@ -596,6 +596,7 @@ class IroncladPriority(Priority):
 		"Necronomicurse",
 		"Pain",
 		"Normality",
+		"Skip",
 		"Pride"
 	]
 
