@@ -58,7 +58,7 @@
 				{
 					"name" : "Damage",
 					"amount" : "5x2"
-				},
+				}
 			],
 			"next_move" :[
 				{
@@ -117,7 +117,7 @@
 				{
 					"name" : "Damage",
 					"amount" : "5x2"
-				},
+				}
 			],
 			"next_move" :[
 				{
