@@ -1915,7 +1915,7 @@ class Game:
 						self.screen_type = spirecomm.spire.Screen.ScreenType.HAND_SELECT
 						self.current_action = "PutOnDeckAction"
 						
-				elif effect["Headbutt"]
+				elif effect["Headbutt"]:
 					if len(self.discard_pile) == 0:
 						pass
 					elif len(self.discard_pile) == 1:
@@ -1927,7 +1927,7 @@ class Game:
 						self.screen_type = spirecomm.spire.Screen.ScreenType.GRID_SELECT
 						self.current_action = "PutOnDeckAction"
 						
-				elif effect["Exhume"]
+				elif effect["Exhume"]:
 					if len(self.exhaust_pile) == 0:
 						pass
 					elif len(self.exhaust_pile) == 1:
