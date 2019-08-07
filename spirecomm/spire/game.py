@@ -25,7 +25,9 @@ MCTS_ROUND_COST = 0.5 # penalize long fights
 # TODO eventually add: value for card misc changes (e.g., genetic algorithm, ritual dagger)
 
 BUFFS = ["Ritual", "Strength", "Dexterity", "Incantation", "Enrage", "Metallicize", "SadisticNature", "Juggernaut", "DoubleTap", "DemonForm", "DarkEmbrace", "Brutality", "Berserk", "Rage", "Feel No Pain", "Flame Barrier", "Corruption", "Combust", "Fire Breathing", "Mayhem"]
-DEBUFFS = ["Frail", "Vulnerable", "Weakened", "Entangled", "Shackles", "NoBlock", "No Draw"]
+DEBUFFS = ["Frail", "Vulnerable", "Weakened", "Entangled", "Shackles", "NoBlock", "No Draw", "Strength Down", "Dexterity Down", "Focus Down"]
+PASSIVE_EFFECTS = ["Strike Damage"] # these don't do anything by themselves
+
 
 class RoomPhase(Enum):
 	COMBAT = 1,
@@ -140,7 +142,8 @@ class Game:
 		"below_half_health" : False,
 		"necronomicon_triggered" : False,
 		"skills_played_this_turn" : 0,
-		"powers_played_this_turn" : 0
+		"powers_played_this_turn" : 0,
+		"registered_start_of_combat" : False,
 		}
 	
 	# for some reason, pausing the game invalidates the state
@@ -166,6 +169,7 @@ class Game:
 		self.tracked_state["necronomicon_triggered"] = False
 		self.tracked_state["skills_played_this_turn"] = 0
 		self.tracked_state["powers_played_this_turn"] = 0
+		self.tracked_state["registered_start_of_combat"] = False
 
 		
 	# returns relic or None
@@ -657,7 +661,14 @@ class Game:
 	
 	
 	# Returns a new state
-	def takeAction(self, action):
+	def takeAction(self, action, from_real=False):
+	
+		if self.in_combat and not self.tracked_state["registered_start_of_combat"]:
+			self.apply_start_of_combat_effects()
+			self.tracked_state["registered_start_of_combat"] = True
+	
+		if from_real:
+			self.tracked_state["is_simulation"] = False
 	
 		self.debug_game_state()
 	
@@ -719,7 +730,7 @@ class Game:
 				# change moveset to next move if exists
 				if str(monster) in self.tracked_state["monsters_last_attacks"]:
 					last_move = self.tracked_state["monsters_last_attacks"][str(monster)][0]
-					self.debug_log.append("Last move was " + str(last_move))
+					self.debug_log.append("Last move was " + str(last_move) + "[" + str(self.tracked_state["monsters_last_attacks"][str(monster)][1]) + "]")
 					if "next_move" in moveset[last_move]:
 						list_of_next_moves = moveset[last_move]["next_move"]
 						moveset = {}
@@ -729,10 +740,15 @@ class Game:
 						self.debug_log.append("Found next moves to be: " + str(moveset))
 				
 				# pick from our moveset
+				if len(moveset) < 1:
+					self.debug_log.append("ERR: no moves to pick from") # TODO remove after figuring out this bug
 				for move, details in moveset.items():
 					moves.append(move)
 					move_weights.append(details["probability"])
 				selected_move = random.choices(population=moves, weights=move_weights)[0] # choices returns as a list of size 1
+				
+				if selected_move is None:
+					self.debug_log.append("ERR: selected move is none") # TODO remove after figuring out this bug
 				
 				# check limits
 				if "limits" not in monster.intents or str(monster) not in self.tracked_state["monsters_last_attacks"]:
@@ -744,6 +760,7 @@ class Game:
 						if selected_move == limited_move and selected_move == self.tracked_state["monsters_last_attacks"][str(monster)][0]:
 							if self.tracked_state["monsters_last_attacks"][str(monster)][1] + 1 >= limited_times: # selecting this would exceed limit:
 								exceeds_limit = True
+								self.debug_log.append("Tried to use " + selected_move + " but that would exceed a move limit")
 					if not exceeds_limit:
 						break
 		
@@ -754,7 +771,7 @@ class Game:
 				# wake up
 				selected_move = "Stunned"
 				monster.add_power("Metallicize", -8)
-				monster.remove_power("Asleep") # I think this doesn't actually exist in the code
+				#monster.remove_power("Asleep") # I think this doesn't actually exist in the code
 				self.tracked_state["lagavulin_is_asleep"] = False
 		
 		return selected_move
@@ -885,10 +902,8 @@ class Game:
 
 		self.decrement_duration_powers(monster)
 				
-	# Note: this function isn't called anywhere yet, but it also might not need to ever be simulated
-	def apply_start_of_combat_effects(self, character):
+	def apply_start_of_combat_effects(self):
 	
-		# TODO move innate cards to top of deck / starting hand
 		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
 		
 		for monster in available_monsters:
@@ -898,66 +913,66 @@ class Game:
 			if "powers" in monster.intents:
 				for power in monster.intents["powers"]:
 					monster.add_power(power["name"], power["amount"])
+					self.debug_log.append("DEBUG: " + str(monster) + " has power " + str(power))
 				
-	
-		if character is self.player:
-			# FIXME relics technically activate in order of acquisition (?)
 
-			if self.player.current_hp / self.player.max_hp < 0.50:
-				self.tracked_state["below_half_health"] = True
-				if self.has_relic("Red Skull") and self.tracked_state["below_half_health"]:
-					self.player.add_power("Strength", 3)
-			if self.has_relic("Thread and Needle"):
-				character.add_power("Plated Armor", 4)
-			if self.has_relic("Anchor"):
-				self.add_block(character, 10)
-			if self.has_relic("Fossilized Helix"):
-				self.player.add_power("Buffer", 1)
-			if self.has_relic("Vajra"):
-				self.player.add_power("Strength", 1)
-			if self.has_relic("Oddly Smooth Stone"):
-				self.player.add_power("Dexterity", 1)
-			if self.has_relic("Bronze Scales"):
-				character.add_power("Thorns", 3)
-			if self.has_relic("Mark of Pain"):
-				self.draw_pile.append(spirecomm.spire.card.Card("Wound", "Wound", spirecomm.spire.card.CardType.STATUS, spirecomm.spire.card.CardRarity.SPECIAL))
-				self.draw_pile.append(spirecomm.spire.card.Card("Wound", "Wound", spirecomm.spire.card.CardType.STATUS, spirecomm.spire.card.CardRarity.SPECIAL))
-				random.shuffle(draw_pile)
-			if self.has_relic("Philosopher's Stone"):
-				available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
-				for monster in available_monsters:
-					monster.add_power("Strength", 1)
-			if self.has_relic("Bag of Preparation"):
-				random.shuffle(self.draw_pile)
-				self.hand += self.draw_pile.pop(0)
-				self.hand += self.draw_pile.pop(0)
-			if self.has_relic("Bag of Marbles"):
-				for monster in available_monsters:
-					monster.add_power("Vulnerable", 1)
-			if self.has_relic("Red Mask"):
-				for monster in available_monsters:
-					monster.add_power("Weakened", 1)
-			if self.has_relic("Snecko Eye"):
-				self.player.add_power("Confused", 1)
-			if self.has_relic("Gambling Chip"):
-				self.current_action = "GamblingChipAction"
-				self.screen = HandSelectScreen(self.hand, selected=[], num_cards=99, can_pick_zero=True)
-				self.screen_type = spirecomm.spire.screen.Screen.ScreenType.HAND_SELECT
-				self.screen_up = True
-				
-				
-			# TODO bottled cards are waiting on patch to CommMod
-							
-			draw = self.draw_pile
-			for card in draw:
-				for effect in card.effects:
-					if effect["effect"] == "Innate":
-						self.hand += card
-						if self.has_power("Confused"):
-							card.cost = random.choice(range(4))
-						self.draw_pile.remove(card)
-						continue
-				
+		# FIXME relics technically activate in order of acquisition (?)
+
+		if self.player.current_hp / self.player.max_hp < 0.50:
+			self.tracked_state["below_half_health"] = True
+			if self.has_relic("Red Skull") and self.tracked_state["below_half_health"]:
+				self.player.add_power("Strength", 3)
+		if self.has_relic("Thread and Needle"):
+			self.player.add_power("Plated Armor", 4)
+		if self.has_relic("Anchor"):
+			self.add_block(self.player, 10)
+		if self.has_relic("Fossilized Helix"):
+			self.player.add_power("Buffer", 1)
+		if self.has_relic("Vajra"):
+			self.player.add_power("Strength", 1)
+		if self.has_relic("Oddly Smooth Stone"):
+			self.player.add_power("Dexterity", 1)
+		if self.has_relic("Bronze Scales"):
+			self.player.add_power("Thorns", 3)
+		if self.has_relic("Mark of Pain"):
+			self.draw_pile.append(spirecomm.spire.card.Card("Wound", "Wound", spirecomm.spire.card.CardType.STATUS, spirecomm.spire.card.CardRarity.SPECIAL))
+			self.draw_pile.append(spirecomm.spire.card.Card("Wound", "Wound", spirecomm.spire.card.CardType.STATUS, spirecomm.spire.card.CardRarity.SPECIAL))
+			random.shuffle(draw_pile)
+		if self.has_relic("Philosopher's Stone"):
+			available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+			for monster in available_monsters:
+				monster.add_power("Strength", 1)
+		if self.has_relic("Bag of Preparation"):
+			random.shuffle(self.draw_pile)
+			self.hand += self.draw_pile.pop(0)
+			self.hand += self.draw_pile.pop(0)
+		if self.has_relic("Bag of Marbles"):
+			for monster in available_monsters:
+				monster.add_power("Vulnerable", 1)
+		if self.has_relic("Red Mask"):
+			for monster in available_monsters:
+				monster.add_power("Weakened", 1)
+		if self.has_relic("Snecko Eye"):
+			self.player.add_power("Confused", 1)
+		if self.has_relic("Gambling Chip"):
+			self.current_action = "GamblingChipAction"
+			self.screen = HandSelectScreen(self.hand, selected=[], num_cards=99, can_pick_zero=True)
+			self.screen_type = spirecomm.spire.screen.Screen.ScreenType.HAND_SELECT
+			self.screen_up = True
+			
+			
+		# TODO bottled cards are waiting on patch to CommMod
+						
+		draw = self.draw_pile
+		for card in draw:
+			for effect in card.effects:
+				if effect["effect"] == "Innate":
+					self.hand += card
+					if self.has_power("Confused"):
+						card.cost = random.choice(range(4))
+					self.draw_pile.remove(card)
+					continue
+			
 	def check_effects_on_kill(self, target):
 		# Note: Ritual Dagger and Feed tracked by the card effects
 		
@@ -1440,9 +1455,9 @@ class Game:
 											hits += h
 									if hits == monster.move_hits:
 										monster.current_move = move
-										self.debug_log.append("counted hits " + str(hits) + " is " + str(hits))
-									else: # TODO remove
-										self.debug_log.append("counted hits " + str(hits) + " is not " + str(hits))
+										self.debug_log.append("DEBUG: counted hits " + str(hits) + " is " + str(hits)) # TODO remove
+									else: 
+										self.debug_log.append("DEBUG: counted hits " + str(hits) + " is not " + str(hits)) # TODO remove
 								else:
 									monster.current_move = move
 									
@@ -1536,11 +1551,11 @@ class Game:
 						elif effect["name"] == "Escape":
 							monster.is_gone = True
 						
-						else:
+						elif effect["name"] not in PASSIVE_EFFECTS:
 							self.debug_log.append("WARN: Unknown effect " + effect["name"])
 						
 					# increment count of moves in a row
-					if str(monster) in self.tracked_state["monsters_last_attacks"]:
+					if str(monster) in self.tracked_state["monsters_last_attacks"] and self.tracked_state["monsters_last_attacks"][str(monster)][0] == monster.current_move:
 						self.tracked_state["monsters_last_attacks"][str(monster)][1] += 1
 					else:
 						self.tracked_state["monsters_last_attacks"][str(monster)] = [monster.current_move, 1]
@@ -1593,8 +1608,10 @@ class Game:
 				
 		
 	def simulate_discovery(self, action):
-		# TODO
+		self.choice_list = []
+		self.current_action = None
 		
+		# TODO actually discover the card
 	
 		return self
 		
@@ -1834,7 +1851,7 @@ class Game:
 			elif effect["target"] == "all":
 				effect_targets = available_monsters
 			elif effect["target"] == "random":
-				effect_targets = random.choice(available_monsters)
+				effect_targets = [random.choice(available_monsters)]
 				
 			
 			# Do effect
@@ -2104,7 +2121,7 @@ class Game:
 					selected_card = random.choice([c for c in self.hand if c.cost > 0])
 					selected_card.cost = 0
 					
-				else:
+				elif effect["effect"] not in PASSIVE_EFFECTS:
 					self.debug_log.append("WARN: Unknown effect " + effect["effect"])
 					
 					

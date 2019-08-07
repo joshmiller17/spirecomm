@@ -230,7 +230,7 @@ class SimpleAgent:
 	# Check that the simulator predicted this outcome was possible
 	def simulation_sanity_check(self, original_state, action):
 		original_state.debug_file = self.logfile_name
-		simulated_state = original_state.takeAction(action)
+		simulated_state = original_state.takeAction(action, from_real=True)
 		while len(simulated_state.debug_log):
 			self.log(simulated_state.debug_log.pop(0))
 		real_diff = self.state_diff(original_state, self.blackboard.game, ignore_randomness=True)
@@ -244,9 +244,13 @@ class SimpleAgent:
 		for key, value in real_diff.items():
 			if key not in sim_diff:
 				diff_diff["sim_missing_" + key] = value
-			elif value != sim_diff[key]:
-				diff_diff["sims_val_" + key] = sim_diff[key]
-				diff_diff["real_val_" + key] = value
+			else:
+				val_diff = value != sim_diff[key]
+				if type(value) is list: # compare lists in unordered way
+					val_diff = set(value) != set(sim_diff[key])
+				if val_diff:
+					diff_diff["sims_val_" + key] = sim_diff[key]
+					diff_diff["real_val_" + key] = value
 		for key, value in sim_diff.items():
 			if key not in real_diff:
 				diff_diff["sim_added_" + key] = value
