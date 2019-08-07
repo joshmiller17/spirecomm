@@ -1440,6 +1440,9 @@ class Game:
 											hits += h
 									if hits == monster.move_hits:
 										monster.current_move = move
+										self.debug_log.append("counted hits " + str(hits) + " is " + str(hits))
+									else: # TODO remove
+										self.debug_log.append("counted hits " + str(hits) + " is not " + str(hits))
 								else:
 									monster.current_move = move
 									
@@ -1478,7 +1481,7 @@ class Game:
 							if monster.monster_id == "FuzzyLouseNormal" or monster.monster_id == "FuzzyLouseDefensive":
 								base_damage += monster.misc # adjustment because louses are variable
 								self.debug_log.append("Adjusted damage for louse: " + str(monster.misc))
-							for _ in hits:
+							for _ in range(hits):
 								unblocked_damage = self.use_attack(base_damage, monster, self.player)
 								self.debug_log.append("Taking " + str(unblocked_damage) + " damage from " + str(monster))
 								
@@ -1893,7 +1896,7 @@ class Game:
 						action = CardSelectAction(cards=self.hand)
 						self.simulate_upgrade(action)
 					else:
-						self.screen = spirecomm.spire.screen.Screen.HandSelectScreen(cards=self.hand, selected=[], num_cards=1, can_pick_zero=False)
+						self.screen = spirecomm.spire.screen.HandSelectScreen(cards=self.hand, selected=[], num_cards=1, can_pick_zero=False)
 						self.screen_up = True
 						self.screen_type = spirecomm.spire.screen.Screen.ScreenType.HAND_SELECT
 						self.current_action = "ArmamentsAction"
@@ -1909,7 +1912,7 @@ class Game:
 						action = CardSelectAction(cards=self.hand)
 						self.simulate_hand_to_topdeck(action)
 					else:
-						self.screen = spirecomm.spire.screen.Screen.HandSelectScreen(cards=self.hand, selected=[], num_cards=effect["amount"], can_pick_zero=False)
+						self.screen = spirecomm.spire.screen.HandSelectScreen(cards=self.hand, selected=[], num_cards=effect["amount"], can_pick_zero=False)
 						self.screen_up = True
 						self.screen_type = spirecomm.spire.screen.Screen.ScreenType.HAND_SELECT
 						self.current_action = "PutOnDeckAction"
@@ -1921,7 +1924,7 @@ class Game:
 						action = CardSelectAction(cards=self.discard_pile)
 						self.simulate_headbutt(action)
 					else:
-						self.screen = spirecomm.spire.screen.Screen.GridSelectScreen(cards=self.discard_pile, selected=[], num_cards=1, can_pick_zero=False)
+						self.screen = spirecomm.spire.screen.GridSelectScreen(cards=self.discard_pile, selected=[], num_cards=1, can_pick_zero=False)
 						self.screen_up = True
 						self.screen_type = spirecomm.spire.screen.Screen.ScreenType.GRID_SELECT
 						self.current_action = "PutOnDeckAction"
@@ -1933,7 +1936,7 @@ class Game:
 						action = CardSelectAction(cards=self.exhaust_pile)
 						self.simulate_exhume(action)
 					else:
-						self.screen = spirecomm.spire.screen.Screen.GridSelectScreen(cards=self.hand, selected=[], num_cards=1, can_pick_zero=False)
+						self.screen = spirecomm.spire.screen.GridSelectScreen(cards=self.hand, selected=[], num_cards=1, can_pick_zero=False)
 						self.screen_up = True
 						self.screen_type = spirecomm.spire.screen.Screen.ScreenType.GRID_SELECT
 						self.current_action = "ExhumeAction"
@@ -2089,7 +2092,7 @@ class Game:
 						action = CardSelectAction(cards=self.hand)
 						self.simulate_exhaust(action)
 					else:
-						self.screen = spirecomm.spire.screen.Screen.HandSelectScreen(cards=self.hand, selected=[], num_cards=effect["amount"], can_pick_zero=False)
+						self.screen = spirecomm.spire.screen.HandSelectScreen(cards=self.hand, selected=[], num_cards=effect["amount"], can_pick_zero=False)
 						self.screen_up = True
 						self.screen_type = spirecomm.spire.screen.Screen.ScreenType.HAND_SELECT
 						self.current_action = "ExhaustAction"

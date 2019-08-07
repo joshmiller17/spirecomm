@@ -108,6 +108,8 @@ class Card:
 					else:
 						raise Exception("missing data")
 				else:
+					if "+" in self.name and jsonData["upgrades"] == 0:
+						raise Exception("Upgraded card " + self.name + " listed as 0 upgrades")
 					if jsonData["class"] not in VALID_CLASSES:
 						raise Exception("invalid class")
 					if not any(jsonData["type"] == type.name for type in CardType):
