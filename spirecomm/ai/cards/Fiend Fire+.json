@@ -1,4 +1,5 @@
 {
+"class":"IRONCLAD",
  "type": "ATTACK", "rarity": "RARE", "upgrades": 1, "has_target": true, "cost": 0, "misc": 0, "is_playable": false, "exhausts": true,
 	"value": {
 		"synergies": [
