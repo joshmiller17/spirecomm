@@ -1757,7 +1757,7 @@ class Game:
 			self.player.add_power("Strength Down", 5)
 		
 		elif action.potion.name == "Strength Potion":
-			self.player.add_power("Strength", 3)
+			self.player.add_power("Strength", 2)
 		
 		elif action.potion.name == "Swift Potion":
 			self.draw_card(3)
@@ -1941,7 +1941,7 @@ class Game:
 						action = CardSelectAction(cards=self.discard_pile)
 						self.simulate_headbutt(action)
 					else:
-						self.screen = spirecomm.spire.screen.GridSelectScreen(cards=self.discard_pile, selected=[], num_cards=1, can_pick_zero=False)
+						self.screen = spirecomm.spire.screen.GridSelectScreen(cards=self.discard_pile, selected_cards=[], num_cards=1, can_pick_zero=False)
 						self.screen_up = True
 						self.screen_type = spirecomm.spire.screen.Screen.ScreenType.GRID_SELECT
 						self.current_action = "PutOnDeckAction"
@@ -1953,7 +1953,7 @@ class Game:
 						action = CardSelectAction(cards=self.exhaust_pile)
 						self.simulate_exhume(action)
 					else:
-						self.screen = spirecomm.spire.screen.GridSelectScreen(cards=self.hand, selected=[], num_cards=1, can_pick_zero=False)
+						self.screen = spirecomm.spire.screen.GridSelectScreen(cards=self.hand, selected_cards=[], num_cards=1, can_pick_zero=False)
 						self.screen_up = True
 						self.screen_type = spirecomm.spire.screen.Screen.ScreenType.GRID_SELECT
 						self.current_action = "ExhumeAction"
