@@ -138,7 +138,7 @@ class Monster(Character):
 		self.monster_index = 0
 		self.used_half_health_ability = False
 		
-		self.misc = 0 # used by Louses to track their bonus damage. Used by thieves to track gold stolen
+		self.misc = 0 # used by Louses to track their bonus damage. Used by thieves to track gold stolen. Used by Guardian to track mode shifts
 
 		
 		self.move_powers = []

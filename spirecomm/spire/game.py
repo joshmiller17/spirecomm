@@ -1144,6 +1144,13 @@ class Game:
 				target.current_hp -= unblocked_damage
 				self.check_effects_on_kill(target) # see if we killed them and if we do something about that
 		
+			# Guardian Mode Shift
+			if target is not self.player and target.monster_id == "TheGuardian" and target.has_power("Mode Shift"):
+				shift_amt = min(target.get_power_amount("Mode Shift", unblocked_damage))
+				target.add_power("Mode Shift", -1 * shift_amt)
+				if target.get_power_amount("Mode Shift") == 0: # Shift to Defensive
+					target.current_move = "Defensive Mode"
+		
 		if unblocked_damage > 0 and target is self.player:
 				
 			if self.has_relic("Runic Cube"):
@@ -1550,6 +1557,10 @@ class Game:
 						
 						elif effect["name"] == "Escape":
 							monster.is_gone = True
+							
+						elif effect["name"] == "Offensive Mode":
+							monster.add_power("Mode Shift", 30 + monster.misc) # TODO account for ascension_level
+							monster.misc += 10
 						
 						elif effect["name"] not in PASSIVE_EFFECTS:
 							self.debug_log.append("WARN: Unknown effect " + effect["name"])
@@ -1844,7 +1855,7 @@ class Game:
 			elif effect["target"] == "one":
 				for monster in available_monsters:
 					if action.target_monster is None:
-						raise Exception("Action expects a target; check " + str(action.card) + ".json for potential error.")
+						raise Exception("Action expects a target; check " + str(action.card.get_clean_name()) + ".json for potential error.")
 					if action.target_monster == monster:
 						effect_targets = [monster]
 						break

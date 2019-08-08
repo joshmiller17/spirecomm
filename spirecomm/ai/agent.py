@@ -390,29 +390,9 @@ class SimpleAgent:
 								monster_changes[m_id + "_block"] = monster2.block - monster1.block
 							
 						if monster1.powers != monster2.powers:
-							monster_changes[m_id + "_powers_changed"] = []
-							monster_changes[m_id + "_powers_added"] = []
-							monster_changes[m_id + "_powers_removed"] = []
-							powers_changed = set([p.power_name for p in set(monster2.powers).symmetric_difference(set(monster1.powers))])
-							for name in powers_changed:
-								powers1 = [p.power_name for p in monster1.powers]
-								powers2 = [p.power_name for p in monster2.powers]
-								if name in powers1 and name in powers2:
-									monster_changes[m_id + "_powers_changed"].append((name, monster2.get_power(name).amount - monster1.get_power(name).amount))
-									continue
-								elif name in powers2:
-									monster_changes[m_id + "_powers_added"].append((name, monster2.get_power(name).amount))
-									continue
-								elif name in powers1:
-									monster_changes[m_id + "_powers_removed"].append((name, monster1.get_power(name).amount))
-									continue
-								
-							if monster_changes[m_id + "_powers_added"] == []:
-								monster_changes.pop(m_id + "_powers_added", None)
-							if monster_changes[m_id + "_powers_removed"] == []:
-								monster_changes.pop(m_id + "_powers_removed", None)
-							if monster_changes[m_id + "_powers_changed"] == []:
-								monster_changes.pop(m_id + "_powers_changed", None)
+							powers_changed = self.get_power_changes(monster1.powers, monster2.powers)
+							for name, amount in powers_changed.items():
+								diff[m_id + "_power_change_" + name] = amount
 						break
 						
 					elif monster1 not in monsters2:
@@ -555,32 +535,9 @@ class SimpleAgent:
 				diff["block"] = state2.player.block - state1.player.block
 				
 			if state1.player.powers != state2.player.powers:
-				diff["powers_changed"] = []
-				diff["powers_added"] = []
-				diff["powers_removed"] = []
-				powers_changed = set(state2.player.powers).symmetric_difference(set(state1.player.powers))
-				for power in powers_changed:
-					#power1 = next(p for p in state1.player.powers if p.power_name == power.power_name)
-					#power2 = next(p for p in state2.player.powers if p.power_name == power.power_name)
-					if power in state1.player.powers and power in state2.player.powers:
-							diff["powers_changed"].append((power.power_name, power2.amount - power1.amount))
-					elif power in state2.player.powers:
-						for p2 in state2.player.powers:
-							if p2.power_name == power.power_name:
-								diff["powers_added"].append((p2.power_name, p2.amount))
-								continue
-					elif power in state1.player.powers:
-						for p1 in state1.player.powers:
-							if p1.power_name == power.power_name:
-								diff["powers_added"].append((p1.power_name, p1.amount))
-								continue
-									
-				if diff["powers_added"] == []:
-					diff.pop("powers_added", None)
-				if diff["powers_removed"] == []:
-					diff.pop("powers_removed", None)
-				if diff["powers_changed"] == []:
-					diff.pop("powers_changed", None)
+				powers_changed = self.get_power_changes(state1.player.powers, state2.player.powers)
+				for name, amount in powers_changed.items():
+					diff["player_power_change_" + name] = amount
 					
 
 		# if diff != {}:
@@ -613,6 +570,35 @@ class SimpleAgent:
 		
 			
 			
+		return diff
+		
+	# return a dict of powers and amount difference, assume 0 for non existent
+	def get_power_changes(self, powers1, powers2):
+		# convert tuples to dicts
+		p1 = {}
+		p2 = {}
+		for p in powers1:
+			p1[p.power_name] = p.amount
+		for p in powers2:
+			p2[p.power_name] = p.amount
+			
+
+		diff = {}
+		powers = set(())
+		for p in p1.keys():
+			powers.add(p)
+		for p in p2.keys():
+			powers.add(p)
+		for power in powers:
+			amt1 = 0
+			if power in p1:
+				amt1 = p1[power]
+			amt2 = 0
+			if power in p2:
+				amt2 = p2[power]
+			if amt2 != amt1:
+				diff[power] = amt2 - amt1
+		
 		return diff
 		
 		

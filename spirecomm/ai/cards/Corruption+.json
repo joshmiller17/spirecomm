@@ -1,6 +1,6 @@
 {
 "class" : "IRONCLAD",
-"type": "POWER", "rarity": "UNCOMMON", "upgrades": 0, "has_target": false, "cost": 3, "misc": 0, "is_playable": false, "exhausts": false,
+"type": "POWER", "rarity": "UNCOMMON", "upgrades": 1, "has_target": false, "cost": 3, "misc": 0, "is_playable": false, "exhausts": false,
 	"value": {
 		"synergies": [
 			{

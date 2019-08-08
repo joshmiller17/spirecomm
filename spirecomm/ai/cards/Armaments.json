@@ -33,7 +33,7 @@
 		},
 		
 		{
-		"target" : "one",
+		"target" : "self",
 		"effect" : "Armaments",
 		"amount" : 1
 		}

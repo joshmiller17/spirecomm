@@ -122,7 +122,7 @@ class Card:
 						actually_exhausts = True 
 				if jsonData["exhausts"] != actually_exhausts:
 					raise Exception("invalid exhaust: JSON says " + str(self.exhausts) + " but effects say " + str(actually_exhausts))
-				if jsonData["cost"] != self.cost:
+				if jsonData["cost"] != self.cost and self.is_playable: # ensure we're checking cost in a valid situation
 					raise Exception("invalid cost: JSON says " + str(jsonData["cost"]) + " but effects say " + str(self.cost))
 				
 		except Exception as e:

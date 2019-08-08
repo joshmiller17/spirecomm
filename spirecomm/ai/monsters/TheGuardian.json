@@ -130,6 +130,10 @@
 				{
 					"name" : "Thorns",
 					"amount" : -3
+				},
+				{
+					"name" : "Offensive Mode",
+					"amount" : 1
 				}
 			],
 			"next_move" :[
