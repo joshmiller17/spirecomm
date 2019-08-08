@@ -1,4 +1,5 @@
 {
+"class": "IRONCLAD", "type": "SKILL", "rarity": "RARE", "upgrades": 0, "has_target": false, "cost": 2, "misc": 0, "is_playable": true, "exhausts": true,
 	"value": {
 		"synergies": [
 			{
