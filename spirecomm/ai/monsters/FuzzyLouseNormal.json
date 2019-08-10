@@ -1,11 +1,5 @@
 {
-	"powers" :
-		[
-			{
-				"name" : "Curl Up",
-				"amount" : 5
-			}
-		],
+
 	"moveset" : {
 				"Bite" :
 					{

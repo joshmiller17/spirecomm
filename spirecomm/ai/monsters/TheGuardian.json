@@ -1,12 +1,5 @@
 {
 	"startswith" : "Charging Up",
-	"powers" : 
-		[
-			{
-				"name" : "Mode Shift",
-				"amount" : 30
-			}
-		],
 	"moveset" : {
 		"Charging Up" :
 			{

@@ -393,6 +393,10 @@ class SimpleAgent:
 							powers_changed = self.get_power_changes(monster1.powers, monster2.powers)
 							for name, amount in powers_changed.items():
 								diff[m_id + "_power_change_" + name] = amount
+								self.log("DEBUG: m1 powers are " + str([str(power) for power in monster1.powers]))
+								self.log("DEBUG: m2 powers are " + str([str(power) for power in monster2.powers]))
+								self.log("DEBUG: m1 is " + str(monster1))
+								self.log("DEBUG: m2 is " + str(monster2))
 						break
 						
 					elif monster1 not in monsters2:
@@ -440,10 +444,13 @@ class SimpleAgent:
 				cards_changed = cards_changed_from_hand | cards_changed_from_draw | cards_changed_from_discard | cards_changed_from_exhaust
 				cards_changed_outside_hand = cards_changed_from_draw | cards_changed_from_discard | cards_changed_from_exhaust
 				
+				choice_then_discard = ["Headbutt", "Armaments", "True Grit", "Dual Wield"]
+				choice_then_exhaust = ["Warcry", "Infernal Blade"]
+				
 				card_actions = ["drawn", "hand_to_deck", "discovered", "exhausted", "exhumed", "discarded",
 								"discard_to_hand", "deck_to_discard", "discard_to_deck",
 								"discovered_to_deck", "discovered_to_discard", # "playability_changed", <- deprecated
-								 "power_played", "upgraded", "unknown_change", "err_pc"]
+								 "power_played", "upgraded", "exhausted_from_deck", "unknown_change", "err_pc"]
 				
 				for a in card_actions:
 					diff[a] = []
@@ -477,6 +484,11 @@ class SimpleAgent:
 						elif card in state2.hand:
 							diff["exhumed"].append(card.get_id_str())
 							continue
+					elif card in state1.draw_pile and card in state2.exhaust_pile:
+						# havoc etc
+						diff["exhausted_from_deck"].append(card.get_id_str())
+						continue
+						
 					elif card in cards_changed_from_discard and card in cards_changed_from_draw:
 						#deck to discard
 						if card in state2.discard_pile:
@@ -507,6 +519,10 @@ class SimpleAgent:
 						# discovered to discard, e.g. status effect
 						diff["discovered_to_discard"].append(card.get_id_str())
 						continue
+					elif card.get_base_name() in choice_then_discard and card in state2.discard_pile: # these cards are weird since they get played and there's a state of change before it's discarded
+						diff["made_choice_then_discarded"].append(card.get_id_str())
+					elif card.get_base_name() in choice_then_exhaust and card in state2.exhaust:  # these cards are weird since they get played and there's a state of change before it's exhausted
+						diff["made_choice_then_exhausted"].append(card.get_id_str())
 					else:
 						self.log("WARN: unknown card change " + card.get_id_str(), debug=3)
 						diff["unknown_change"].append(card.get_id_str())

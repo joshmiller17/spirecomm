@@ -1,11 +1,5 @@
 {
-	"powers" :
-		[
-			{
-				"name" : "Spore Cloud",
-				"amount" : 2
-			}
-		],
+
 	"moveset" : {
 				"Bite" :
 					{

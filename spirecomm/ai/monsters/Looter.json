@@ -1,11 +1,5 @@
 {
-	"powers" : 
-		[
-			{
-				"name" : "Thievery",
-				"amount" : 15
-			}
-		],
+
 	"startswith" : "Mug",
 	"moveset" : {
 				

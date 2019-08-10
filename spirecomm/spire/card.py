@@ -137,11 +137,22 @@ class Card:
 		self.value["purge value"] = None # How much do we want to get rid of this card?
 		self.value["synergy value"] = None # How well does this work with our deck?
 		
+	# lowercase, I don't think the choice_list makes any other changes that I'm aware of
+	def get_choice_str(self):
+		return self.name.lower()
+		
 	# Strip periods and extra upgrades for cards like J.A.X. and Searing Blow+3
 	def get_clean_name(self):
 		new_name = ''.join(self.name.split('.'))
 		if new_name.find('+') != -1:
 			new_name = new_name[:new_name.find('+')+1]
+		return new_name
+		
+	# clean name without +
+	def get_base_name(self):
+		new_name = ''.join(self.name.split('.'))
+		if new_name.find('+') != -1:
+			new_name = new_name[:new_name.find('+')]
 		return new_name
 		
 	def upgrade(self): # FIXME I'm not sure that's how this works

@@ -26,7 +26,7 @@ MCTS_ROUND_COST = 0.5 # penalize long fights
 
 BUFFS = ["Ritual", "Strength", "Dexterity", "Incantation", "Enrage", "Metallicize", "SadisticNature", "Juggernaut", "DoubleTap", "DemonForm", "DarkEmbrace", "Brutality", "Berserk", "Rage", "Feel No Pain", "Flame Barrier", "Corruption", "Combust", "Fire Breathing", "Mayhem"]
 DEBUFFS = ["Frail", "Vulnerable", "Weakened", "Entangled", "Shackles", "NoBlock", "No Draw", "Strength Down", "Dexterity Down", "Focus Down"]
-PASSIVE_EFFECTS = ["Strike Damage"] # these don't do anything by themselves
+PASSIVE_EFFECTS = ["Strike Damage", "Ethereal"] # these don't do anything by themselves
 
 
 class RoomPhase(Enum):
@@ -910,10 +910,10 @@ class Game:
 			if monster.monster_id == "Lagavulin" and monster.move_base_damage == 0:
 				self.tracked_state["lagavulin_is_asleep"] = True
 				
-			if "powers" in monster.intents:
-				for power in monster.intents["powers"]:
-					monster.add_power(power["name"], power["amount"])
-					self.debug_log.append("DEBUG: " + str(monster) + " has power " + str(power))
+			# if "powers" in monster.intents:
+				# for power in monster.intents["powers"]:
+					# monster.add_power(power["name"], power["amount"])
+					# self.debug_log.append("DEBUG: " + str(monster) + " has power " + str(power))
 				
 
 		# FIXME relics technically activate in order of acquisition (?)
@@ -957,7 +957,7 @@ class Game:
 		if self.has_relic("Gambling Chip"):
 			self.current_action = "GamblingChipAction"
 			self.screen = HandSelectScreen(self.hand, selected=[], num_cards=99, can_pick_zero=True)
-			self.screen_type = spirecomm.spire.screen.Screen.ScreenType.HAND_SELECT
+			self.screen_type = spirecomm.spire.screen.ScreenType.HAND_SELECT
 			self.screen_up = True
 			
 			
@@ -1809,7 +1809,7 @@ class Game:
 		
 		
 	# Returns a new state
-	def simulate_play(self, action, free_play=False):
+	def simulate_play(self, action, free_play=False, from_deck=False):
 	
 		if not action.card.loadedFromJSON:
 			raise Exception("Card not loaded from JSON: " + str(action.card.name))
@@ -1822,13 +1822,16 @@ class Game:
 		
 		# Fix for IDs not matching
 		found = False # test
-		for c in self.hand:
+		possible_cards = self.hand
+		if from_deck:
+			possible_cards = self.draw_pile
+		for c in possible_cards:
 			if action.card == c:
 				action.card = c
 				found = True 
 		if not found:
-			raise Exception("Could not find " + action.card.get_id_str() + " in " + str([card.get_id_str() for card in self.hand]))
-							
+			raise Exception("Could not find action card " + action.card.get_id_str() + " in hand " + str([card.get_id_str() for card in possible_cards]))
+		
 		if not free_play:
 			# move card to discard
 			self.player.energy -= action.card.cost
@@ -1926,7 +1929,7 @@ class Game:
 					else:
 						self.screen = spirecomm.spire.screen.HandSelectScreen(cards=self.hand, selected=[], num_cards=1, can_pick_zero=False)
 						self.screen_up = True
-						self.screen_type = spirecomm.spire.screen.Screen.ScreenType.HAND_SELECT
+						self.screen_type = spirecomm.spire.screen.ScreenType.HAND_SELECT
 						self.current_action = "ArmamentsAction"
 					
 				elif effect["effect"] == "Armaments+":
@@ -1942,8 +1945,9 @@ class Game:
 					else:
 						self.screen = spirecomm.spire.screen.HandSelectScreen(cards=self.hand, selected=[], num_cards=effect["amount"], can_pick_zero=False)
 						self.screen_up = True
-						self.screen_type = spirecomm.spire.screen.Screen.ScreenType.HAND_SELECT
+						self.screen_type = spirecomm.spire.screen.ScreenType.HAND_SELECT
 						self.current_action = "PutOnDeckAction"
+						self.choice_list = [card.get_choice_str() for card in self.hand]
 						
 				elif effect["effect"] == "Headbutt":
 					if len(self.discard_pile) == 0:
@@ -1954,8 +1958,9 @@ class Game:
 					else:
 						self.screen = spirecomm.spire.screen.GridSelectScreen(cards=self.discard_pile, selected_cards=[], num_cards=1, can_pick_zero=False)
 						self.screen_up = True
-						self.screen_type = spirecomm.spire.screen.Screen.ScreenType.GRID_SELECT
+						self.screen_type = spirecomm.spire.screen.ScreenType.GRID_SELECT
 						self.current_action = "PutOnDeckAction"
+						self.choice_list = [card.get_choice_str() for card in self.discard_pile]
 						
 				elif effect["effect"] == "Exhume":
 					if len(self.exhaust_pile) == 0:
@@ -1966,7 +1971,7 @@ class Game:
 					else:
 						self.screen = spirecomm.spire.screen.GridSelectScreen(cards=self.hand, selected_cards=[], num_cards=1, can_pick_zero=False)
 						self.screen_up = True
-						self.screen_type = spirecomm.spire.screen.Screen.ScreenType.GRID_SELECT
+						self.screen_type = spirecomm.spire.screen.ScreenType.GRID_SELECT
 						self.current_action = "ExhumeAction"
 					
 					
@@ -2089,7 +2094,7 @@ class Game:
 				elif effect["effect"] == "Havoc":
 					havoc_card = self.draw_pile.pop(0)
 					play_action = self.get_random_play(havoc_card)
-					self.simulate_play(play_action)
+					self.simulate_play(play_action, from_deck=True)
 					self.discard_pile.remove(havoc_card)
 					self.exhaust_card(havoc_card)
 					
@@ -2122,7 +2127,7 @@ class Game:
 					else:
 						self.screen = spirecomm.spire.screen.HandSelectScreen(cards=self.hand, selected=[], num_cards=effect["amount"], can_pick_zero=False)
 						self.screen_up = True
-						self.screen_type = spirecomm.spire.screen.Screen.ScreenType.HAND_SELECT
+						self.screen_type = spirecomm.spire.screen.ScreenType.HAND_SELECT
 						self.current_action = "ExhaustAction"
 					
 				elif effect["effect"] == "Draw":
