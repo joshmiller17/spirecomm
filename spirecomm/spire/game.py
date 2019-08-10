@@ -651,6 +651,12 @@ class Game:
 				
 		return self.tracked_state["possible_actions"]
 		
+	def get_upgradable_cards(self, cards):
+		upgradable = []
+		for card in cards:
+			if card.upgrades == 0 or card.get_base_name() == "Searing Blow":
+				upgradable.append(card)
+		return upgradable
 		
 	# a test bed for checking our surroundings
 	def debug_game_state(self):
@@ -1921,16 +1927,18 @@ class Game:
 					self.player.add_power(effect["effect"], effect["amount"])
 					
 				elif effect["effect"] == "Armaments":
-					if len(self.hand) == 0:
+					upgradable_cards = self.get_upgradable_cards(self.hand)
+					if len(upgradable_cards) == 0:
 						pass
-					elif len(self.hand) == 1:
-						action = CardSelectAction(cards=self.hand)
+					elif len(upgradable_cards) == 1:
+						action = CardSelectAction(cards=upgradable_cards)
 						self.simulate_upgrade(action)
 					else:
-						self.screen = spirecomm.spire.screen.HandSelectScreen(cards=self.hand, selected=[], num_cards=1, can_pick_zero=False)
+						self.screen = spirecomm.spire.screen.HandSelectScreen(cards=upgradable_cards, selected=[], num_cards=1, can_pick_zero=False)
 						self.screen_up = True
 						self.screen_type = spirecomm.spire.screen.ScreenType.HAND_SELECT
 						self.current_action = "ArmamentsAction"
+						self.choice_list = [card.get_choice_str() for card in upgradable_cards]
 					
 				elif effect["effect"] == "Armaments+":
 					for card in self.hand:
