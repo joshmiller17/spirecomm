@@ -852,13 +852,13 @@ class Game:
 		
 		for power in self.player.powers:
 			if power.power_name == "Strength Down":
-				self.apply_debuff(self.player, "Strength Down", -1 * power.amount)
+				self.apply_debuff(self.player, "Strength", -1 * power.amount)
 				self.player.remove_power("Strength Down")
 			elif power.power_name == "Dexterity Down":
-				self.apply_debuff(self.player, "Dexterity Down", -1 * power.amount)
+				self.apply_debuff(self.player, "Dexterity", -1 * power.amount)
 				self.player.remove_power("Dexterity Down")
 			elif power.power_name == "Focus Down":
-				self.apply_debuff(self.player, "Focus Down", -1 * power.amount)
+				self.apply_debuff(self.player, "Focus", -1 * power.amount)
 				self.player.remove_power("Focus Down")
 			elif power.power_name == "Plated Armor":
 				self.add_block(self.player, power.amount)
