@@ -740,12 +740,13 @@ class SimpleAgent:
 				self.think("{} ({}) is half-dead!".format(monster.name, monster.monster_index))
 			#if monster.is_gone:
 			#	self.think("{} ({}) is gone!".format(monster.name, monster.monster_index))
+			available_monsters = [monster for monster in self.blackboard.game.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
 			if monster.intent.is_attack():
 				if len(self.blackboard.game.monsters) > 1:
 					index_str = " [" + str(monster.monster_index + 1) + "]"
 				else:
 					index_str = ""
-				if monster.move_adjusted_damage is not None:
+				if monster.move_adjusted_damage is not None and monster in available_monsters:
 					if self.debug_level >= 5:
 						if monster.move_hits > 1:
 							self.think("{}{} is hitting me for {}x{} damage".format(monster.monster_id, index_str, monster.move_adjusted_damage, monster.move_hits))

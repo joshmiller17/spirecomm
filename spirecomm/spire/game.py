@@ -1439,9 +1439,7 @@ class Game:
 				
 			if monster.intents != {}: # we have correctly loaded intents JSON
 			
-				if monster.current_move is None:
-					# if self.combat_round == 1:
-		
+				if monster.current_move is None:		
 					if self.combat_round == 1 and "startswith" in monster.intents:
 						monster.current_move = monster.intents["startswith"]
 						if monster.monster_id == "Sentry" and monster.monster_index == 1:
@@ -1563,6 +1561,7 @@ class Game:
 							for new_monster in effect["amount"]:
 								m = spirecomm.spire.character.Monster(new_monster, new_monster, monster.current_hp,  monster.current_hp, 0, None, False, False)
 								self.monsters.append(m)
+								self.monsters.remove(monster)
 						
 						elif effect["name"] == "Escape":
 							monster.is_gone = True
