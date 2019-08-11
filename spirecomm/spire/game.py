@@ -1842,7 +1842,8 @@ class Game:
 			# move card to discard
 			self.player.energy -= action.card.cost
 			self.hand.remove(action.card)
-			self.discard_pile.append(action.card)
+			if action.card.type != spirecomm.spire.card.CardType.POWER: # powers just get removed from play
+				self.discard_pile.append(action.card)
 		
 		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
 
