@@ -908,6 +908,9 @@ class Game:
 
 		self.decrement_duration_powers(monster)
 				
+				
+	# DEPRECATED - we already get this information when we see the first state of combat
+	# tracking it again here creates duplicates
 	def apply_start_of_combat_effects(self):
 	
 		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
@@ -924,60 +927,60 @@ class Game:
 
 		# FIXME relics technically activate in order of acquisition (?)
 
-		if self.player.current_hp / self.player.max_hp < 0.50:
-			self.tracked_state["below_half_health"] = True
-			if self.has_relic("Red Skull") and self.tracked_state["below_half_health"]:
-				self.player.add_power("Strength", 3)
-		if self.has_relic("Thread and Needle"):
-			self.player.add_power("Plated Armor", 4)
-		if self.has_relic("Anchor"):
-			self.add_block(self.player, 10)
-		if self.has_relic("Fossilized Helix"):
-			self.player.add_power("Buffer", 1)
-		if self.has_relic("Vajra"):
-			self.player.add_power("Strength", 1)
-		if self.has_relic("Oddly Smooth Stone"):
-			self.player.add_power("Dexterity", 1)
-		if self.has_relic("Bronze Scales"):
-			self.player.add_power("Thorns", 3)
-		if self.has_relic("Mark of Pain"):
-			self.draw_pile.append(spirecomm.spire.card.Card("Wound", "Wound", spirecomm.spire.card.CardType.STATUS, spirecomm.spire.card.CardRarity.SPECIAL))
-			self.draw_pile.append(spirecomm.spire.card.Card("Wound", "Wound", spirecomm.spire.card.CardType.STATUS, spirecomm.spire.card.CardRarity.SPECIAL))
-			random.shuffle(draw_pile)
-		if self.has_relic("Philosopher's Stone"):
-			available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
-			for monster in available_monsters:
-				monster.add_power("Strength", 1)
-		if self.has_relic("Bag of Preparation"):
-			random.shuffle(self.draw_pile)
-			self.hand += self.draw_pile.pop(0)
-			self.hand += self.draw_pile.pop(0)
-		if self.has_relic("Bag of Marbles"):
-			for monster in available_monsters:
-				monster.add_power("Vulnerable", 1)
-		if self.has_relic("Red Mask"):
-			for monster in available_monsters:
-				monster.add_power("Weakened", 1)
-		if self.has_relic("Snecko Eye"):
-			self.player.add_power("Confused", 1)
-		if self.has_relic("Gambling Chip"):
-			self.current_action = "GamblingChipAction"
-			self.screen = HandSelectScreen(self.hand, selected=[], num_cards=99, can_pick_zero=True)
-			self.screen_type = spirecomm.spire.screen.ScreenType.HAND_SELECT
-			self.screen_up = True
+		# if self.player.current_hp / self.player.max_hp < 0.50:
+			# self.tracked_state["below_half_health"] = True
+			# if self.has_relic("Red Skull") and self.tracked_state["below_half_health"]:
+				# self.player.add_power("Strength", 3)
+		# if self.has_relic("Thread and Needle"):
+			# self.player.add_power("Plated Armor", 4)
+		# if self.has_relic("Anchor"):
+			# self.add_block(self.player, 10)
+		# if self.has_relic("Fossilized Helix"):
+			# self.player.add_power("Buffer", 1)
+		# if self.has_relic("Vajra"):
+			# self.player.add_power("Strength", 1)
+		# if self.has_relic("Oddly Smooth Stone"):
+			# self.player.add_power("Dexterity", 1)
+		# if self.has_relic("Bronze Scales"):
+			# self.player.add_power("Thorns", 3)
+		# if self.has_relic("Mark of Pain"):
+			# self.draw_pile.append(spirecomm.spire.card.Card("Wound", "Wound", spirecomm.spire.card.CardType.STATUS, spirecomm.spire.card.CardRarity.SPECIAL))
+			# self.draw_pile.append(spirecomm.spire.card.Card("Wound", "Wound", spirecomm.spire.card.CardType.STATUS, spirecomm.spire.card.CardRarity.SPECIAL))
+			# random.shuffle(draw_pile)
+		# if self.has_relic("Philosopher's Stone"):
+			# available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+			# for monster in available_monsters:
+				# monster.add_power("Strength", 1)
+		# if self.has_relic("Bag of Preparation"):
+			# random.shuffle(self.draw_pile)
+			# self.hand += self.draw_pile.pop(0)
+			# self.hand += self.draw_pile.pop(0)
+		# if self.has_relic("Bag of Marbles"):
+			# for monster in available_monsters:
+				# monster.add_power("Vulnerable", 1)
+		# if self.has_relic("Red Mask"):
+			# for monster in available_monsters:
+				# monster.add_power("Weakened", 1)
+		# if self.has_relic("Snecko Eye"):
+			# self.player.add_power("Confused", 1)
+		# if self.has_relic("Gambling Chip"):
+			# self.current_action = "GamblingChipAction"
+			# self.screen = HandSelectScreen(self.hand, selected=[], num_cards=99, can_pick_zero=True)
+			# self.screen_type = spirecomm.spire.screen.ScreenType.HAND_SELECT
+			# self.screen_up = True
 			
 			
-		# TODO bottled cards are waiting on patch to CommMod
+		# # TODO bottled cards are waiting on patch to CommMod
 						
-		draw = self.draw_pile
-		for card in draw:
-			for effect in card.effects:
-				if effect["effect"] == "Innate":
-					self.hand += card
-					if self.has_power("Confused"):
-						card.cost = random.choice(range(4))
-					self.draw_pile.remove(card)
-					continue
+		# draw = self.draw_pile
+		# for card in draw:
+			# for effect in card.effects:
+				# if effect["effect"] == "Innate":
+					# self.hand += card
+					# if self.has_power("Confused"):
+						# card.cost = random.choice(range(4))
+					# self.draw_pile.remove(card)
+					# continue
 			
 	def check_effects_on_kill(self, target):
 		# Note: Ritual Dagger and Feed tracked by the card effects

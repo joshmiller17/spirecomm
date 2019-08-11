@@ -445,7 +445,7 @@ class SimpleAgent:
 				cards_changed_outside_hand = cards_changed_from_draw | cards_changed_from_discard | cards_changed_from_exhaust
 				
 				choice_then_discard = ["Headbutt", "Armaments", "True Grit", "Dual Wield"]
-				choice_then_exhaust = ["Warcry", "Infernal Blade"]
+				choice_then_exhaust = ["Warcry", "Infernal Blade"] # FIXME exhaust is possibly atomic with the card effect? more data collection needed, might need to make the card effect composite so that exhausting can happen atomically with effect
 				
 				card_actions = ["drawn", "hand_to_deck", "discovered", "exhausted", "exhumed", "discarded",
 								"discard_to_hand", "deck_to_discard", "discard_to_deck",
