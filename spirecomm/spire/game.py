@@ -804,7 +804,7 @@ class Game:
 		
 		if self.player.has_power("Fire Breathing"):
 			available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
-			amt = self.player.get_power_amount("Fire Breathing") * self.attacks_played_this_turn
+			amt = self.player.get_power_amount("Fire Breathing") * self.tracked_state["attacks_played_this_turn"]
 			if amt > 0:
 				for monster in available_monsters:
 					self.apply_damage(amt, None, monster)
