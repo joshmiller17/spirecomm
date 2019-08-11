@@ -1640,8 +1640,9 @@ class Game:
 		return self
 		
 	def simulate_headbutt(self, action):
-		self.discard_pile.remove(action.card)
-		self.draw_pile.insert(0, action.card)
+		card = action.cards[0]
+		self.discard_pile.remove(card)
+		self.draw_pile.insert(0, card)
 		return self
 		
 	def simulate_hand_to_topdeck(self, action):
@@ -1654,12 +1655,13 @@ class Game:
 		return self
 
 	def simulate_exhume(self, action):
-		self.exhaust_pile.remove(action.card)
-		self.hand.append(action.card)
+		card = action.cards[0]
+		self.exhaust_pile.remove(card)
+		self.hand.append(card)
 		return self
 		
 	def simulate_dual_wield(self, action):
-		# TODO how to do dualwield+?
+		# TODO how to know whether it's dualwield+?
 		
 	
 		return self
