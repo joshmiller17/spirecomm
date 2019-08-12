@@ -149,6 +149,11 @@ class Game:
 		
 	def has_relic(self, name):
 		return self.get_relic(name) is not None
+		
+	# True iff either we're dead or the monsters are (or we smoke bomb)
+	def isTerminal(self):
+		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+		return self.player.current_hp <= 0 or len(available_monsters) < 1 or not self.in_combat
 	
 	def __str__(self):
 		string = "\n\n<---- Game State " + str(self.state_id) + " ----"
