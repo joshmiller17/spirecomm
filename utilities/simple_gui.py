@@ -360,7 +360,7 @@ def verifyJSONFolder(directory,kind):
 		try:
 			loaded = json.load(open(os.path.join(directory,f),"r"))
 			if kind == "card":
-				spirecomm.spire.card.Card(f[:-5], f[:-5], -1, -1, test_only=True) # try loading card as a test
+				spirecomm.spire.card.Card(f[:-5], f[:-5], -1, -1, compare_to_real=False) # try loading card as a test
 		except Exception as e:
 			lineNum = re.search("line (\d+) ",str(e),0).group(1)
 			error += "\nWARN: Malformed %s JSON in %s at line %s"%(kind,f,lineNum)
@@ -369,6 +369,7 @@ def verifyJSONFolder(directory,kind):
 if __name__ == "__main__":
 	lf = open("err.log", "w")
 	open("game.log", "w").close()
+	open("simulator.log", "w").close()
 	open("ai.log", "w").close()
 		
 	if config.SPIRECOMM_PATH == "C:\\path\\to\\spirecomm":
