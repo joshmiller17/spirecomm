@@ -154,6 +154,13 @@ class Game:
 	def isTerminal(self):
 		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
 		return self.player.current_hp <= 0 or len(available_monsters) < 1 or not self.in_combat
+		
+	def get_upgradable_cards(self, cards):
+		upgradable = []
+		for card in cards:
+			if card.upgrades == 0 or card.get_base_name() == "Searing Blow":
+				upgradable.append(card)
+		return upgradable
 	
 	def __str__(self):
 		string = "\n\n<---- Game State " + str(self.state_id) + " ----"
