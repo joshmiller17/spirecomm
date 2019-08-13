@@ -1,3 +1,10 @@
+from enum import Enum
+import copy
+import random
+import math
+import os
+import spirecomm
+
 
 	# quick function for setting a discover action
 	def discover(self, player_class, card_type="ALL", rarity="ALL", action="DiscoverAction", skip_available=False):

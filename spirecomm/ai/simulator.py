@@ -3,17 +3,7 @@ import copy
 import random
 import math
 import os
-
-
-import spirecomm.spire.relic
-import spirecomm.spire.card
-import spirecomm.spire.character
-import spirecomm.spire.map
-import spirecomm.spire.potion
-import spirecomm.spire.screen
-import spirecomm.spire.power
-
-from spirecomm.communication.action import *
+import spirecomm
 
 
 # MCTS values for changes to game state

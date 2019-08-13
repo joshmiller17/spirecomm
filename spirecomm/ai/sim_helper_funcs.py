@@ -1,3 +1,11 @@
+from enum import Enum
+import copy
+import random
+import math
+import os
+import spirecomm
+
+
 # orange pellets
 	def remove_all_debuffs(self):
 		for power in self.player.powers:

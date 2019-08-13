@@ -1,3 +1,10 @@
+from enum import Enum
+import copy
+import random
+import math
+import os
+import spirecomm
+
 
 	# related to agent.state_diff(), this function takes a key, value pair from state_diff and creates that change to the state
 	def changeState(self, key, value):
