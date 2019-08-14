@@ -11,10 +11,12 @@ import spirecomm.spire.map
 import spirecomm.spire.potion
 import spirecomm.spire.screen
 import spirecomm.spire.power
-import spirecomm.ai.*
 
 from spirecomm.communication.action import *
-
+from spirecomm.ai.simulator import *
+from spirecomm.ai.sim_helper_funcs import *
+from spirecomm.ai.rewards import *
+from spirecomm.ai.state_manip import *
 
 
 class RoomPhase(Enum):
