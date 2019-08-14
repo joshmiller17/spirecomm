@@ -41,7 +41,7 @@ class SimpleAgent:
 		self.behaviour_tree = py_trees.trees.BehaviourTree(self.root)
 		self.blackboard = py_trees.blackboard.Blackboard()
 		self.blackboard.game = Game()
-		self.blackboard.simulator = Simulator()
+		self.simulator = Simulator()
 		self.blackboard.tracked_state = {} # game state info that the agent chooses to track
 		self.blackboard.game.player = spirecomm.spire.character.Player(0)
 		self.last_game_state = None

@@ -1,3 +1,7 @@
+
+# This helper file enables a Game object to estimate its value
+
+
 class Reward:
 	
 	def __init__(self, reward={}):

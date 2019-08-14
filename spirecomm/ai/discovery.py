@@ -5,6 +5,8 @@ import math
 import os
 import spirecomm
 
+# This helper file contains functions related to discovering cards and potions
+
 
 	# quick function for setting a discover action
 	def discover(self, player_class, card_type="ALL", rarity="ALL", action="DiscoverAction", skip_available=False):

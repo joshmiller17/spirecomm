@@ -5,6 +5,9 @@ import math
 import os
 import spirecomm
 
+# This helper file contains minor simulation calculations for the main simulation functions
+
+
 
 # orange pellets
 	def remove_all_debuffs(self):

@@ -209,21 +209,23 @@ class Base(BoxLayout):
 			try:
 				open("game.log", "w").close()
 				communication_state = json.load(open(os.path.join(config.SPIRECOMM_PATH, "utilities", "combat_example.json")))
-				game_state = Game.from_json(communication_state.get("game_state"), communication_state.get("available_commands"))
+				simulator = Simulator()
+				simulator.game = Game.from_json(communication_state.get("game_state"), communication_state.get("available_commands"))
 				mcts_timeout = 2000 # in ms # eventually set to agent.action_delay * 1000 with debug cmd to adjust
 				mcts_iterations = 100
 				monte_carlo = mcts(iterationLimit=mcts_iterations)  #timeLimit=mcts_timeout)
 
 				
-				while game_state.player.current_hp > 0 and game_state.monsters[0].current_hp > 0:
-					action = monte_carlo.search(initialState=game_state)
+				# FIXME game should have the takeAction though...
+				while simulator.game.player.current_hp > 0 and simulator.game.monsters[0].current_hp > 0:
+					action = monte_carlo.search(initialState=simulator.game)
 					print("MCTS choosing: " + str(action))
-					game_state = game_state.takeAction(action)
+					simulator.game = simulator.takeAction(action)
 				print("Done.")
 
 				print("")		
-				self.in_history.append("VICTORY" if game_state.player.current_hp > 0 else "DEFEAT")
-				self.in_history.append("Health left: " + str(game_state.player.current_hp))
+				self.in_history.append("VICTORY" if simulator.game.player.current_hp > 0 else "DEFEAT")
+				self.in_history.append("Health left: " + str(simulator.game.player.current_hp))
 				self.in_history.append("See game.log for details")
 				
 			except Exception as e:

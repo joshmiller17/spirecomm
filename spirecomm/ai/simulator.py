@@ -6,6 +6,10 @@ import os
 import spirecomm
 
 
+# This helper file contains main simulation functions for a Game object to simulate actions
+
+
+
 # MCTS values for changes to game state
 MCTS_MAX_HP_VALUE = 7
 MCTS_HP_VALUE = 1
@@ -18,44 +22,6 @@ MCTS_ROUND_COST = 0.5 # penalize long fights
 BUFFS = ["Ritual", "Strength", "Dexterity", "Incantation", "Enrage", "Metallicize", "SadisticNature", "Juggernaut", "DoubleTap", "DemonForm", "DarkEmbrace", "Brutality", "Berserk", "Rage", "Feel No Pain", "Flame Barrier", "Corruption", "Combust", "Fire Breathing", "Mayhem"]
 DEBUFFS = ["Frail", "Vulnerable", "Weakened", "Entangled", "Shackles", "NoBlock", "No Draw", "Strength Down", "Dexterity Down", "Focus Down"]
 PASSIVE_EFFECTS = ["Strike Damage", "Ethereal"] # these don't do anything by themselves
-VALID_CLASSES = ["COLORLESS", "IRONCLAD", "THE_SILENT", "DEFECT"]
-		
-# TODO add simulator.log to README
-class Simulator:
-
-	def __init__(self):
-		self.game = None
-		self.debug_file = "simulator.log"
-		self.debug_log = []
-		
-		# from JSON for discovery: ignores cards that are from an event or healing, sort by class
-		self.cards = {"ATTACK": {}, "SKILL": {}, "POWER": {}}
-		for player_class in VALID_CLASSES:
-			self.cards[player_class] = {"RARE":[], "UNCOMMON": [], "COMMON": [], "BASIC": []}
-			
-		self.load_cards_from_json()
-		
-		
-	def load_cards_from_json(self):
-		CARDS_PATH = os.path.join(config.SPIRECOMM_PATH, "spirecomm", "ai", "cards")
-		d = open(self.debug_file, 'a+')
-		for root, dirs, files in os.walk(CARDS_PATH):
-			for f in files:
-				err=False
-				try:
-					card = spirecomm.spire.card.Card(f[:-5], f[:-5], -1, -1, compare_to_real=False)
-					if card.is_discoverable:
-						self.cards[card.metadata["type"]][card.metadata["class"]][card.metadata["rarity"]].append(card)
-						
-				except Exception as e:
-					err=True
-					print("Error loading card: " + f, file=d, flush=True)
-					print("    --" + str(e), file=d, flush=True)
-					
-				if not err:
-					print("Success: " + f, file=d, flush=True)
-		d.close()
-		
 		
 		
 	# TODO change instances of self to self.game - partially done but done wrong, it's just a mess

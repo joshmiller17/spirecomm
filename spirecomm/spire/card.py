@@ -152,6 +152,8 @@ class Card:
 						self.is_discoverable = False
 				if self.metadata["type"] == "STATUS" or self.metadata["type"] == "CURSE":
 					self.is_discoverable = False
+				if self.metadata["rarity"] == "BASIC":
+					self.is_discoverable = False
 				
 				
 		except Exception as e:

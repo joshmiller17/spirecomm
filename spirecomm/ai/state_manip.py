@@ -6,6 +6,10 @@ import os
 import spirecomm
 
 
+# This helper file contains large functions related to comparing Game states or changing a specific attribute of a Game state
+
+
+
 	# related to agent.state_diff(), this function takes a key, value pair from state_diff and creates that change to the state
 	def changeState(self, key, value):
 		set_attrs = ["room_phase", "room_type", "current_action", "act_boss", "floor", "act", "in_combat"]
