@@ -41,7 +41,6 @@ class SimpleAgent:
 		self.behaviour_tree = py_trees.trees.BehaviourTree(self.root)
 		self.blackboard = py_trees.blackboard.Blackboard()
 		self.blackboard.game = Game()
-		self.simulator = Simulator()
 		self.blackboard.tracked_state = {} # game state info that the agent chooses to track
 		self.blackboard.game.player = spirecomm.spire.character.Player(0)
 		self.last_game_state = None
@@ -299,7 +298,7 @@ class SimpleAgent:
 		self.state_id += 1
 		self.blackboard.game.state_id = self.state_id
 		self.blackboard.game.combat_round = self.combat_round
-		self.blackboard.simulator.game = self.blackboard.game
+		self.blackboard.game = self.blackboard.game
 				
 		# Check difference from last state
 		self.log("True Diff: " + str(self.state_diff(self.last_game_state, self.blackboard.game)), debug=6)

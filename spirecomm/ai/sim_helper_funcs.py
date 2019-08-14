@@ -6,6 +6,7 @@ import os
 import spirecomm
 
 # This helper file contains minor simulation calculations for the main simulation functions
+# generally the workhorse functions, e.g. what happens at the end of turns
 
 
 
@@ -140,8 +141,8 @@ import spirecomm
 		
 		
 	def choose_move(self, monster):
-		available_monsters = [monster for monster in self.game.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
-		if self.game.combat_round == 1 and "startswith" in monster.intents:
+		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+		if self.combat_round == 1 and "startswith" in monster.intents:
 			selected_move = monster.intents["startswith"]
 		elif monster.monster_id == "GremlinTsundere" and len(available_monsters) > 1:
 			selected_move == "Protect"
@@ -153,8 +154,8 @@ import spirecomm
 				moveset = monster.intents["moveset"]
 				
 				# change moveset to next move if exists
-				if str(monster) in self.game.tracked_state["monsters_last_attacks"]:
-					last_move = self.game.tracked_state["monsters_last_attacks"][str(monster)][0]
+				if str(monster) in self.tracked_state["monsters_last_attacks"]:
+					last_move = self.tracked_state["monsters_last_attacks"][str(monster)][0]
 					self.debug_log.append("Last move was " + str(last_move) + "[" + str(self.tracked_state["monsters_last_attacks"][str(monster)][1]) + "]")
 					if "next_move" in moveset[last_move]:
 						list_of_next_moves = moveset[last_move]["next_move"]
@@ -176,14 +177,14 @@ import spirecomm
 					self.debug_log.append("ERR: selected move is none") # TODO remove after figuring out this bug
 				
 				# check limits
-				if "limits" not in monster.intents or str(monster) not in self.game.tracked_state["monsters_last_attacks"]:
+				if "limits" not in monster.intents or str(monster) not in self.tracked_state["monsters_last_attacks"]:
 					# don't worry about limits, choose a random attack
 					break
 				else:
 					exceeds_limit = False
 					for limited_move, limited_times in monster.intents["limits"].items():
-						if selected_move == limited_move and selected_move == self.game.tracked_state["monsters_last_attacks"][str(monster)][0]:
-							if self.game.tracked_state["monsters_last_attacks"][str(monster)][1] + 1 >= limited_times: # selecting this would exceed limit:
+						if selected_move == limited_move and selected_move == self.tracked_state["monsters_last_attacks"][str(monster)][0]:
+							if self.tracked_state["monsters_last_attacks"][str(monster)][1] + 1 >= limited_times: # selecting this would exceed limit:
 								exceeds_limit = True
 								self.debug_log.append("Tried to use " + selected_move + " but that would exceed a move limit")
 					if not exceeds_limit:
@@ -192,12 +193,12 @@ import spirecomm
 		# Check if Lagavulin should still be sleeping
 		moveset = monster.intents["moveset"]
 		if monster.monster_id == "Lagavulin":
-			if monster.current_hp != monster.max_hp and self.game.tracked_state["lagavulin_is_asleep"]:
+			if monster.current_hp != monster.max_hp and self.tracked_state["lagavulin_is_asleep"]:
 				# wake up
 				selected_move = "Stunned"
 				monster.add_power("Metallicize", -8)
 				#monster.remove_power("Asleep") # I think this doesn't actually exist in the code
-				self.game.tracked_state["lagavulin_is_asleep"] = False
+				self.tracked_state["lagavulin_is_asleep"] = False
 		
 		return selected_move
 
@@ -537,39 +538,207 @@ import spirecomm
 			play_action.target_monster = selected_monster
 		return play_action
 		
+	def find_monsters_move_deductively(self, monster):
+		timeout = 100 # assume trying 100 times will be enough unless there's a problem
+		while timeout > 0:
+			# continue to randomly sample moves until we find one that fits
+			move = self.choose_move(monster)
+			details = monster.intents["moveset"][move]
+			intent_str = details["intent_type"]
+			if spirecomm.spire.character.Intent[intent_str] == monster.intent or self.has_relic("Runic Dome"):
+				# if it's an attack, check the number of hits also
+				if monster.intent.is_attack():
+					hits = 0
+					effects = details["effects"]
+					for effect in effects:
+						if effect["name"] == "Damage":
+							amt, h = self.read_damage(effect["amount"])
+							hits += h
+					if hits == monster.move_hits:
+						monster.current_move = move
+						self.debug_log.append("DEBUG: counted hits " + str(hits) + " is " + str(hits)) # TODO remove
+					else: 
+						self.debug_log.append("DEBUG: counted hits " + str(hits) + " is not " + str(hits)) # TODO remove
+				else:
+					monster.current_move = move
+					
+			if monster.current_move is not None:
+				if self.has_relic("Runic Dome"):
+					self.debug_log.append("Guessed intent for " + str(monster) + " is " + str(monster.current_move))
+				else:
+					self.debug_log.append("Recognized intent for " + str(monster) + " is " + str(monster.current_move))
+				break
+			timeout -= 1
+		return monster.current_move
+		
+	def get_monsters_move(self, monster):
+		if monster.current_move is not None:
+			return monster.current_move
+		else:
+			if self.combat_round == 1 and "startswith" in monster.intents:
+				monster.current_move = monster.intents["startswith"]
+				if monster.monster_id == "Sentry" and monster.monster_index == 1: 	# The second Sentry starts with an attack rather than debuff
+					monster.current_move = "Beam"
+				self.debug_log.append("Known initial intent for " + str(monster) + " is " + str(monster.current_move))
+			elif self.tracked_state["is_simulation"]: # generate random move
+				monster.current_move = self.choose_move(monster)
+				self.debug_log.append("Simulated intent for " + str(monster) + " is " + str(monster.current_move))
+			else: # figure out move from what we know about it
+				monster.current_move = self.find_monsters_move_deductively(monster)
+				
+		return monster.current_move
+	
+	def apply_monster_effect(self, monster):
+		if monster.intent == spirecomm.spire.character.Intent.ATTACK and (monster.monster_id == "FuzzyLouseNormal" or monster.monster_id == "FuzzyLouseDefensive"):
+			# louses have a variable base attack
+			effs = monster.intents["moveset"][monster.current_move]["effects"]
+			json_base = None
+			for eff in effs:
+				if eff["name"] == "Damage":
+					json_base = eff["amount"]
+			if not json_base:
+				raise Exception("Malformed Louse JSON when calculating base damage for " + str(monster.current_move))
+			attack_adjustment = monster.move_base_damage - json_base
+			monster.misc = attack_adjustment
+			self.debug_log.append("Adjusted damage for louse: " + str(monster.misc))
+					
+		# Finally, apply the intended move
+		effects = monster.intents["moveset"][monster.current_move]["effects"]
+		for effect in effects:
+			
+			if effect["name"] == "Damage":
+				amount, hits = self.read_damage(effect["amount"])
+				base_damage = amount
+				if monster.monster_id == "FuzzyLouseNormal" or monster.monster_id == "FuzzyLouseDefensive":
+					base_damage += monster.misc # adjustment because louses are variable
+					self.debug_log.append("Adjusted damage for louse: " + str(monster.misc))
+				for _ in range(hits):
+					unblocked_damage = self.use_attack(base_damage, monster, self.player)
+					self.debug_log.append("Taking " + str(unblocked_damage) + " damage from " + str(monster))
+					
+			elif effect["name"] == "Block":
+				self.add_block(monster, effect["amount"])
+				
+			elif effect["name"] == "BlockOtherRandom":
+				selected_ally = None
+				while selected_ally is None or selected_ally is monster:
+					selected_ally = random.choice(available_monsters)
+				self.add_block(selected_ally, effect["amount"])
+				
+			elif effect["name"] in BUFFS:
+				monster.add_power(effect["name"], effect["amount"])
+				
+			elif effect["name"] in DEBUFFS:
+				self.apply_debuff(self.player, effect["name"], effect["amount"])
+											
+			elif effect["name"] == "AddSlimedToDiscard":
+				for __ in range(effect["amount"]):
+					slimed = spirecomm.spire.card.Card("Slimed", "Slimed", spirecomm.spire.card.CardType.STATUS, spirecomm.spire.card.CardRarity.SPECIAL)
+					self.discard_pile.append(slimed)
+					
+			elif effect["name"] == "AddDazedToDiscard":
+				for __ in range(effect["amount"]):
+					slimed = spirecomm.spire.card.Card("Dazed", "Dazed", spirecomm.spire.card.CardType.STATUS, spirecomm.spire.card.CardRarity.SPECIAL)
+					self.discard_pile.append(slimed)
+					
+			elif effect["name"] == "GainBurnToDiscard" or effect["name"] == "AddBurnToDiscard":
+				for _ in range(effect["amount"]):
+					self.discard_pile.append(spirecomm.spire.card.Card("Burn", "Burn", spirecomm.spire.card.CardType.STATUS, spirecomm.spire.card.CardRarity.SPECIAL))
+				1	
+			elif effect["name"] == "GainBurn+ToDiscard" or effect["name"] == "AddBurn+ToDiscard":
+				for _ in range(effect["amount"]):
+					self.discard_pile.append(spirecomm.spire.card.Card("Burn+", "Burn+", spirecomm.spire.card.CardType.STATUS, spirecomm.spire.card.CardRarity.SPECIAL, upgrades=1))
+					
+			elif effect["name"] == "GainBurnToDeck" or effect["name"] == "AddBurnToDeck":
+				for _ in range(effect["amount"]):
+					self.draw_pile.append(spirecomm.spire.card.Card("Burn", "Burn", spirecomm.spire.card.CardType.STATUS, spirecomm.spire.card.CardRarity.SPECIAL))	
+			
+			elif effect["name"] == "Sleep":
+				pass # take one (1) snoozle
+				
+			elif effect["name"] == "Charge":
+				pass # i'ma chargin' mah fireball!
+				
+			elif effect["name"] == "Split":
+				for new_monster in effect["amount"]:
+					m = spirecomm.spire.character.Monster(new_monster, new_monster, monster.current_hp,  monster.current_hp, 0, None, False, False)
+					self.monsters.append(m)
+					self.monsters.remove(monster)
+			
+			elif effect["name"] == "Escape":
+				monster.is_gone = True
+				
+			elif effect["name"] == "Offensive Mode":
+				monster.add_power("Mode Shift", 30 + monster.misc) # TODO account for ascension_level
+				monster.misc += 10
+			
+			elif effect["name"] not in PASSIVE_EFFECTS:
+				self.debug_log.append("WARN: Unknown effect " + effect["name"])
+			
+		# increment tracked count of moves in a row
+		if str(monster) in self.tracked_state["monsters_last_attacks"] and self.tracked_state["monsters_last_attacks"][str(monster)][0] == monster.current_move:
+			self.tracked_state["monsters_last_attacks"][str(monster)][1] += 1
+		else:
+			self.tracked_state["monsters_last_attacks"][str(monster)] = [monster.current_move, 1]
+		
+		
+	def apply_monsters_turn(self, monster):
+		self.apply_start_of_turn_effects(monster)
+				
+		if monster.intents != {}: # we have correctly loaded intents JSON
+		
+			monster.current_move = self.get_monsters_move(monster)
+							
+			if monster.current_move is None:
+				self.debug_log.append("ERROR: Could not determine " + monster.name + "\'s intent of " + str(monster.intent))
+			else:
+				self.apply_monster_effect(monster)
+		
+		if monster.intents == {} or monster.current_move is None:
+			self.debug_log.append("WARN: unable to get intent for " + str(monster))
+			# default behaviour: just assume the same move as the first turn of simulation
+			if monster.intent.is_attack():
+				if monster.move_adjusted_damage is not None:
+					# are weak and vulnerable accounted for in default logic?
+					for _ in range(monster.move_hits):
+						unblocked_damage = self.use_attack(monster.move_base_damage, monster, self.player)
+						self.debug_log.append("Taking " + str(unblocked_damage) + " damage from " + str(monster))
+						
+		monster.current_move = None # now that we used the move, clear it
+		
 			
 			
 	def apply_end_of_player_turn_effects(self):
 	
 		# reset relics
-		self.game.set_relic_counter("Kunai", 0)
-		self.game.set_relic_counter("Shuriken", 0)
-		self.game.set_relic_counter("Ornamental Fan", 0)
-		self.game.set_relic_counter("Velvet Choker", 0)
-		self.game.set_relic_counter("Letter Opener", 0)
-		self.game.tracked_state["attacks_played_last_turn"] = self.game.tracked_state["attacks_played_this_turn"]
-		self.game.tracked_state["attacks_played_this_turn"] = 0
-		self.game.tracked_state["cards_played_last_turn"] = self.game.tracked_state["cards_played_this_turn"]
-		self.game.tracked_state["cards_played_this_turn"] = 0
-		self.game.tracked_state["skills_played_this_turn"] = 0
-		self.game.tracked_state["powers_played_this_turn"] = 0
-		self.game.tracked_state["necronomicon_triggered"] = False
+		self.set_relic_counter("Kunai", 0)
+		self.set_relic_counter("Shuriken", 0)
+		self.set_relic_counter("Ornamental Fan", 0)
+		self.set_relic_counter("Velvet Choker", 0)
+		self.set_relic_counter("Letter Opener", 0)
+		self.tracked_state["attacks_played_last_turn"] = self.tracked_state["attacks_played_this_turn"]
+		self.tracked_state["attacks_played_this_turn"] = 0
+		self.tracked_state["cards_played_last_turn"] = self.tracked_state["cards_played_this_turn"]
+		self.tracked_state["cards_played_this_turn"] = 0
+		self.tracked_state["skills_played_this_turn"] = 0
+		self.tracked_state["powers_played_this_turn"] = 0
+		self.tracked_state["necronomicon_triggered"] = False
 		
-		self.game.decrement_duration_powers(self.game.player)
+		self.decrement_duration_powers(self.player)
 		
-		self.game.increment_relic("Stone Calendar")
+		self.increment_relic("Stone Calendar")
 		
-		if self.game.player.has_power("Fire Breathing"):
-			available_monsters = [monster for monster in self.game.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
-			amt = self.game.player.get_power_amount("Fire Breathing") * self.game.tracked_state["attacks_played_this_turn"]
+		if self.player.has_power("Fire Breathing"):
+			available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+			amt = self.player.get_power_amount("Fire Breathing") * self.tracked_state["attacks_played_this_turn"]
 			if amt > 0:
 				for monster in available_monsters:
-					self.game.apply_damage(amt, None, monster)
+					self.apply_damage(amt, None, monster)
 		
-		if self.game.combat_round == 7 and self.game.has_relic("Stone Calendar"):
-			available_monsters = [monster for monster in self.game.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+		if self.combat_round == 7 and self.has_relic("Stone Calendar"):
+			available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
 			for monster in available_monsters:
-				self.game.apply_damage(52, None, monster)
+				self.apply_damage(52, None, monster)
 				
 		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
 		for monster in available_monsters:

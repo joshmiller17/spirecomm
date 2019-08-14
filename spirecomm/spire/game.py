@@ -11,6 +11,7 @@ import spirecomm.spire.map
 import spirecomm.spire.potion
 import spirecomm.spire.screen
 import spirecomm.spire.power
+import spirecomm.ai.*
 
 from spirecomm.communication.action import *
 
@@ -79,7 +80,7 @@ class Game:
 		self.original_state = None # For MCTS simulations; FIXME might be a huge memory storage for in-depth simulations? Consider only storing values important for reward func
 		
 		
-		# Tracked state info - TODO this block needs to be stored more permanently
+		# Tracked state info
 		self.tracked_state = {
 		"visited_shop" : False,
 		"previous_floor" : 0,  # used to recognize floor changes, i.e. when floor != previous_floor
@@ -107,7 +108,7 @@ class Game:
 	def is_valid(self):
 		return self.end_available or self.potion_available or self.play_available or self.proceed_available or self.cancel_available
 		
-	# do any internal state updates we need to do if we change floors
+	# reset floor-specific things
 	def on_floor_change(self):
 		self.combat_round = 1
 		self.original_state = None

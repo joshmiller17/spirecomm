@@ -2,6 +2,14 @@
 # This helper file enables a Game object to estimate its value
 
 
+MCTS_MAX_HP_VALUE = 7
+MCTS_HP_VALUE = 1
+MCTS_POTION_VALUE = 7 # TODO change by potion type, evolved by behaviour tree
+MCTS_ROUND_COST = 0.5 # penalize long fights
+# TODO add cost for losing gold (e.g. to thieves) -- note, somehow count how much gold was stolen and report that it will return if we kill the thief
+# TODO eventually add: value for deck changes (e.g. cost for gaining parasite)
+# TODO eventually add: value for card misc changes (e.g., genetic algorithm, ritual dagger)
+
 class Reward:
 	
 	def __init__(self, reward={}):
@@ -58,11 +66,6 @@ def getReward(self):
 		#r -= self.game.combat_round * MCTS_ROUND_COST
 		reward = Reward(r)
 		
-		if self.debug_file:
-			with open(self.debug_file, 'a+') as d:
-				d.write("\n~~~~~~~~~~~~~~\n")
-				d.write("\nTerminal state reached, reward: " + str(reward.getTotalItemized()) + "\n")
-				d.write(str(self))
-				d.write("\n~~~~~~~~~~~~~~\n")
+		self.print_to_log("Terminal state reached, reward: " + str(reward.getTotalItemized()), divider="~")
 		
 		return reward

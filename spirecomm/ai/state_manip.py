@@ -14,48 +14,48 @@ import spirecomm
 	def changeState(self, key, value):
 		set_attrs = ["room_phase", "room_type", "current_action", "act_boss", "floor", "act", "in_combat"]
 		if key in set_attrs:
-			setattr(self.game, key, value)
+			setattr(self, key, value)
 		if key == "choices_added":
 			for v in value:
-				self.game.choice_list.append(v)
+				self.choice_list.append(v)
 		if key == "choices_removed":
 			for v in value:
-				self.game.choice_list.remove(v)
+				self.choice_list.remove(v)
 		change_attrs = ["gold", "state_id", "combat_round"]
 		if key in change_attrs:
-			setattr(self.game, key, self.game.key + value)
+			setattr(self, key, self.key + value)
 		if key == "relics":
 			for v in value:
 				if type(v) is tuple and len(v) == 2:
-					self.game.set_relic_counter(v[0], self.game.get_relic(v[0].counter) + v[1])
+					self.set_relic_counter(v[0], self.get_relic(v[0].counter) + v[1])
 				else:
-					if self.game.has_relic(v):
-						self.game.relics.remove(v)
+					if self.has_relic(v):
+						self.relics.remove(v)
 					else:
-						self.game.relics.append(v)
+						self.relics.append(v)
 			
 
 		# FIXME state_diff gives string, not the actual card object we would need to do this
 		# if key == "cards_added":
 			# for v in value:
-				# self.game.deck.append(v)
+				# self.deck.append(v)
 		# if key == "cards_removed":
 			# for v in value:
-				# self.game.deck.remove(v)
+				# self.deck.remove(v)
 		# if key == "cards_upgraded":
 			# pass
 			
 
 		if key == "potions_added":
 			for v in value:
-				for p in self.game.potions:
+				for p in self.potions:
 					if p.name == "Potion Slot":
 						p.name = v
 						break
 		
 		if key == "potions_removed":
 			for v in value:
-				for p in self.game.potions:
+				for p in self.potions:
 					if p.name == v:
 						p.name = "Potion Slot"
 						break

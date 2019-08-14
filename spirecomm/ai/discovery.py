@@ -6,6 +6,7 @@ import os
 import spirecomm
 
 # This helper file contains functions related to discovering cards and potions
+CARD_DATABASE = CardDatabase()
 
 
 	# quick function for setting a discover action
@@ -16,7 +17,7 @@ import spirecomm
 		
 		generated_cards = []
 		for _ in range(3):
-			generated_cards.append(self.generate_card(player_class, card_type, rarity))
+			generated_cards.append(CARD_DATABASE.pick_card(player_class, card_type, rarity))
 		
 		self.screen = spirecomm.spire.screen.CardRewardScreen(cards=generated_cards,can_bowl=False, can_skip=skip_available)
 		self.choice_list = [card.get_choice_str() for card in generated_cards]
@@ -60,52 +61,21 @@ import spirecomm
 		
 		return random.choice(possible_potions)
 		
-		
-	def generate_card(self, player_class, card_type="ALL", rarity="ALL"):
-		# card_id, name, card_type, rarity, upgrades=0, has_target=False, cost=0, misc=0, is_playable=False, exhausts=False
-	
-		return card
+	def generate_random_card(self, player_class, card_type, rare_only=False):
+		if rare_only:
+			return CARD_DATABASE.pick_card(player_class, card_type, "RARE")
+		else:
+			return CARD_DATABASE.pick_card(player_class, card_type, "ALL")
 
-		
-	def generate_random_colorless_card(self, rare_only=False):
-		cards = []
-		
-		
 	
-		return cards
+	def generate_random_colorless_card(self, rare_only=False):		
+		return self.generate_random_card("COLORLESS", "ALL", rare_only)
 		
 	def generate_random_attack_card(self, player_class, rare_only=False):
-		cards = []
-	
-		if player_class == spirecomm.spire.character.PlayerClass.IRONCLAD:
-			pass # TODO
-		if player_class == spirecomm.spire.character.PlayerClass.THE_SILENT:
-			pass # TODO
-		if player_class == spirecomm.spire.character.PlayerClass.DEFECT:
-			pass # TODO
-	
-		return cards
+		return self.generate_random_card(player_class, "ATTACK", rare_only)
 	
 	def generate_random_skill_card(self, player_class, rare_only=False):
-		cards = []
-	
-		if player_class == spirecomm.spire.character.PlayerClass.IRONCLAD:
-			pass # TODO
-		if player_class == spirecomm.spire.character.PlayerClass.THE_SILENT:
-			pass # TODO
-		if player_class == spirecomm.spire.character.PlayerClass.DEFECT:
-			pass # TODO
-	
-		return cards
+		return self.generate_random_card(player_class, "SKILL", rare_only)
 	
 	def generate_random_power_card(self, player_class, rare_only=False):
-		cards = []
-	
-		if player_class == spirecomm.spire.character.PlayerClass.IRONCLAD:
-			pass # TODO
-		if player_class == spirecomm.spire.character.PlayerClass.THE_SILENT:
-			pass # TODO
-		if player_class == spirecomm.spire.character.PlayerClass.DEFECT:
-			pass # TODO
-	
-		return cards
+		return self.generate_random_card(player_class, "POWER", rare_only)

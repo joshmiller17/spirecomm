@@ -7,26 +7,43 @@ import spirecomm
 
 
 # This helper file contains main simulation functions for a Game object to simulate actions
+# generally the main logic for calling the workhorse functions
 
-
-
-# MCTS values for changes to game state
-MCTS_MAX_HP_VALUE = 7
-MCTS_HP_VALUE = 1
-MCTS_POTION_VALUE = 7 # TODO change by potion type, evolved by behaviour tree
-MCTS_ROUND_COST = 0.5 # penalize long fights
-# TODO add cost for losing gold (e.g. to thieves) -- note, somehow count how much gold was stolen and report that it will return if we kill the thief
-# TODO eventually add: value for deck changes (e.g. cost for gaining parasite)
-# TODO eventually add: value for card misc changes (e.g., genetic algorithm, ritual dagger)
 
 BUFFS = ["Ritual", "Strength", "Dexterity", "Incantation", "Enrage", "Metallicize", "SadisticNature", "Juggernaut", "DoubleTap", "DemonForm", "DarkEmbrace", "Brutality", "Berserk", "Rage", "Feel No Pain", "Flame Barrier", "Corruption", "Combust", "Fire Breathing", "Mayhem"]
 DEBUFFS = ["Frail", "Vulnerable", "Weakened", "Entangled", "Shackles", "NoBlock", "No Draw", "Strength Down", "Dexterity Down", "Focus Down"]
 PASSIVE_EFFECTS = ["Strike Damage", "Ethereal"] # these don't do anything by themselves
 		
 		
-	# TODO change instances of self to self.game - partially done but done wrong, it's just a mess
+	# a test bed for checking our surroundings
+	def debug_game_state(self):
+		available_monsters = [monster for monster in self.game.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+		for monster in available_monsters:
+			if monster.monster_id == "Lagavulin":
+				self.debug_log.append("Lagavulin's powers: " + str([str(power) for power in monster.powers]))
 
-
+	# logs the game state
+	def print_state(self):
+		if self.debug_file:
+			with open(self.debug_file, 'a+') as d:
+				d.write(str(self))
+				
+				
+	# logs a list of contents one line at a time with a newline at end
+	# if a divider is specified, prints a line of this char before and after
+	def print_to_log(self, contents, divider=""):
+		if contents == "" or contents == []:
+			return
+		if not isinstance(contents, list):
+			contents = [contents]
+		if self.debug_file:
+			with open(self.debug_file, 'a+') as d:
+				if divider != "":
+					d.write(divider * 30 + "\n"
+				d.write("\n".join([str(c) for c in contents] + "\n"))		
+				if divider != "":
+					d.write(divider * 30 + "\n"				
+				
 	def getPossibleActions(self):
 		if self.game.tracked_state["possible_actions"] == None:
 		
@@ -54,29 +71,15 @@ PASSIVE_EFFECTS = ["Strike Damage", "Ethereal"] # these don't do anything by the
 				else:
 					possible_actions.append(PlayCardAction(card=card))
 			
-			if self.debug_file:
-				with open(self.debug_file, 'a+') as d:
-					d.write(str(self))
-					d.write("\n-----------------------------\n")
-					d.write("Possible Actions:\n")
-					d.write("\n".join([str(a) for a in possible_actions]))
-					d.write('\n')
+			self.print_to_log(["Possible Actions:"] + possible_actions, divider=" ")
 
 			self.game.tracked_state["possible_actions"] = possible_actions
 				
 		return self.game.tracked_state["possible_actions"]
 		
-
-		
-	# a test bed for checking our surroundings
-	def debug_game_state(self):
-		available_monsters = [monster for monster in self.game.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
-		for monster in available_monsters:
-			if monster.monster_id == "Lagavulin":
-				self.debug_log.append("Lagavulin's powers: " + str([str(power) for power in monster.powers]))
 	
 	
-	# Returns a new state
+	# Handler that calls the appropriate simulate_action function and returns a new state
 	def takeAction(self, action, from_real=False):
 	
 		if self.game.in_combat and not self.game.tracked_state["registered_start_of_combat"]:
@@ -91,9 +94,7 @@ PASSIVE_EFFECTS = ["Strike Damage", "Ethereal"] # these don't do anything by the
 		self.debug_log.append("Simulating taking action: " + str(action))
 		#self.debug_log.append("Combat round: " + str(self.combat_round))
 	
-		if self.debug_file:
-			with open(self.debug_file, 'a+') as d:
-				d.write("\nSimulating taking action: " + str(action) + "\n")
+		self.print_to_log("Simulating taking action: " + str(action))
 		
 		new_state = copy.deepcopy(self.game)
 		new_state.tracked_state["possible_actions"] = None
@@ -129,7 +130,6 @@ PASSIVE_EFFECTS = ["Strike Damage", "Ethereal"] # these don't do anything by the
 			return new_state.simulate_forethought(action)
 		else:
 			raise Exception("Chosen simulated action is not a valid combat action in the current state: " + str(action) + ", " + str(self.game.screen) + " (" + str(self.game.screen_type) + ") " + ("[UP]" if self.game.screen_up else ""))
-		
 
 	
 	# Returns a new state
@@ -148,164 +148,9 @@ PASSIVE_EFFECTS = ["Strike Damage", "Ethereal"] # these don't do anything by the
 			if monster is None:
 				self.debug_log.append("WARN: Monster is None")
 				continue
-							
-			self.apply_start_of_turn_effects(monster)
 				
-			if monster.intents != {}: # we have correctly loaded intents JSON
-			
-				if monster.current_move is None:		
-					if self.combat_round == 1 and "startswith" in monster.intents:
-						monster.current_move = monster.intents["startswith"]
-						if monster.monster_id == "Sentry" and monster.monster_index == 1:
-							# The second Sentry starts with an attack rather than debuff
-							monster.current_move = "Beam"
-						self.debug_log.append("Known initial intent for " + str(monster) + " is " + str(monster.current_move))
-
-					elif self.tracked_state["is_simulation"]: # generate random move
-						monster.current_move = self.choose_move(monster)
-						self.debug_log.append("Simulated intent for " + str(monster) + " is " + str(monster.current_move))
-					else: # figure out move from what we know about it
-					
-						timeout = 100 # assume trying 100 times will be enough unless there's a problem
-						while timeout > 0:
-							# continue to randomly sample moves until we find one that fits
-							move = self.choose_move(monster)
-							details = monster.intents["moveset"][move]
-							intent_str = details["intent_type"]
-							if spirecomm.spire.character.Intent[intent_str] == monster.intent or self.has_relic("Runic Dome"):
-								# if it's an attack, check the number of hits also
-								if monster.intent.is_attack():
-									hits = 0
-									effects = details["effects"]
-									for effect in effects:
-										if effect["name"] == "Damage":
-											amt, h = self.read_damage(effect["amount"])
-											hits += h
-									if hits == monster.move_hits:
-										monster.current_move = move
-										self.debug_log.append("DEBUG: counted hits " + str(hits) + " is " + str(hits)) # TODO remove
-									else: 
-										self.debug_log.append("DEBUG: counted hits " + str(hits) + " is not " + str(hits)) # TODO remove
-								else:
-									monster.current_move = move
-									
-							if monster.current_move is not None:
-								if self.has_relic("Runic Dome"):
-									self.debug_log.append("Guessed intent for " + str(monster) + " is " + str(monster.current_move))
-								else:
-									self.debug_log.append("Recognized intent for " + str(monster) + " is " + str(monster.current_move))
-								break
-							timeout -= 1
-							
-								
-				if monster.current_move is None:
-					self.debug_log.append("ERROR: Could not determine " + monster.name + "\'s intent of " + str(monster.intent))
-				else:
-					if monster.intent == spirecomm.spire.character.Intent.ATTACK and (monster.monster_id == "FuzzyLouseNormal" or monster.monster_id == "FuzzyLouseDefensive"):
-						# louses have a variable base attack
-						effs = monster.intents["moveset"][monster.current_move]["effects"]
-						json_base = None
-						for eff in effs:
-							if eff["name"] == "Damage":
-								json_base = eff["amount"]
-						if not json_base:
-							raise Exception("Malformed Louse JSON when calculating base damage for " + str(monster.current_move))
-						attack_adjustment = monster.move_base_damage - json_base
-						monster.misc = attack_adjustment
-						self.debug_log.append("Adjusted damage for louse: " + str(monster.misc))
-								
-					# Finally, apply the intended move
-					effects = monster.intents["moveset"][monster.current_move]["effects"]
-					for effect in effects:
-						
-						if effect["name"] == "Damage":
-							amount, hits = self.read_damage(effect["amount"])
-							base_damage = amount
-							if monster.monster_id == "FuzzyLouseNormal" or monster.monster_id == "FuzzyLouseDefensive":
-								base_damage += monster.misc # adjustment because louses are variable
-								self.debug_log.append("Adjusted damage for louse: " + str(monster.misc))
-							for _ in range(hits):
-								unblocked_damage = self.use_attack(base_damage, monster, self.player)
-								self.debug_log.append("Taking " + str(unblocked_damage) + " damage from " + str(monster))
-								
-						elif effect["name"] == "Block":
-							self.add_block(monster, effect["amount"])
-							
-						elif effect["name"] == "BlockOtherRandom":
-							selected_ally = None
-							while selected_ally is None or selected_ally is monster:
-								selected_ally = random.choice(available_monsters)
-							self.add_block(selected_ally, effect["amount"])
-							
-						elif effect["name"] in BUFFS:
-							monster.add_power(effect["name"], effect["amount"])
-							
-						elif effect["name"] in DEBUFFS:
-							self.apply_debuff(self.player, effect["name"], effect["amount"])
-														
-						elif effect["name"] == "AddSlimedToDiscard":
-							for __ in range(effect["amount"]):
-								slimed = spirecomm.spire.card.Card("Slimed", "Slimed", spirecomm.spire.card.CardType.STATUS, spirecomm.spire.card.CardRarity.SPECIAL)
-								self.discard_pile.append(slimed)
-								
-						elif effect["name"] == "AddDazedToDiscard":
-							for __ in range(effect["amount"]):
-								slimed = spirecomm.spire.card.Card("Dazed", "Dazed", spirecomm.spire.card.CardType.STATUS, spirecomm.spire.card.CardRarity.SPECIAL)
-								self.discard_pile.append(slimed)
-								
-						elif effect["name"] == "GainBurnToDiscard" or effect["name"] == "AddBurnToDiscard":
-							for _ in range(effect["amount"]):
-								self.discard_pile.append(spirecomm.spire.card.Card("Burn", "Burn", spirecomm.spire.card.CardType.STATUS, spirecomm.spire.card.CardRarity.SPECIAL))
-							1	
-						elif effect["name"] == "GainBurn+ToDiscard" or effect["name"] == "AddBurn+ToDiscard":
-							for _ in range(effect["amount"]):
-								self.discard_pile.append(spirecomm.spire.card.Card("Burn+", "Burn+", spirecomm.spire.card.CardType.STATUS, spirecomm.spire.card.CardRarity.SPECIAL, upgrades=1))
-								
-						elif effect["name"] == "GainBurnToDeck" or effect["name"] == "AddBurnToDeck":
-							for _ in range(effect["amount"]):
-								self.draw_pile.append(spirecomm.spire.card.Card("Burn", "Burn", spirecomm.spire.card.CardType.STATUS, spirecomm.spire.card.CardRarity.SPECIAL))	
-						
-						elif effect["name"] == "Sleep":
-							pass # take one (1) snoozle
-							
-						elif effect["name"] == "Charge":
-							pass # i'ma chargin' mah fireball!
-							
-						elif effect["name"] == "Split":
-							for new_monster in effect["amount"]:
-								m = spirecomm.spire.character.Monster(new_monster, new_monster, monster.current_hp,  monster.current_hp, 0, None, False, False)
-								self.monsters.append(m)
-								self.monsters.remove(monster)
-						
-						elif effect["name"] == "Escape":
-							monster.is_gone = True
-							
-						elif effect["name"] == "Offensive Mode":
-							monster.add_power("Mode Shift", 30 + monster.misc) # TODO account for ascension_level
-							monster.misc += 10
-						
-						elif effect["name"] not in PASSIVE_EFFECTS:
-							self.debug_log.append("WARN: Unknown effect " + effect["name"])
-						
-					# increment count of moves in a row
-					if str(monster) in self.tracked_state["monsters_last_attacks"] and self.tracked_state["monsters_last_attacks"][str(monster)][0] == monster.current_move:
-						self.tracked_state["monsters_last_attacks"][str(monster)][1] += 1
-					else:
-						self.tracked_state["monsters_last_attacks"][str(monster)] = [monster.current_move, 1]
-
-			
-			if monster.intents == {} or monster.current_move is None:
-				self.debug_log.append("WARN: unable to get intent for " + str(monster))
-				# default behaviour: just assume the same move as the first turn of simulation
-				if monster.intent.is_attack():
-					if monster.move_adjusted_damage is not None:
-						# are weak and vulnerable accounted for in default logic?
-						for _ in range(monster.move_hits):
-							unblocked_damage = self.use_attack(monster.move_base_damage, monster, self.player)
-							self.debug_log.append("Taking " + str(unblocked_damage) + " damage from " + str(monster))
-							
-			monster.current_move = None # now that we used the move, clear it
-							
+			self.apply_monsters_turn(monster)
+				
 		for monster in available_monsters:
 			self.apply_end_of_turn_effects(monster)
 
@@ -327,13 +172,7 @@ PASSIVE_EFFECTS = ["Strike Damage", "Ethereal"] # these don't do anything by the
 		while len(self.hand) < hand_size:
 			self.draw_card()
 			
-		if self.debug_file and self.debug_log != []:
-			with open(self.debug_file, 'a+') as d:
-				d.write('\n')
-				d.write('\n'.join(self.debug_log))
-				d.write('\n')
-				#d.write("\nNew State:\n")
-				#d.write(str(self))
+		self.print_to_log(self.debug_log)
 			
 		self.tracked_state["is_simulation"] = True
 		
@@ -507,13 +346,7 @@ PASSIVE_EFFECTS = ["Strike Damage", "Ethereal"] # these don't do anything by the
 			self.debug_log.append("ERROR: No handler for potion: " + str(action.potion))
 			
 			
-		if self.debug_file and self.debug_log != []:
-			with open(self.debug_file, 'a+') as d:
-				d.write('\n')
-				d.write('\n'.join(self.debug_log))
-				d.write('\n')
-				#d.write("\nNew State:\n")
-				#d.write(str(self))
+		self.print_to_log(self.debug_log)
 		
 		self.tracked_state["is_simulation"] = True
 		
@@ -954,13 +787,7 @@ PASSIVE_EFFECTS = ["Strike Damage", "Ethereal"] # these don't do anything by the
 		self.check_intents()
 					
 			
-		if self.debug_file and self.debug_log != []:
-			with open(self.debug_file, 'a+') as d:
-				d.write('\n')
-				d.write('\n'.join(self.debug_log))
-				d.write('\n')
-				#d.write("\nNew State:\n")
-				#d.write(str(self))
+		self.print_to_log(self.debug_log)
 			
 		self.tracked_state["is_simulation"] = True
 			
