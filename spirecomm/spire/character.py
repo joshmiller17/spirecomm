@@ -117,3 +117,11 @@ class Player(Character):
 		
 	def __str__(self):
 		return "[Player] " + str(self.current_hp) + "/" + str(self.max_hp) + ", Block " + str(self.block) + ", Energy " + str(self.energy)
+		
+	# orange pellets
+	def remove_all_debuffs(self):
+		for power in self.powers:
+			if power.power_name in Power.DEBUFFS:
+				self.remove_power(power.power_name)
+			if (power.power_name is "Strength" or power.power_name is "Dexterity" or power.power_name is "Focus") and power.amount < 0:
+				self.remove_power(power.power_name)

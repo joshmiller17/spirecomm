@@ -41,15 +41,15 @@ class Reward:
 
 		
 # return value of terminal state
-def getReward(self):
+def getReward(game):
 		
 	# Trace back to where we started
-	original_game_state = self.game
+	original_game_state = game
 	while original_game_state.original_state is not None:
 		original_game_state = original_game_state.original_state
 		
-	delta_hp = self.game.player.current_hp - original_game_state.player.current_hp
-	delta_max_hp = self.game.player.max_hp - original_game_state.player.max_hp
+	delta_hp = game.player.current_hp - original_game_state.player.current_hp
+	delta_max_hp = game.player.max_hp - original_game_state.player.max_hp
 	orig_potions = 0
 	for p in original_game_state.potions:
 		if p.name != "Potion Slot":
@@ -63,9 +63,9 @@ def getReward(self):
 	r["HP"] = delta_hp * MCTS_HP_VALUE
 	r["max HP"] = delta_max_hp * MCTS_MAX_HP_VALUE
 	#r["potions"] = delta_potions * MCTS_POTION_VALUE
-	#r -= self.game.combat_round * MCTS_ROUND_COST
+	#r -= game.combat_round * MCTS_ROUND_COST
 	reward = Reward(r)
 	
-	self.print_to_log("Terminal state reached, reward: " + str(reward.getTotalItemized()), divider="~")
+	game.print_to_log("Terminal state reached, reward: " + str(reward.getTotalItemized()), divider="~")
 	
 	return reward

@@ -6,14 +6,18 @@ DEBUFFS = [
 	"Draw Reduction",
 	"Entangled",
 	"Frail",
+	"Focus Down",
 	"Hex",
 	"No Draw",
 	"No Block",
+	"Shackles",
 	"Strength Down",
 	"Vulnerable",
-	"Weakened", # Weak?
+	"Weakened",
 	"Wraith Form"
 ]
+
+BUFFS = ["Ritual", "Strength", "Dexterity", "Incantation", "Enrage", "Metallicize", "SadisticNature", "Juggernaut", "DoubleTap", "DemonForm", "DarkEmbrace", "Brutality", "Berserk", "Rage", "Feel No Pain", "Flame Barrier", "Corruption", "Combust", "Fire Breathing", "Mayhem"]
 
 class Power:
 

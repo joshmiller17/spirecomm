@@ -10,8 +10,7 @@ import spirecomm
 # generally the main logic for calling the workhorse functions
 
 
-BUFFS = ["Ritual", "Strength", "Dexterity", "Incantation", "Enrage", "Metallicize", "SadisticNature", "Juggernaut", "DoubleTap", "DemonForm", "DarkEmbrace", "Brutality", "Berserk", "Rage", "Feel No Pain", "Flame Barrier", "Corruption", "Combust", "Fire Breathing", "Mayhem"]
-DEBUFFS = ["Frail", "Vulnerable", "Weakened", "Entangled", "Shackles", "NoBlock", "No Draw", "Strength Down", "Dexterity Down", "Focus Down"]
+
 PASSIVE_EFFECTS = ["Strike Damage", "Ethereal"] # these don't do anything by themselves
 
 		

@@ -10,13 +10,7 @@ import spirecomm
 
 
 
-# orange pellets
-def remove_all_debuffs(self):
-	for power in self.player.powers:
-		if power.power_name in DEBUFFS:
-			self.remove_power(power.power_name)
-		if (power.power_name is "Strength" or power.power_name is "Dexterity" or power.power_name is "Focus") and power.amount < 0:
-			self.remove_power(power.power_name)
+
 		
 			
 def decrement_duration_powers(self, character):
