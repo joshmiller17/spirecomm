@@ -7,11 +7,14 @@ import sys
 
 from spirecomm.spire.game import Game
 from spirecomm.spire.character import Intent, PlayerClass
+from spirecomm.spire.monster import *
 import spirecomm.spire.card
 from spirecomm.spire.screen import RestOption
 from spirecomm.communication.action import *
 from spirecomm.ai.behaviours import *
 from spirecomm.ai.priorities import *
+from spirecomm.ai.statediff import *
+from spirecomm.ai.state_comparer import *
 
 import py_trees
 
@@ -244,7 +247,7 @@ class SimpleAgent:
 	# Coordinator still needs an action input, so this function needs to return a valid action
 	def handle_error(self, error):
 		self.log("WARN: Agent received error " + str(error), debug=2)
-		#self.state_diff(self.last_game_state, self.blackboard.game) == {}
+		#self.state_diff(self.last_game_state, self.blackboard.game) == {} # deprecated format
 		if "Invalid command" in str(error):
 			if "error" in str(error):
 				self.log(traceback.format_exc(), debug=2)
@@ -297,13 +300,16 @@ class SimpleAgent:
 				raise Exception("Previous game state did not have a Player")
 		self.state_id += 1
 		self.blackboard.game.state_id = self.state_id
+		self.blackboard.game.tracked_state["player_class"] = self.chosen_class
 		self.blackboard.game.combat_round = self.combat_round
 		self.blackboard.game = self.blackboard.game
 				
 		# Check difference from last state
-		self.log("True Diff: " + str(self.state_diff(self.last_game_state, self.blackboard.game)), debug=6)
+		differ = StateDiff(self.last_game_state, self.blackboard.game, agent=self)
+		self.log("True Diff: " + str(differ.get_diff()), debug=6)
 		if self.blackboard.game.in_combat and self.last_game_state.in_combat and self.last_action is not None:
-			simulated_state = self.simulation_sanity_check(self.last_game_state, self.last_action) # check if we predicted this
+			state_comper = StateComparer(self.last_game_state, self.last_action, self)
+			simulated_state = state_comper.compare() # check if we predicted this
 			self.blackboard.tracked_state = simulated_state.tracked_state # FIXME this assumes we always simulate well, we'll need a fallback option for a way to figure out the correct tracked state when our simulation is wrong due to random chance
 			self.blackboard.game.tracked_state = self.blackboard.tracked_state
 		

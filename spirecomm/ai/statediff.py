@@ -13,10 +13,11 @@ import spirecomm
 class StateDiff:
 
 	
-	def __init__(self, state1, state2, ignore_randomness=False):
+	def __init__(self, state1, state2, agent, ignore_randomness=False):
 		self.state1 = state1
 		self.state2 = state2
 		self.ignore_randomness = ignore_randomness
+		self.agent = agent
 		self.diff = {}
 		self.get_diff()
 
@@ -82,7 +83,7 @@ class StateDiff:
 			self.diff["cards_added"] = []
 			self.diff["cards_removed"] = []
 			self.diff["cards_upgraded"] = []
-			cards_changed = set(self.state2.deck).symmetric_self.difference(set(self.state1.deck))
+			cards_changed = set(self.state2.deck).symmetric_difference(set(self.state1.deck))
 			for card in cards_changed:
 				if card not in self.state2.deck:
 					self.diff["cards_removed"].append(str(card))
@@ -134,10 +135,10 @@ class StateDiff:
 						powers_changed = self.get_power_changes(monster1.powers, monster2.powers)
 						for name, amount in powers_changed.items():
 							self.diff[m_id + "_power_change_" + name] = amount
-							self.log("DEBUG: m1 powers are " + str([str(power) for power in monster1.powers]))
-							self.log("DEBUG: m2 powers are " + str([str(power) for power in monster2.powers]))
-							self.log("DEBUG: m1 is " + str(monster1))
-							self.log("DEBUG: m2 is " + str(monster2))
+							self.agent.log("DEBUG: m1 powers are " + str([str(power) for power in monster1.powers]))
+							self.agent.log("DEBUG: m2 powers are " + str([str(power) for power in monster2.powers]))
+							self.agent.log("DEBUG: m1 is " + str(monster1))
+							self.agent.log("DEBUG: m2 is " + str(monster2))
 					break
 					
 				elif monster1 not in monsters2:
@@ -179,10 +180,10 @@ class StateDiff:
 		
 		if not self.ignore_randomness:
 	
-			cards_changed_from_hand = set(self.state2.hand).symmetric_self.difference(set(self.state1.hand))
-			cards_changed_from_draw = set(self.state2.draw_pile).symmetric_self.difference(set(self.state1.draw_pile))
-			cards_changed_from_discard = set(self.state2.discard_pile).symmetric_self.difference(set(self.state1.discard_pile))
-			cards_changed_from_exhaust = set(self.state2.exhaust_pile).symmetric_self.difference(set(self.state1.exhaust_pile))
+			cards_changed_from_hand = set(self.state2.hand).symmetric_difference(set(self.state1.hand))
+			cards_changed_from_draw = set(self.state2.draw_pile).symmetric_difference(set(self.state1.draw_pile))
+			cards_changed_from_discard = set(self.state2.discard_pile).symmetric_difference(set(self.state1.discard_pile))
+			cards_changed_from_exhaust = set(self.state2.exhaust_pile).symmetric_difference(set(self.state1.exhaust_pile))
 			cards_changed = cards_changed_from_hand | cards_changed_from_draw | cards_changed_from_discard | cards_changed_from_exhaust
 			cards_changed_outside_hand = cards_changed_from_draw | cards_changed_from_discard | cards_changed_from_exhaust
 			
@@ -266,24 +267,24 @@ class StateDiff:
 				elif card.get_base_name() in choice_then_exhaust and card in self.state2.exhaust:  # these cards are weird since they get played and there's a state of change before it's exhausted
 					self.diff["made_choice_then_exhausted"].append(card.get_id_str())
 				else:
-					self.log("WARN: unknown card change " + card.get_id_str(), debug=3)
+					self.agent.log("WARN: unknown card change " + card.get_id_str(), debug=3)
 					self.diff["unknown_change"].append(card.get_id_str())
 					if card in self.state1.draw_pile:
-						self.log("card was in self.state1 draw pile")
+						self.agent.log("card was in self.state1 draw pile")
 					if card in self.state2.draw_pile:
-						self.log("card is in self.state2 draw pile")
+						self.agent.log("card is in self.state2 draw pile")
 					if card in self.state1.discard_pile:
-						self.log("card was in self.state1 discard")
+						self.agent.log("card was in self.state1 discard")
 					if card in self.state2.discard_pile:
-						self.log("card is in self.state2 discard")
+						self.agent.log("card is in self.state2 discard")
 					if card in self.state1.hand:
-						self.log("card was in self.state1 hand")
+						self.agent.log("card was in self.state1 hand")
 					if card in self.state2.hand:
-						self.log("card is in self.state2 hand")
+						self.agent.log("card is in self.state2 hand")
 					if card in self.state1.exhaust_pile:
-						self.log("card was in self.state1 exhaust")
+						self.agent.log("card was in self.state1 exhaust")
 					if card in self.state2.exhaust_pile:
-						self.log("card is in self.state2 exhaust")
+						self.agent.log("card is in self.state2 exhaust")
 			
 			for a in card_actions:
 				if self.diff[a] == []:
@@ -301,28 +302,58 @@ class StateDiff:
 	# DEPRECATED
 		# if self.diff != {}:
 			# # TEST ONLY
-			# self.log("Our deck (self.state1):")
+			# self.agent.log("Our deck (self.state1):")
 			# for card in self.state1.deck:
-				# self.log(card.get_id_str())
-			# self.log("Our hand (self.state1):")
+				# self.agent.log(card.get_id_str())
+			# self.agent.log("Our hand (self.state1):")
 			# for card in self.state1.hand:
-				# self.log(card.get_id_str())
-			# self.log("Our draw pile (self.state1):")
+				# self.agent.log(card.get_id_str())
+			# self.agent.log("Our draw pile (self.state1):")
 			# for card in self.state1.draw_pile:
-				# self.log(card.get_id_str())
-			# self.log("Our discard pile (self.state1):")
+				# self.agent.log(card.get_id_str())
+			# self.agent.log("Our discard pile (self.state1):")
 			# for card in self.state1.discard_pile:
-				# self.log(card.get_id_str())
+				# self.agent.log(card.get_id_str())
 			
-			# self.log("Our deck (self.state2):")
+			# self.agent.log("Our deck (self.state2):")
 			# for card in self.state2.deck:
-				# self.log(card.get_id_str())
-			# self.log("Our hand (self.state2):")
+				# self.agent.log(card.get_id_str())
+			# self.agent.log("Our hand (self.state2):")
 			# for card in self.state2.hand:
-				# self.log(card.get_id_str())
-			# self.log("Our draw pile (self.state2):")
+				# self.agent.log(card.get_id_str())
+			# self.agent.log("Our draw pile (self.state2):")
 			# for card in self.state2.draw_pile:
-				# self.log(card.get_id_str())
-			# self.log("Our discard pile (self.state2):")
+				# self.agent.log(card.get_id_str())
+			# self.agent.log("Our discard pile (self.state2):")
 			# for card in self.state2.discard_pile:
-				# self.log(card.get_id_str())
+				# self.agent.log(card.get_id_str())
+				
+				
+	# return a dict of powers and amount difference, assume 0 for non existent
+	def get_power_changes(self, powers1, powers2):
+		# convert tuples to dicts
+		p1 = {}
+		p2 = {}
+		for p in powers1:
+			p1[p.power_name] = p.amount
+		for p in powers2:
+			p2[p.power_name] = p.amount
+			
+
+		diff = {}
+		powers = set(())
+		for p in p1.keys():
+			powers.add(p)
+		for p in p2.keys():
+			powers.add(p)
+		for power in powers:
+			amt1 = 0
+			if power in p1:
+				amt1 = p1[power]
+			amt2 = 0
+			if power in p2:
+				amt2 = p2[power]
+			if amt2 != amt1:
+				diff[power] = amt2 - amt1
+		
+		return diff

@@ -12,20 +12,25 @@ from spirecomm.ai.statediff import *
 
 class StateComparer:
 
-				
+	def __init__(self, original_state, action, agent):
+		self.original_state = original_state
+		self.action = action
+		self.agent = agent
+		
 	# Check that the simulator predicted this outcome was possible
-	def simulation_sanity_check(self, original_state, action):
-		original_state.debug_file = self.logfile_name
-		simulated_state = original_state.takeAction(action, from_real=True)
+	# returns simulation
+	def compare(self):
+		self.original_state.debug_file = self.agent.logfile_name
+		simulated_state = self.original_state.takeAction(self.action, from_real=True)
 		while len(simulated_state.debug_log):
-			self.log(simulated_state.debug_log.pop(0))
-		real_differ = StateDiff(original_state, self.blackboard.game, ignore_randomness=True)
+			self.agent.log(simulated_state.debug_log.pop(0))
+		real_differ = StateDiff(self.original_state, self.agent.blackboard.game, ignore_randomness=True, agent=self.agent)
 		real_diff = real_differ.get_diff()
 		if real_diff == {}:
-			self.log("WARN: real diff is null", debug=3)
-			self.note(str(original_state))
-			self.note(str(self.blackboard.game))
-		sim_differ = StateDiff(original_state, simulated_state, ignore_randomness=True)
+			self.agent.log("WARN: real diff is null", debug=3)
+			self.agent.note(str(self.original_state))
+			self.agent.note(str(self.agent.blackboard.game))
+		sim_differ = StateDiff(self.original_state, simulated_state, ignore_randomness=True, agent=self.agent)
 		sim_diff = sim_differ.get_diff()
 		diff_diff = {}
 		skip_warn = False
@@ -42,61 +47,30 @@ class StateComparer:
 		for key, value in sim_diff.items():
 			if key not in real_diff:
 				diff_diff["sim_added_" + key] = value
-		#diff = self.state_diff(self.blackboard.game, simulated_state)
+		#diff = self.state_diff(self.agent.blackboard.game, simulated_state)
 		if diff_diff != {}:
 			# check for just drawing different cards
 			# if simulated_state.just_reshuffled:
-				# if len(simulated_state.hand) == len(self.blackboard.game.hand) and len(simulated_state.discard_pile) == len(self.blackboard.game.discard_pile) and original_state.known_top_cards == []:
-					# self.log("minor warning: reshuffled different cards in simulation")
+				# if len(simulated_state.hand) == len(self.agent.blackboard.game.hand) and len(simulated_state.discard_pile) == len(self.agent.blackboard.game.discard_pile) and self.original_state.known_top_cards == []:
+					# self.agent.log("minor warning: reshuffled different cards in simulation")
 					# skip_warn = True
 			# elif "sims_val_drawn" in diff_diff and "real_val_drawn" in diff_diff:
-				# if len(simulated_state.hand) == len(self.blackboard.game.hand) and original_state.known_top_cards == []:
-					# self.log("minor warning: drew different cards in simulation")
+				# if len(simulated_state.hand) == len(self.agent.blackboard.game.hand) and self.original_state.known_top_cards == []:
+					# self.agent.log("minor warning: drew different cards in simulation")
 					# if len(diff_diff) == 2:
 						# skip_warn = True
 					
 			if not skip_warn:
-				self.log("WARN: simulation discrepency, see log for details", debug=3)
-			self.log("actual/sim diff: " + str(diff_diff), debug=3)
-			self.log("sim diff: " + str(sim_diff), debug=3)
-			self.log("real diff: " + str(real_diff), debug=3)
-			# self.note("Simulated:")
-			# self.note(str(simulated_state))
-			# self.note("Actual:")
-			# self.note(str(self.blackboard.game))
+				self.agent.log("WARN: simulation discrepency, see log for details", debug=3)
+			self.agent.log("actual/sim diff: " + str(diff_diff), debug=3)
+			self.agent.log("sim diff: " + str(sim_diff), debug=3)
+			self.agent.log("real diff: " + str(real_diff), debug=3)
+			# self.agent.note("Simulated:")
+			# self.agent.note(str(simulated_state))
+			# self.agent.note("Actual:")
+			# self.agent.note(str(self.agent.blackboard.game))
 		else:
-			self.log("Simulation sanity check success!", debug=5)
+			self.agent.log("Simulation sanity check success!", debug=5)
 		return simulated_state
 		
 	
-		
-		
-			
-	# return a dict of powers and amount difference, assume 0 for non existent
-	def get_power_changes(self, powers1, powers2):
-		# convert tuples to dicts
-		p1 = {}
-		p2 = {}
-		for p in powers1:
-			p1[p.power_name] = p.amount
-		for p in powers2:
-			p2[p.power_name] = p.amount
-			
-
-		diff = {}
-		powers = set(())
-		for p in p1.keys():
-			powers.add(p)
-		for p in p2.keys():
-			powers.add(p)
-		for power in powers:
-			amt1 = 0
-			if power in p1:
-				amt1 = p1[power]
-			amt2 = 0
-			if power in p2:
-				amt2 = p2[power]
-			if amt2 != amt1:
-				diff[power] = amt2 - amt1
-		
-		return diff

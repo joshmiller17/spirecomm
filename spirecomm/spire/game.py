@@ -18,6 +18,7 @@ from spirecomm.ai.simulator import *
 from spirecomm.ai.sim_helper_funcs import *
 from spirecomm.ai.rewards import *
 from spirecomm.ai.state_manip import *
+from spirecomm.ai.card_database import *
 
 
 PASSIVE_EFFECTS = ["Strike Damage", "Ethereal"] # these don't do anything by themselves
@@ -29,6 +30,7 @@ MCTS_ROUND_COST = 0.5 # penalize long fights
 # TODO eventually add: value for deck changes (e.g. cost for gaining parasite)
 # TODO eventually add: value for card misc changes (e.g., genetic algorithm, ritual dagger)
 
+CARD_DATABASE = CardDatabase()
 
 class RoomPhase(Enum):
 	COMBAT = 1,
@@ -95,6 +97,7 @@ class Game:
 		
 		# Tracked state info
 		self.tracked_state = {
+		"player_class" : None,
 		"visited_shop" : False,
 		"previous_floor" : 0,  # used to recognize floor changes, i.e. when floor != previous_floor
 		"possible_actions": None,
@@ -834,9 +837,6 @@ class Game:
 							hits += h
 					if hits == monster.move_hits:
 						monster.current_move = move
-						self.debug_log.append("DEBUG: counted hits " + str(hits) + " is " + str(hits)) # TODO remove
-					else: 
-						self.debug_log.append("DEBUG: counted hits " + str(hits) + " is not " + str(hits)) # TODO remove
 				else:
 					monster.current_move = move
 					
@@ -941,7 +941,7 @@ class Game:
 				for new_monster in effect["amount"]:
 					m = spirecomm.spire.monster.Monster(new_monster, new_monster, monster.current_hp,  monster.current_hp, 0, None, False, False)
 					self.monsters.append(m)
-					self.monsters.remove(monster)
+				self.monsters.remove(monster)
 			
 			elif effect["name"] == "Escape":
 				monster.is_gone = True
@@ -1248,11 +1248,7 @@ class Game:
 				
 		
 	def simulate_discovery(self, action):
-		self.choice_list = []
-		self.current_action = None
-		
-		# TODO actually discover the card
-
+		CARD_DATABASE.discover(self, self.tracked_state["player_class"])
 		return self
 		
 	def simulate_exhaust(self, action):
@@ -1304,8 +1300,7 @@ class Game:
 			self.player.add_power("Artifact", 1)
 		
 		elif action.potion.name == "Attack Potion":
-			# TODO
-			pass
+			CARD_DATABASE.discover(self, self.tracked_state["player_class"], card_type="ATTACK")
 		
 		elif action.potion.name == "Block Potion":
 			self.add_block(self.player, 12)
@@ -1324,7 +1319,7 @@ class Game:
 		elif action.potion.name == "Entropic Brew":
 			for i in range(len(self.potions)):
 				if self.potions[i].potion_id == "Potion Slot":
-					self.potions[i] = self.generate_random_potion()
+					self.potions[i] = CARD_DATABASE.generate_random_potion()
 		
 		elif action.potion.name == "Essence of Steel":
 			self.player.add_power("Plated Armor", 4)
@@ -1372,15 +1367,13 @@ class Game:
 					monster.add_power("Poison", 6)
 		
 		elif action.potion.name == "Power Potion":
-			# TODO
-			pass
+			CARD_DATABASE.discover(self, self.tracked_state["player_class"], card_type="POWER")
 			
 		elif action.potion.name == "Regen Potion":
 			self.player.add_power("Regen", 5)
 		
 		elif action.potion.name == "Skill Potion":
-			# TODO
-			pass
+			CARD_DATABASE.discover(self, self.tracked_state["player_class"], card_type="SKILL")
 		
 		elif action.potion.name == "Smoke Bomb":
 			if self.blackboard.game.room_type != "MonsterRoomBoss":
