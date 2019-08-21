@@ -5,7 +5,7 @@ import spirecomm.config as config
 
 CARDS_PATH = os.path.join(config.SPIRECOMM_PATH, "spirecomm", "ai", "cards")
 
-VALID_CLASSES = ["EVENT", "COLORLESS", "IRONCLAD", "THE_SILENT", "DEFECT"]
+VALID_CLASSES = ["COLORLESS", "IRONCLAD", "THE_SILENT", "DEFECT"]
 
 class CardType(Enum):
 	ATTACK = 1
@@ -25,7 +25,7 @@ class CardRarity(Enum):
 
 
 class Card:
-	def __init__(self, card_id, name, card_type, rarity, upgrades=0, has_target=False, cost=0, uuid="", misc=0, price=0, is_playable=False, exhausts=False, test_only=False):
+	def __init__(self, card_id, name, card_type, rarity, upgrades=0, has_target=False, cost=0, uuid="", misc=0, price=0, is_playable=False, exhausts=False, compare_to_real=True):
 		self.card_id = card_id
 		self.name = name
 		self.type = card_type
@@ -39,7 +39,7 @@ class Card:
 		self.is_playable = is_playable
 		self.exhausts = exhausts
 		
-		self.test_only = test_only
+		self.compare_to_real = compare_to_real
 		
 		
 		# Static values, load from cards/[name].json
@@ -60,8 +60,9 @@ class Card:
 		'''
 		self.value["synergies"] = []
 		
-		
+		self.metadata = {}
 		self.effects = {}	
+		self.is_discoverable = True
 		self.loadedFromJSON = False
 		'''Effect format:
 		target: self, one, all, or random (enemy)
@@ -79,6 +80,14 @@ class Card:
 		self.effects["effect"] = None
 		self.effects["amount"] = None
 		
+		self.load_card(compare_to_real=compare_to_real)
+		
+		# Dynamic values
+		self.value["upgrade value"] = None # How much do we want to upgrade this card?
+		self.value["purge value"] = None # How much do we want to get rid of this card?
+		self.value["synergy value"] = None # How well does this work with our deck?
+		
+	def load_card(self, compare_to_real=False):
 		try:
 			with open(os.path.join(CARDS_PATH, self.get_clean_name() + ".json"),"r") as f:
 				jsonData = json.load(f)
@@ -88,7 +97,7 @@ class Card:
 				try:
 					jsonData["class"] and jsonData["cost"] and jsonData["has_target"] and jsonData["is_playable"] and jsonData["exhausts"]
 				except Exception as e:
-					if not test_only:
+					if compare_to_real:
 						if not os.path.exists(os.path.join(CARDS_PATH, "temp")):
 							os.makedirs(os.path.join(CARDS_PATH, "temp"))
 						with open(os.path.join(CARDS_PATH, "temp", str(self.card_id) + ".json"), "w") as jf:
@@ -124,6 +133,28 @@ class Card:
 					raise Exception("invalid exhaust: JSON says " + str(self.exhausts) + " but effects say " + str(actually_exhausts))
 				if jsonData["cost"] != self.cost and self.is_playable: # ensure we're checking cost in a valid situation
 					raise Exception("invalid cost: JSON says " + str(jsonData["cost"]) + " but effects say " + str(self.cost))
+				self.metadata["class"] = jsonData["class"]
+				self.metadata["type"] = jsonData["type"]
+				self.metadata["rarity"] = jsonData["rarity"]
+				self.metadata["upgrades"] = jsonData["upgrades"]
+				self.metadata["cost"] = jsonData["cost"]
+				self.metadata["misc"] = jsonData["misc"]
+				self.metadata["has_target"] = jsonData["has_target"]
+				self.metadata["is_playable"] = jsonData["is_playable"]
+				self.metadata["exhausts"] = jsonData["exhausts"]
+				if "event" in jsonData:
+					self.metadata["event"] = jsonData["event"]
+					if self.metadata["event"]:
+						self.is_discoverable = False
+				if "healing" in jsonData:
+					self.metadata["healing"] = jsonData["healing"]
+					if self.metadata["healing"]:
+						self.is_discoverable = False
+				if self.metadata["type"] == "STATUS" or self.metadata["type"] == "CURSE":
+					self.is_discoverable = False
+				if self.metadata["rarity"] == "BASIC":
+					self.is_discoverable = False
+				
 				
 		except Exception as e:
 			with open('err.log', 'a+') as err_file:
@@ -131,11 +162,6 @@ class Card:
 					e = "missing data"
 				err_file.write("\nCard Error: (" + str(self.get_clean_name() + ") "))
 				err_file.write(str(e))
-		
-		# Dynamic values
-		self.value["upgrade value"] = None # How much do we want to upgrade this card?
-		self.value["purge value"] = None # How much do we want to get rid of this card?
-		self.value["synergy value"] = None # How well does this work with our deck?
 		
 	# lowercase, I don't think the choice_list makes any other changes that I'm aware of
 	def get_choice_str(self):

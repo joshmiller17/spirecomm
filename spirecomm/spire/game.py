@@ -7,15 +7,21 @@ import math
 import spirecomm.spire.relic
 import spirecomm.spire.card
 import spirecomm.spire.character
+import spirecomm.spire.monster
 import spirecomm.spire.map
 import spirecomm.spire.potion
 import spirecomm.spire.screen
 import spirecomm.spire.power
 
 from spirecomm.communication.action import *
+from spirecomm.ai.simulator import *
+from spirecomm.ai.sim_helper_funcs import *
+from spirecomm.ai.rewards import *
+from spirecomm.ai.state_manip import *
+from spirecomm.ai.card_database import *
 
 
-# MCTS values for changes to game state
+PASSIVE_EFFECTS = ["Strike Damage", "Ethereal"] # these don't do anything by themselves
 MCTS_MAX_HP_VALUE = 7
 MCTS_HP_VALUE = 1
 MCTS_POTION_VALUE = 7 # TODO change by potion type, evolved by behaviour tree
@@ -24,10 +30,7 @@ MCTS_ROUND_COST = 0.5 # penalize long fights
 # TODO eventually add: value for deck changes (e.g. cost for gaining parasite)
 # TODO eventually add: value for card misc changes (e.g., genetic algorithm, ritual dagger)
 
-BUFFS = ["Ritual", "Strength", "Dexterity", "Incantation", "Enrage", "Metallicize", "SadisticNature", "Juggernaut", "DoubleTap", "DemonForm", "DarkEmbrace", "Brutality", "Berserk", "Rage", "Feel No Pain", "Flame Barrier", "Corruption", "Combust", "Fire Breathing", "Mayhem"]
-DEBUFFS = ["Frail", "Vulnerable", "Weakened", "Entangled", "Shackles", "NoBlock", "No Draw", "Strength Down", "Dexterity Down", "Focus Down"]
-PASSIVE_EFFECTS = ["Strike Damage", "Ethereal"] # these don't do anything by themselves
-
+CARD_DATABASE = CardDatabase()
 
 class RoomPhase(Enum):
 	COMBAT = 1,
@@ -35,36 +38,6 @@ class RoomPhase(Enum):
 	COMPLETE = 3,
 	INCOMPLETE = 4
 	
-
-class Reward:
-	
-	def __init__(self, reward={}):
-		self.totalItemized = reward
-		
-	def __str__(self):
-		ret = ", ".join([key + ": " + str(value) for key, value in self.totalItemized.items()])
-		return ret
-		
-	def addReward(self, reward):
-		if reward is None:
-			return self
-		for key, value in reward.totalItemized.items():
-			if key in self.totalItemized:
-				self.totalItemized[key] += value
-			else:
-				self.totalItemized[key] = value
-		return self
-		
-	def getTotalReward(self):
-		ret = 0
-		for key, value in self.totalItemized.items():
-			ret += value
-		return ret
-		
-	def getTotalItemized(self):
-		return self.totalItemized
-	
-
 
 class Game:
 
@@ -122,8 +95,9 @@ class Game:
 		self.original_state = None # For MCTS simulations; FIXME might be a huge memory storage for in-depth simulations? Consider only storing values important for reward func
 		
 		
-		# Tracked state info - TODO this block needs to be stored more permanently
+		# Tracked state info
 		self.tracked_state = {
+		"player_class" : None,
 		"visited_shop" : False,
 		"previous_floor" : 0,  # used to recognize floor changes, i.e. when floor != previous_floor
 		"possible_actions": None,
@@ -150,7 +124,7 @@ class Game:
 	def is_valid(self):
 		return self.end_available or self.potion_available or self.play_available or self.proceed_available or self.cancel_available
 		
-	# do any internal state updates we need to do if we change floors
+	# reset floor-specific things
 	def on_floor_change(self):
 		self.combat_round = 1
 		self.original_state = None
@@ -192,6 +166,18 @@ class Game:
 		
 	def has_relic(self, name):
 		return self.get_relic(name) is not None
+		
+	# True iff either we're dead or the monsters are (or we smoke bomb)
+	def isTerminal(self):
+		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+		return self.player.current_hp <= 0 or len(available_monsters) < 1 or not self.in_combat
+		
+	def get_upgradable_cards(self, cards):
+		upgradable = []
+		for card in cards:
+			if card.upgrades == 0 or card.get_base_name() == "Searing Blow":
+				upgradable.append(card)
+		return upgradable
 	
 	def __str__(self):
 		string = "\n\n<---- Game State " + str(self.state_id) + " ----"
@@ -271,7 +257,7 @@ class Game:
 		if game.in_combat:
 			combat_state = json_state.get("combat_state")
 			game.player = spirecomm.spire.character.Player.from_json(combat_state.get("player"))
-			game.monsters = [spirecomm.spire.character.Monster.from_json(json_monster) for json_monster in combat_state.get("monsters")]
+			game.monsters = [spirecomm.spire.monster.Monster.from_json(json_monster) for json_monster in combat_state.get("monsters")]
 			for i, monster in enumerate(game.monsters):
 				monster.monster_index = i
 			game.draw_pile = [spirecomm.spire.card.Card.from_json(json_card) for json_card in combat_state.get("draw_pile")]
@@ -309,580 +295,10 @@ class Game:
 		return potions
 		
 
-# ---------- MCTS SIMULATIONS -----------	
 
-	# related to agent.state_diff(), this function takes a key, value pair from state_diff and creates that change to the state
-	def changeState(self, key, value):
-		set_attrs = ["room_phase", "room_type", "current_action", "act_boss", "floor", "act", "in_combat"]
-		if key in set_attrs:
-			setattr(self, key, value)
-		if key == "choices_added":
-			for v in value:
-				self.choice_list.append(v)
-		if key == "choices_removed":
-			for v in value:
-				self.choice_list.remove(v)
-		change_attrs = ["gold", "state_id", "combat_round"]
-		if key in change_attrs:
-			setattr(self, key, self.key + value)
-		if key == "relics":
-			for v in value:
-				if type(v) is tuple and len(v) == 2:
-					self.set_relic_counter(v[0], self.get_relic(v[0].counter) + v[1])
-				else:
-					if self.has_relic(v):
-						self.relics.remove(v)
-					else:
-						self.relics.append(v)
-			
-
-		# FIXME state_diff gives string, not the actual card object we would need to do this
-		# if key == "cards_added":
-			# for v in value:
-				# self.deck.append(v)
-		# if key == "cards_removed":
-			# for v in value:
-				# self.deck.remove(v)
-		# if key == "cards_upgraded":
-			# pass
-			
-
-		if key == "potions_added":
-			for v in value:
-				for p in self.potions:
-					if p.name == "Potion Slot":
-						p.name = v
-						break
-		
-		if key == "potions_removed":
-			for v in value:
-				for p in self.potions:
-					if p.name == v:
-						p.name = "Potion Slot"
-						break
-
-		
-	
-			
-			# monsters1 = [monster for monster in state1.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
-			# monsters2 = [monster for monster in state2.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
-
-			# checked_monsters = []
-			# for monster1 in monsters1:
-				# for monster2 in monsters2:
-					# if monster1 == monster2 and monster1 not in checked_monsters:
-						# checked_monsters.append(monster1) # avoid checking twice
-						# m_id = monster1.monster_id + str(monster1.monster_index)
-						# if monster1.current_hp != monster2.current_hp:
-							# monster_changes[m_id + "_hp"] = monster2.current_hp - monster1.current_hp
-						# if monster1.block != monster2.block:
-								# monster_changes[m_id + "_block"] = monster2.block - monster1.block
-							
-						# if monster1.powers != monster2.powers:
-							# monster_changes[m_id + "_powers_changed"] = []
-							# monster_changes[m_id + "_powers_added"] = []
-							# monster_changes[m_id + "_powers_removed"] = []
-							# powers_changed = set([p.power_name for p in set(monster2.powers).symmetric_difference(set(monster1.powers))])
-							# for name in powers_changed:
-								# powers1 = [p.power_name for p in monster1.powers]
-								# powers2 = [p.power_name for p in monster2.powers]
-								# if name in powers1 and name in powers2:
-									# monster_changes[m_id + "_powers_changed"].append((name, monster2.get_power(name).amount - monster1.get_power(name).amount))
-									# continue
-								# elif name in powers2:
-									# monster_changes[m_id + "_powers_added"].append((name, monster2.get_power(name).amount))
-									# continue
-								# elif name in powers1:
-									# monster_changes[m_id + "_powers_removed"].append((name, monster1.get_power(name).amount))
-									# continue
-								
-							# if monster_changes[m_id + "_powers_added"] == []:
-								# monster_changes.pop(m_id + "_powers_added", None)
-							# if monster_changes[m_id + "_powers_removed"] == []:
-								# monster_changes.pop(m_id + "_powers_removed", None)
-							# if monster_changes[m_id + "_powers_changed"] == []:
-								# monster_changes.pop(m_id + "_powers_changed", None)
-						# break
-						
-					# elif monster1 not in monsters2:
-						# try:
-							# unavailable_monster = [monster for monster in state2.monsters if monster1 == monster][0]
-							# cause = "unknown"
-							# if unavailable_monster.half_dead:
-								# cause = "half dead"
-							# elif unavailable_monster.is_gone or unavailable_monster.current_hp <= 0:
-								# cause = "is gone / dead"
-						# except:
-							# cause = "no longer exists"
-						
-						# monster_changes[monster1.monster_id + str(monster1.monster_index) + "_not_available"] = cause
-					# elif monster2 not in monsters1:
-						# monster_changes[monster1.monster_id + str(monster1.monster_index) + "_returned_with_hp"] = monster2.current_hp
-								
-						
-			
-			# if monster_changes != {}:
-				# for key, value in monster_changes.items():
-					# diff[key] = value
-			
-			# # general fixme?: better record linking between state1 and state2? right now most record linking is by name or ID (which might not be the same necessarily)
-			
-			# delta_hand = len(state2.hand) - len(state1.hand)
-			# delta_draw_pile = len(state2.draw_pile) - len(state1.draw_pile)
-			# delta_discard = len(state2.discard_pile) - len(state1.discard_pile)
-			# delta_exhaust = len(state2.exhaust_pile) - len(state1.exhaust_pile)
-			# if delta_hand != 0:
-				# diff["delta_hand"] = delta_hand
-			# if delta_draw_pile != 0:
-				# diff["delta_draw_pile"] = delta_draw_pile
-			# if delta_discard != 0:
-				# diff["delta_discard"] = delta_discard
-			# if delta_exhaust != 0:
-				# diff["delta_exhaust"] = delta_exhaust
-			
-			# if not ignore_randomness:
-		
-				# cards_changed_from_hand = set(state2.hand).symmetric_difference(set(state1.hand))
-				# cards_changed_from_draw = set(state2.draw_pile).symmetric_difference(set(state1.draw_pile))
-				# cards_changed_from_discard = set(state2.discard_pile).symmetric_difference(set(state1.discard_pile))
-				# cards_changed_from_exhaust = set(state2.exhaust_pile).symmetric_difference(set(state1.exhaust_pile))
-				# cards_changed = cards_changed_from_hand | cards_changed_from_draw | cards_changed_from_discard | cards_changed_from_exhaust
-				# cards_changed_outside_hand = cards_changed_from_draw | cards_changed_from_discard | cards_changed_from_exhaust
-				
-				# card_actions = ["drawn", "hand_to_deck", "discovered", "exhausted", "exhumed", "discarded",
-								# "discard_to_hand", "deck_to_discard", "discard_to_deck",
-								# "discovered_to_deck", "discovered_to_discard", # "playability_changed", <- deprecated
-								 # "power_played", "upgraded", "unknown_change", "err_pc"]
-				
-				# for a in card_actions:
-					# diff[a] = []
-					
-				# # TODO some checks if none of these cases are true
-				# for card in cards_changed:
-					# if card in cards_changed_from_draw and card in cards_changed_from_hand:
-						# # draw
-						# if card in state2.hand:
-							# diff["drawn"].append(card.get_id_str())
-							# continue
-						# # hand to deck
-						# elif card in state1.hand:
-							# diff["hand_to_deck"].append(card.get_id_str())
-							# continue	
-					# elif card in cards_changed_from_hand and card in cards_changed_from_discard:
-						# # discard
-						# if card in state1.hand:
-							# diff["discarded"].append(card.get_id_str())
-							# continue
-						# # discard to hand
-						# elif card in state2.hand:
-							# diff["discard_to_hand"].append(card.get_id_str())
-							# continue	
-					# elif card in cards_changed_from_exhaust and card in cards_changed_from_hand:
-						# #exhaust
-						# if card in state1.hand:
-							# diff["exhausted"].append(card.get_id_str())
-							# continue
-						# #exhume
-						# elif card in state2.hand:
-							# diff["exhumed"].append(card.get_id_str())
-							# continue
-					# elif card in cards_changed_from_discard and card in cards_changed_from_draw:
-						# #deck to discard
-						# if card in state2.discard_pile:
-							# diff["deck_to_discard"].append(card.get_id_str())
-							# continue
-						# # discard to draw_pile
-						# elif card in state1.discard_pile:
-							# diff["discard_to_deck"].append(card.get_id_str())
-							# continue
-					# elif card in cards_changed_from_hand and card in state2.hand and card not in cards_changed_outside_hand:
-						# #discovered
-						# if card not in state1.hand and card not in state1.draw_pile and card not in state1.discard_pile and card not in state1.exhaust_pile:
-							# diff["discovered"].append(card.get_id_str())
-							# continue
-					# elif card in cards_changed_from_hand and card in state1.hand and card not in cards_changed_outside_hand:
-						# if card.type is spirecomm.spire.card.CardType.POWER and card not in state2.hand:
-							# # power played
-							# diff["power_played"].append(card.get_id_str())
-							# continue
-						# elif card.upgrades > 0: # assume upgrading it was the different thing
-							# diff["upgraded"].append(card.get_id_str()) # FIXME check this more strongly
-							# continue	
-					# elif card in state2.draw_pile and card not in state1.draw_pile and card not in state1.hand and card not in state1.discard_pile and card not in state1.exhaust_pile:
-						# # discovered to draw pile, e.g. status effect
-						# diff["discovered_to_deck"].append(card.get_id_str())
-						# continue
-					# elif card in state2.discard_pile and card not in state1.discard_pile and card not in state1.hand and card not in state1.draw_pile and card not in state1.exhaust_pile:
-						# # discovered to discard, e.g. status effect
-						# diff["discovered_to_discard"].append(card.get_id_str())
-						# continue
-					# else:
-						# self.log("WARN: unknown card change " + card.get_id_str(), debug=3)
-						# diff["unknown_change"].append(card.get_id_str())
-						# if card in state1.draw_pile:
-							# self.log("card was in state1 draw pile")
-						# if card in state2.draw_pile:
-							# self.log("card is in state2 draw pile")
-						# if card in state1.discard_pile:
-							# self.log("card was in state1 discard")
-						# if card in state2.discard_pile:
-							# self.log("card is in state2 discard")
-						# if card in state1.hand:
-							# self.log("card was in state1 hand")
-						# if card in state2.hand:
-							# self.log("card is in state2 hand")
-						# if card in state1.exhaust_pile:
-							# self.log("card was in state1 exhaust")
-						# if card in state2.exhaust_pile:
-							# self.log("card is in state2 exhaust")
-				
-				# for a in card_actions:
-					# if diff[a] == []:
-						# diff.pop(a, None)
-		
-			# if state1.player.block != state2.player.block:
-				# diff["block"] = state2.player.block - state1.player.block
-				
-			# if state1.player.powers != state2.player.powers:
-				# diff["powers_changed"] = []
-				# diff["powers_added"] = []
-				# diff["powers_removed"] = []
-				# powers_changed = set(state2.player.powers).symmetric_difference(set(state1.player.powers))
-				# for power in powers_changed:
-					# #power1 = next(p for p in state1.player.powers if p.power_name == power.power_name)
-					# #power2 = next(p for p in state2.player.powers if p.power_name == power.power_name)
-					# if power in state1.player.powers and power in state2.player.powers:
-							# diff["powers_changed"].append((power.power_name, power2.amount - power1.amount))
-					# elif power in state2.player.powers:
-						# for p2 in state2.player.powers:
-							# if p2.power_name == power.power_name:
-								# diff["powers_added"].append((p2.power_name, p2.amount))
-								# continue
-					# elif power in state1.player.powers:
-						# for p1 in state1.player.powers:
-							# if p1.power_name == power.power_name:
-								# diff["powers_added"].append((p1.power_name, p1.amount))
-								# continue
-									
-				# if diff["powers_added"] == []:
-					# diff.pop("powers_added", None)
-				# if diff["powers_removed"] == []:
-					# diff.pop("powers_removed", None)
-				# if diff["powers_changed"] == []:
-					# diff.pop("powers_changed", None)
-
-	# True iff either we're dead or the monsters are (or we smoke bomb)
-	def isTerminal(self):
-		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
-		return self.player.current_hp <= 0 or len(available_monsters) < 1 or not self.in_combat
-		
-	# return value of terminal state
-	def getReward(self):
-		
-		# Trace back to where we started
-		original_game_state = self
-		while original_game_state.original_state is not None:
-			original_game_state = original_game_state.original_state
-			
-		delta_hp = self.player.current_hp - original_game_state.player.current_hp
-		delta_max_hp = self.player.max_hp - original_game_state.player.max_hp
-		orig_potions = 0
-		for p in original_game_state.potions:
-			if p.name != "Potion Slot":
-				orig_potions += 1
-		delta_potions = -1 * orig_potions
-		for p in original_game_state.potions:
-			if p.name != "Potion Slot":
-				delta_potions += 1
-		
-		r = {}
-		r["HP"] = delta_hp * MCTS_HP_VALUE
-		r["max HP"] = delta_max_hp * MCTS_MAX_HP_VALUE
-		#r["potions"] = delta_potions * MCTS_POTION_VALUE
-		#r -= self.combat_round * MCTS_ROUND_COST
-		reward = Reward(r)
-		
-		if self.debug_file:
-			with open(self.debug_file, 'a+') as d:
-				d.write("\n~~~~~~~~~~~~~~\n")
-				d.write("\nTerminal state reached, reward: " + str(reward.getTotalItemized()) + "\n")
-				d.write(str(self))
-				d.write("\n~~~~~~~~~~~~~~\n")
-		
-		return reward
+# CALCULATIONS AND SIMULATION WORKHORSE FUNCTIONS
 
 
-	def getPossibleActions(self):
-		if self.tracked_state["possible_actions"] == None:
-		
-			possible_actions = [EndTurnAction()]
-			available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
-			for monster in available_monsters:
-				pass
-				#monster.recognize_intents() # FIXME
-			
-			for potion in self.get_real_potions():
-				if potion.requires_target:
-					for monster in available_monsters:
-						possible_actions.append(PotionAction(True, potion=potion, target_monster=monster))
-				else:
-					possible_actions.append(PotionAction(True, potion=potion))
-					
-			for card in self.hand:
-				if len(available_monsters) == 0 and card.type != spirecomm.spire.card.CardType.POWER:
-					continue
-				if card.cost > self.player.energy:
-					continue
-				if card.has_target:
-					for monster in available_monsters:
-						possible_actions.append(PlayCardAction(card=card, target_monster=monster))
-				else:
-					possible_actions.append(PlayCardAction(card=card))
-			
-			if self.debug_file:
-				with open(self.debug_file, 'a+') as d:
-					d.write(str(self))
-					d.write("\n-----------------------------\n")
-					d.write("Possible Actions:\n")
-					d.write("\n".join([str(a) for a in possible_actions]))
-					d.write('\n')
-
-			self.tracked_state["possible_actions"] = possible_actions
-				
-		return self.tracked_state["possible_actions"]
-		
-	def get_upgradable_cards(self, cards):
-		upgradable = []
-		for card in cards:
-			if card.upgrades == 0 or card.get_base_name() == "Searing Blow":
-				upgradable.append(card)
-		return upgradable
-		
-	# a test bed for checking our surroundings
-	def debug_game_state(self):
-		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
-		for monster in available_monsters:
-			if monster.monster_id == "Lagavulin":
-				self.debug_log.append("Lagavulin's powers: " + str([str(power) for power in monster.powers]))
-	
-	
-	# Returns a new state
-	def takeAction(self, action, from_real=False):
-	
-		if self.in_combat and not self.tracked_state["registered_start_of_combat"]:
-			self.apply_start_of_combat_effects()
-			self.tracked_state["registered_start_of_combat"] = True
-	
-		if from_real:
-			self.tracked_state["is_simulation"] = False
-	
-		self.debug_game_state()
-	
-		self.debug_log.append("Simulating taking action: " + str(action))
-		#self.debug_log.append("Combat round: " + str(self.combat_round))
-	
-		if self.debug_file:
-			with open(self.debug_file, 'a+') as d:
-				d.write("\nSimulating taking action: " + str(action) + "\n")
-		
-		new_state = copy.deepcopy(self)
-		new_state.tracked_state["possible_actions"] = None
-		new_state.original_state = self
-		new_state.state_id += 1
-		
-		new_state.tracked_state["just_reshuffled"] = False
-		
-		if action.command.startswith("end") and not self.screen_up:
-			return new_state.simulate_end_turn(action)
-		elif action.command.startswith("potion") and not self.screen_up:
-			# assumes we have this potion, will throw an error if we don't I think
-			return new_state.simulate_potion(action)
-		elif action.command.startswith("play") and not self.screen_up:
-			return new_state.simulate_play(action)
-		elif action.command.startswith("state"):
-			return new_state
-		elif action.command.startswith("choose") and self.screen_up and new_state.current_action == "DiscoveryAction":
-			return new_state.simulate_discovery(action)
-		elif action.command.startswith("choose") and self.screen_up and new_state.current_action == "ExhaustAction":
-			return new_state.simulate_exhaust(action)
-		elif action.command.startswith("choose") and self.screen_up and new_state.current_action == "DiscardPileToTopOfDeckAction":
-			return new_state.simulate_headbutt(action)
-		elif action.command.startswith("choose") and self.screen_up and new_state.current_action == "PutOnDeckAction":
-			return new_state.simulate_hand_to_topdeck(action)
-		elif action.command.startswith("choose") and self.screen_up and new_state.current_action == "ArmamentsAction":
-			return new_state.simulate_upgrade(action)
-		elif action.command.startswith("choose") and self.screen_up and new_state.current_action == "DualWieldAction": # FIXME?
-			return new_state.simulate_dual_wield(action)
-		elif action.command.startswith("choose") and self.screen_up and new_state.current_action == "ExhumeAction": # FIXME?
-			return new_state.simulate_exhume(action)
-		elif action.command.startswith("choose") and self.screen_up and new_state.current_action == "ForethoughtAction": # FIXME?
-			return new_state.simulate_forethought(action)
-		else:
-			raise Exception("Chosen simulated action is not a valid combat action in the current state: " + str(action) + ", " + str(self.screen) + " (" + str(self.screen_type) + ") " + ("[UP]" if self.screen_up else ""))
-		
-	def choose_move(self, monster):
-		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
-		if self.combat_round == 1 and "startswith" in monster.intents:
-			selected_move = monster.intents["startswith"]
-		elif monster.monster_id == "GremlinTsundere" and len(available_monsters) > 1:
-			selected_move == "Protect"
-		else:
-			# make sure the attack we pick is not limited
-			while True: # do-while
-				move_weights = []
-				moves = []
-				moveset = monster.intents["moveset"]
-				
-				# change moveset to next move if exists
-				if str(monster) in self.tracked_state["monsters_last_attacks"]:
-					last_move = self.tracked_state["monsters_last_attacks"][str(monster)][0]
-					self.debug_log.append("Last move was " + str(last_move) + "[" + str(self.tracked_state["monsters_last_attacks"][str(monster)][1]) + "]")
-					if "next_move" in moveset[last_move]:
-						list_of_next_moves = moveset[last_move]["next_move"]
-						moveset = {}
-						for movedict in list_of_next_moves:
-							moveset[movedict["name"]] = monster.intents["moveset"][movedict["name"]]
-							moveset[movedict["name"]]["probability"] = movedict["probability"]
-						self.debug_log.append("Found next moves to be: " + str(moveset))
-				
-				# pick from our moveset
-				if len(moveset) < 1:
-					self.debug_log.append("ERR: no moves to pick from") # TODO remove after figuring out this bug
-				for move, details in moveset.items():
-					moves.append(move)
-					move_weights.append(details["probability"])
-				selected_move = random.choices(population=moves, weights=move_weights)[0] # choices returns as a list of size 1
-				
-				if selected_move is None:
-					self.debug_log.append("ERR: selected move is none") # TODO remove after figuring out this bug
-				
-				# check limits
-				if "limits" not in monster.intents or str(monster) not in self.tracked_state["monsters_last_attacks"]:
-					# don't worry about limits, choose a random attack
-					break
-				else:
-					exceeds_limit = False
-					for limited_move, limited_times in monster.intents["limits"].items():
-						if selected_move == limited_move and selected_move == self.tracked_state["monsters_last_attacks"][str(monster)][0]:
-							if self.tracked_state["monsters_last_attacks"][str(monster)][1] + 1 >= limited_times: # selecting this would exceed limit:
-								exceeds_limit = True
-								self.debug_log.append("Tried to use " + selected_move + " but that would exceed a move limit")
-					if not exceeds_limit:
-						break
-		
-		# Check if Lagavulin should still be sleeping
-		moveset = monster.intents["moveset"]
-		if monster.monster_id == "Lagavulin":
-			if monster.current_hp != monster.max_hp and self.tracked_state["lagavulin_is_asleep"]:
-				# wake up
-				selected_move = "Stunned"
-				monster.add_power("Metallicize", -8)
-				#monster.remove_power("Asleep") # I think this doesn't actually exist in the code
-				self.tracked_state["lagavulin_is_asleep"] = False
-		
-		return selected_move
-		
-	def apply_end_of_player_turn_effects(self):
-	
-		# reset relics
-		self.set_relic_counter("Kunai", 0)
-		self.set_relic_counter("Shuriken", 0)
-		self.set_relic_counter("Ornamental Fan", 0)
-		self.set_relic_counter("Velvet Choker", 0)
-		self.set_relic_counter("Letter Opener", 0)
-		self.tracked_state["attacks_played_last_turn"] = self.tracked_state["attacks_played_this_turn"]
-		self.tracked_state["attacks_played_this_turn"] = 0
-		self.tracked_state["cards_played_last_turn"] = self.tracked_state["cards_played_this_turn"]
-		self.tracked_state["cards_played_this_turn"] = 0
-		self.tracked_state["skills_played_this_turn"] = 0
-		self.tracked_state["powers_played_this_turn"] = 0
-		self.tracked_state["necronomicon_triggered"] = False
-		
-		self.decrement_duration_powers(self.player)
-		
-		self.increment_relic("Stone Calendar")
-		
-		if self.player.has_power("Fire Breathing"):
-			available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
-			amt = self.player.get_power_amount("Fire Breathing") * self.tracked_state["attacks_played_this_turn"]
-			if amt > 0:
-				for monster in available_monsters:
-					self.apply_damage(amt, None, monster)
-		
-		if self.combat_round == 7 and self.has_relic("Stone Calendar"):
-			available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
-			for monster in available_monsters:
-				self.apply_damage(52, None, monster)
-				
-		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
-		for monster in available_monsters:
-			if monster.has_power("Poison"):
-				self.apply_damage(monster.get_power_amount("Poison"), None, monster, ignores_block=True)
-				monster.decrement_power("Poison")
-			
-		
-		if self.player.block == 0 and self.has_relic("Orichalcum"):
-			self.player.block += 6 # note, this happens before all other end of turn block gaining effects like frost orbs, metallicize, etc
-			
-		if not self.has_relic("Ice Cream"):
-			self.player.energy = 0
-			
-		# Hand discarded
-		for card in self.hand:
-			for effect in card.effects:
-				if effect["effect"] == "Regret":
-					self.lose_hp(self.player, len(self.hand), from_card=True)
-				if effect["effect"] == "Ethereal":
-					self.hand.remove(card)
-					self.exhaust_card(card)
-					continue
-				elif effect["effect"] == "SelfWeakened":
-					self.apply_debuff(self.player, "Weakened", effect["amount"])
-				elif effect["effect"] == "SelfFrail":
-					self.apply_debuff(self.player, "Frail", effect["amount"])
-				elif effect["effect"] == "SelfDamage":
-					self.apply_damage(effect["amount"], None, self.player)
-					
-		if not self.has_relic("Runic Pyramid"):
-			self.discard_pile += self.hand
-			self.hand = []
-			
-		if self.has_relic("Nilry's Codex"):
-			pass # TODO discovery
-		
-		for power in self.player.powers:
-			if power.power_name == "Strength Down":
-				self.apply_debuff(self.player, "Strength", -1 * power.amount)
-				self.player.remove_power("Strength Down")
-			elif power.power_name == "Dexterity Down":
-				self.apply_debuff(self.player, "Dexterity", -1 * power.amount)
-				self.player.remove_power("Dexterity Down")
-			elif power.power_name == "Focus Down":
-				self.apply_debuff(self.player, "Focus", -1 * power.amount)
-				self.player.remove_power("Focus Down")
-			elif power.power_name == "Plated Armor":
-				self.add_block(self.player, power.amount)
-			elif power.power_name == "Metallicize":
-				self.add_block(self.player, power.amount)
-			elif power.power_name == "Combust":
-				self.lose_hp(self.player, 1, from_card=True)
-				available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
-				for monster in available_monsters:
-					monster.current_hp = max(monster.current_hp - power.amount, 0)
-			elif power.power_name == "Regen":
-				self.player.current_hp = min(self.player.current_hp + power.amount, self.player.max_hp)
-				self.player.decrement_power(power.power_name)
-			elif power.power_name == "DemonForm":
-				character.add_power("Strength", power.amount)
-				
-	# orange pellets
-	def remove_all_debuffs(self):
-		for power in self.player.powers:
-			if power.power_name in DEBUFFS:
-				self.remove_power(power.power_name)
-			if (power.power_name is "Strength" or power.power_name is "Dexterity" or power.power_name is "Focus") and power.amount < 0:
-				self.remove_power(power.power_name)
-			
 				
 	def decrement_duration_powers(self, character):
 		turn_based_powers = ["Vulnerable", "Frail", "Weakened", "No Block", "No Draw"]
@@ -891,7 +307,7 @@ class Game:
 				character.decrement_power(power.power_name)	
 		
 	def apply_end_of_turn_effects(self, monster): # (not for player use)
-	
+
 		for power in monster.powers:
 			if power.power_name == "Shackles":
 				monster.remove_power("Shackles")
@@ -912,7 +328,7 @@ class Game:
 	# DEPRECATED - we already get this information when we see the first state of combat
 	# tracking it again here creates duplicates
 	def apply_start_of_combat_effects(self):
-	
+
 		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
 		
 		for monster in available_monsters:
@@ -993,7 +409,7 @@ class Game:
 		if self.has_relic("Gremlin Horn"):
 			self.draw_card()
 			self.player.energy += 1
-	
+
 		if target.has_power("Spore Cloud"):
 			self.player.add_power("Vulnerable", target.get_power_amount("Spore Cloud"))
 			target.remove_power("Spore Cloud")
@@ -1005,10 +421,71 @@ class Game:
 		# TODO corpse explosion, that relic that shifts poison (specimen?)
 		
 		
+	def choose_move(self, monster):
+		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+		if self.combat_round == 1 and "startswith" in monster.intents:
+			selected_move = monster.intents["startswith"]
+		elif monster.monster_id == "GremlinTsundere" and len(available_monsters) > 1:
+			selected_move == "Protect"
+		else:
+			# make sure the attack we pick is not limited
+			while True: # do-while
+				move_weights = []
+				moves = []
+				moveset = monster.intents["moveset"]
+				
+				# change moveset to next move if exists
+				if str(monster) in self.tracked_state["monsters_last_attacks"]:
+					last_move = self.tracked_state["monsters_last_attacks"][str(monster)][0]
+					self.debug_log.append("Last move was " + str(last_move) + "[" + str(self.tracked_state["monsters_last_attacks"][str(monster)][1]) + "]")
+					if "next_move" in moveset[last_move]:
+						list_of_next_moves = moveset[last_move]["next_move"]
+						moveset = {}
+						for movedict in list_of_next_moves:
+							moveset[movedict["name"]] = monster.intents["moveset"][movedict["name"]]
+							moveset[movedict["name"]]["probability"] = movedict["probability"]
+						self.debug_log.append("Found next moves to be: " + str(moveset))
+				
+				# pick from our moveset
+				if len(moveset) < 1:
+					self.debug_log.append("ERR: no moves to pick from") # TODO remove after figuring out this bug
+				for move, details in moveset.items():
+					moves.append(move)
+					move_weights.append(details["probability"])
+				selected_move = random.choices(population=moves, weights=move_weights)[0] # choices returns as a list of size 1
+				
+				if selected_move is None:
+					self.debug_log.append("ERR: selected move is none") # TODO remove after figuring out this bug
+				
+				# check limits
+				if "limits" not in monster.intents or str(monster) not in self.tracked_state["monsters_last_attacks"]:
+					# don't worry about limits, choose a random attack
+					break
+				else:
+					exceeds_limit = False
+					for limited_move, limited_times in monster.intents["limits"].items():
+						if selected_move == limited_move and selected_move == self.tracked_state["monsters_last_attacks"][str(monster)][0]:
+							if self.tracked_state["monsters_last_attacks"][str(monster)][1] + 1 >= limited_times: # selecting this would exceed limit:
+								exceeds_limit = True
+								self.debug_log.append("Tried to use " + selected_move + " but that would exceed a move limit")
+					if not exceeds_limit:
+						break
+		
+		# Check if Lagavulin should still be sleeping
+		moveset = monster.intents["moveset"]
+		if monster.monster_id == "Lagavulin":
+			if monster.current_hp != monster.max_hp and self.tracked_state["lagavulin_is_asleep"]:
+				# wake up
+				selected_move = "Stunned"
+				monster.add_power("Metallicize", -8)
+				#monster.remove_power("Asleep") # I think this doesn't actually exist in the code
+				self.tracked_state["lagavulin_is_asleep"] = False
+		
+		return selected_move
 
 				
 	def check_intents(self):
-	
+
 		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
 		
 		for monster in available_monsters:
@@ -1031,14 +508,14 @@ class Game:
 			
 
 	def apply_start_of_turn_effects(self, character):
-	
+
 		if character.has_power("Barricade"):
 			pass
 		elif character is self.player and self.has_relic("Calipers"):
 			character.block = max(character.block - 15, 0)
 		else:
 			character.block = 0
-	
+
 		if character is self.player:
 		
 			self.player.block += self.tracked_state["next_turn_block"]
@@ -1094,7 +571,7 @@ class Game:
 					self.simulate_play(play_action)
 					
 				
-	
+
 	def apply_debuff(self, target, debuff, amount):
 		if debuff == "Weakened" and target is self.player and self.has_relic("Ginger"):
 			return
@@ -1298,7 +775,7 @@ class Game:
 			self.reshuffle_deck()
 		card = self.draw_pile.pop(0)
 		return card
-	
+
 	def draw_card(self, draw=1):
 		if self.player.has_power("No Draw"):
 			return
@@ -1322,92 +799,6 @@ class Game:
 		if draw > 1:
 			self.draw_card(draw - 1)
 			
-	# used to simulate entropic brew
-	def generate_random_potion(self, player_class=spirecomm.spire.character.PlayerClass.IRONCLAD):
-		# fixme not sure if entropic brew can generate fruit juice
-		possible_potions = [ 
-		spirecomm.spire.potion.Potion("Ancient Potion", "Ancient Potion", True, True, False),
-		spirecomm.spire.potion.Potion("Attack Potion", "Attack Potion", True, True, False),
-		spirecomm.spire.potion.Potion("Block Potion", "Block Potion", True, True, False),
-		spirecomm.spire.potion.Potion("Dexterity Potion", "Dexterity Potion", True, True, False),
-		spirecomm.spire.potion.Potion("Essence of Steel", "Essence of Steel", True, True, False),
-		spirecomm.spire.potion.Potion("Explosive Potion", "Explosive Potion", True, True, False),
-		spirecomm.spire.potion.Potion("Fairy in a Bottle", "Fairy in a Bottle", False, True, False),
-		spirecomm.spire.potion.Potion("Fear Potion", "Fear Potion", True, True, True),
-		spirecomm.spire.potion.Potion("Fire Potion", "Fire Potion", True, True, True),
-		spirecomm.spire.potion.Potion("Gambler's Brew", "Gambler's Brew", True, True, False),
-		spirecomm.spire.potion.Potion("Liquid Bronze", "Liquid Bronze", True, True, False),
-		spirecomm.spire.potion.Potion("Power Potion", "Power Potion", True, True, False),
-		spirecomm.spire.potion.Potion("Regen Potion", "Regen Potion", True, True, False),
-		spirecomm.spire.potion.Potion("Skill Potion", "Skill Potion", True, True, False),
-		spirecomm.spire.potion.Potion("Smoke Bomb", "Smoke Bomb", True, True, False),
-		spirecomm.spire.potion.Potion("Snecko Oil", "Snecko Oil", True, True, False),
-		spirecomm.spire.potion.Potion("Speed Potion", "Speed Potion", True, True, False),
-		spirecomm.spire.potion.Potion("Flex Potion", "Flex Potion", True, True, False),
-		spirecomm.spire.potion.Potion("Strength Potion", "Strength Potion", True, True, False),
-		spirecomm.spire.potion.Potion("Swift Potion", "Swift Potion", True, True, False),
-		spirecomm.spire.potion.Potion("Weak Potion", "Weak Potion", True, True, True),
-		]
-	
-	
-		if player_class == spirecomm.spire.character.PlayerClass.IRONCLAD:
-			possible_potions.append(spirecomm.spire.potion.Potion("Blood Potion", "Blood Potion", True, True, False))
-		if player_class == spirecomm.spire.character.PlayerClass.THE_SILENT:
-			possible_potions.append(spirecomm.spire.potion.Potion("Ghost In A Jar", "Ghost In A Jar", True, True, False))
-		if player_class == spirecomm.spire.character.PlayerClass.DEFECT:
-			possible_potions.append(spirecomm.spire.potion.Potion("Focus Potion", "Focus Potion", True, True, False))
-		
-		return random.choice(possible_potions)
-		
-	def discover(self, player_class, card_type, rarity=""):
-		# TODO change screen, screen_type, screen_up, current_action
-		
-		return self
-
-		
-	def generate_random_colorless_card(self):
-		cards = []
-		
-		# card_id, name, card_type, rarity, upgrades=0, has_target=False, cost=0, misc=0, is_playable=False, exhausts=False
-		
-	
-		return cards
-		
-	def generate_random_attack_card(self, player_class=spirecomm.spire.character.PlayerClass.IRONCLAD):
-		cards = []
-	
-		if player_class == spirecomm.spire.character.PlayerClass.IRONCLAD:
-			pass # TODO
-		if player_class == spirecomm.spire.character.PlayerClass.THE_SILENT:
-			pass # TODO
-		if player_class == spirecomm.spire.character.PlayerClass.DEFECT:
-			pass # TODO
-	
-		return cards
-	
-	def generate_random_skill_card(self, player_class=spirecomm.spire.character.PlayerClass.IRONCLAD):
-		cards = []
-	
-		if player_class == spirecomm.spire.character.PlayerClass.IRONCLAD:
-			pass # TODO
-		if player_class == spirecomm.spire.character.PlayerClass.THE_SILENT:
-			pass # TODO
-		if player_class == spirecomm.spire.character.PlayerClass.DEFECT:
-			pass # TODO
-	
-		return cards
-	
-	def generate_random_power_card(self, player_class=spirecomm.spire.character.PlayerClass.IRONCLAD):
-		cards = []
-	
-		if player_class == spirecomm.spire.character.PlayerClass.IRONCLAD:
-			pass # TODO
-		if player_class == spirecomm.spire.character.PlayerClass.THE_SILENT:
-			pass # TODO
-		if player_class == spirecomm.spire.character.PlayerClass.DEFECT:
-			pass # TODO
-	
-		return cards
 		
 	# parses damage in the form of amount or amount x hits, returns amounts and hits
 	def read_damage(self, string):
@@ -1416,8 +807,399 @@ class Game:
 			return list[0], list[1]
 		else:
 			return string, 1
+			
 		
-	
+	def get_random_play(self, card):
+		# randomly play the card
+		play_action = PlayCardAction(card)
+		if card.has_target:
+			available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+			selected_monster = random.choice(available_monsters)
+			play_action.target_index = selected_monster.monster_index
+			play_action.target_monster = selected_monster
+		return play_action
+		
+	def find_monsters_move_deductively(self, monster):
+		timeout = 100 # assume trying 100 times will be enough unless there's a problem
+		while timeout > 0:
+			# continue to randomly sample moves until we find one that fits
+			move = self.choose_move(monster)
+			details = monster.intents["moveset"][move]
+			intent_str = details["intent_type"]
+			if spirecomm.spire.character.Intent[intent_str] == monster.intent or self.has_relic("Runic Dome"):
+				# if it's an attack, check the number of hits also
+				if monster.intent.is_attack():
+					hits = 0
+					effects = details["effects"]
+					for effect in effects:
+						if effect["name"] == "Damage":
+							amt, h = self.read_damage(effect["amount"])
+							hits += h
+					if hits == monster.move_hits:
+						monster.current_move = move
+				else:
+					monster.current_move = move
+					
+			if monster.current_move is not None:
+				if self.has_relic("Runic Dome"):
+					self.debug_log.append("Guessed intent for " + str(monster) + " is " + str(monster.current_move))
+				else:
+					self.debug_log.append("Recognized intent for " + str(monster) + " is " + str(monster.current_move))
+				break
+			timeout -= 1
+		return monster.current_move
+		
+	def get_monsters_move(self, monster):
+		if monster.current_move is not None:
+			return monster.current_move
+		else:
+			if self.combat_round == 1 and "startswith" in monster.intents:
+				monster.current_move = monster.intents["startswith"]
+				if monster.monster_id == "Sentry" and monster.monster_index == 1: 	# The second Sentry starts with an attack rather than debuff
+					monster.current_move = "Beam"
+				self.debug_log.append("Known initial intent for " + str(monster) + " is " + str(monster.current_move))
+			elif self.tracked_state["is_simulation"]: # generate random move
+				monster.current_move = self.choose_move(monster)
+				self.debug_log.append("Simulated intent for " + str(monster) + " is " + str(monster.current_move))
+			else: # figure out move from what we know about it
+				monster.current_move = self.find_monsters_move_deductively(monster)
+				
+		return monster.current_move
+
+	def apply_monster_effect(self, monster):
+		if monster.intent == spirecomm.spire.character.Intent.ATTACK and (monster.monster_id == "FuzzyLouseNormal" or monster.monster_id == "FuzzyLouseDefensive"):
+			# louses have a variable base attack
+			effs = monster.intents["moveset"][monster.current_move]["effects"]
+			json_base = None
+			for eff in effs:
+				if eff["name"] == "Damage":
+					json_base = eff["amount"]
+			if not json_base:
+				raise Exception("Malformed Louse JSON when calculating base damage for " + str(monster.current_move))
+			attack_adjustment = monster.move_base_damage - json_base
+			monster.misc = attack_adjustment
+			self.debug_log.append("Adjusted damage for louse: " + str(monster.misc))
+					
+		# Finally, apply the intended move
+		effects = monster.intents["moveset"][monster.current_move]["effects"]
+		for effect in effects:
+			
+			if effect["name"] == "Damage":
+				amount, hits = self.read_damage(effect["amount"])
+				base_damage = amount
+				if monster.monster_id == "FuzzyLouseNormal" or monster.monster_id == "FuzzyLouseDefensive":
+					base_damage += monster.misc # adjustment because louses are variable
+					self.debug_log.append("Adjusted damage for louse: " + str(monster.misc))
+				for _ in range(hits):
+					unblocked_damage = self.use_attack(base_damage, monster, self.player)
+					self.debug_log.append("Taking " + str(unblocked_damage) + " damage from " + str(monster))
+					
+			elif effect["name"] == "Block":
+				self.add_block(monster, effect["amount"])
+				
+			elif effect["name"] == "BlockOtherRandom":
+				selected_ally = None
+				while selected_ally is None or selected_ally is monster:
+					selected_ally = random.choice(available_monsters)
+				self.add_block(selected_ally, effect["amount"])
+				
+			elif effect["name"] in spirecomm.spire.power.BUFFS:
+				monster.add_power(effect["name"], effect["amount"])
+				
+			elif effect["name"] in spirecomm.spire.power.DEBUFFS:
+				self.apply_debuff(self.player, effect["name"], effect["amount"])
+											
+			elif effect["name"] == "AddSlimedToDiscard":
+				for __ in range(effect["amount"]):
+					slimed = spirecomm.spire.card.Card("Slimed", "Slimed", spirecomm.spire.card.CardType.STATUS, spirecomm.spire.card.CardRarity.SPECIAL)
+					self.discard_pile.append(slimed)
+					
+			elif effect["name"] == "AddDazedToDiscard":
+				for __ in range(effect["amount"]):
+					slimed = spirecomm.spire.card.Card("Dazed", "Dazed", spirecomm.spire.card.CardType.STATUS, spirecomm.spire.card.CardRarity.SPECIAL)
+					self.discard_pile.append(slimed)
+					
+			elif effect["name"] == "GainBurnToDiscard" or effect["name"] == "AddBurnToDiscard":
+				for _ in range(effect["amount"]):
+					self.discard_pile.append(spirecomm.spire.card.Card("Burn", "Burn", spirecomm.spire.card.CardType.STATUS, spirecomm.spire.card.CardRarity.SPECIAL))
+				1	
+			elif effect["name"] == "GainBurn+ToDiscard" or effect["name"] == "AddBurn+ToDiscard":
+				for _ in range(effect["amount"]):
+					self.discard_pile.append(spirecomm.spire.card.Card("Burn+", "Burn+", spirecomm.spire.card.CardType.STATUS, spirecomm.spire.card.CardRarity.SPECIAL, upgrades=1))
+					
+			elif effect["name"] == "GainBurnToDeck" or effect["name"] == "AddBurnToDeck":
+				for _ in range(effect["amount"]):
+					self.draw_pile.append(spirecomm.spire.card.Card("Burn", "Burn", spirecomm.spire.card.CardType.STATUS, spirecomm.spire.card.CardRarity.SPECIAL))	
+			
+			elif effect["name"] == "Sleep":
+				pass # take one (1) snoozle
+				
+			elif effect["name"] == "Charge":
+				pass # i'ma chargin' mah fireball!
+				
+			elif effect["name"] == "Split":
+				for new_monster in effect["amount"]:
+					m = spirecomm.spire.monster.Monster(new_monster, new_monster, monster.current_hp,  monster.current_hp, 0, None, False, False)
+					self.monsters.append(m)
+				self.monsters.remove(monster)
+			
+			elif effect["name"] == "Escape":
+				monster.is_gone = True
+				
+			elif effect["name"] == "Offensive Mode":
+				monster.add_power("Mode Shift", 30 + monster.misc) # TODO account for ascension_level
+				monster.misc += 10
+			
+			elif effect["name"] not in PASSIVE_EFFECTS:
+				self.debug_log.append("WARN: Unknown effect " + effect["name"])
+			
+		# increment tracked count of moves in a row
+		if str(monster) in self.tracked_state["monsters_last_attacks"] and self.tracked_state["monsters_last_attacks"][str(monster)][0] == monster.current_move:
+			self.tracked_state["monsters_last_attacks"][str(monster)][1] += 1
+		else:
+			self.tracked_state["monsters_last_attacks"][str(monster)] = [monster.current_move, 1]
+		
+		
+	def apply_monsters_turn(self, monster):
+		self.apply_start_of_turn_effects(monster)
+				
+		if monster.intents != {}: # we have correctly loaded intents JSON
+		
+			monster.current_move = self.get_monsters_move(monster)
+							
+			if monster.current_move is None:
+				self.debug_log.append("ERROR: Could not determine " + monster.name + "\'s intent of " + str(monster.intent))
+			else:
+				self.apply_monster_effect(monster)
+		
+		if monster.intents == {} or monster.current_move is None:
+			self.debug_log.append("WARN: unable to get intent for " + str(monster))
+			# default behaviour: just assume the same move as the first turn of simulation
+			if monster.intent.is_attack():
+				if monster.move_adjusted_damage is not None:
+					# are weak and vulnerable accounted for in default logic?
+					for _ in range(monster.move_hits):
+						unblocked_damage = self.use_attack(monster.move_base_damage, monster, self.player)
+						self.debug_log.append("Taking " + str(unblocked_damage) + " damage from " + str(monster))
+						
+		monster.current_move = None # now that we used the move, clear it
+		
+			
+			
+	def apply_end_of_player_turn_effects(self):
+
+		# reset relics
+		self.set_relic_counter("Kunai", 0)
+		self.set_relic_counter("Shuriken", 0)
+		self.set_relic_counter("Ornamental Fan", 0)
+		self.set_relic_counter("Velvet Choker", 0)
+		self.set_relic_counter("Letter Opener", 0)
+		self.tracked_state["attacks_played_last_turn"] = self.tracked_state["attacks_played_this_turn"]
+		self.tracked_state["attacks_played_this_turn"] = 0
+		self.tracked_state["cards_played_last_turn"] = self.tracked_state["cards_played_this_turn"]
+		self.tracked_state["cards_played_this_turn"] = 0
+		self.tracked_state["skills_played_this_turn"] = 0
+		self.tracked_state["powers_played_this_turn"] = 0
+		self.tracked_state["necronomicon_triggered"] = False
+		
+		self.decrement_duration_powers(self.player)
+		
+		self.increment_relic("Stone Calendar")
+		
+		if self.player.has_power("Fire Breathing"):
+			available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+			amt = self.player.get_power_amount("Fire Breathing") * self.tracked_state["attacks_played_this_turn"]
+			if amt > 0:
+				for monster in available_monsters:
+					self.apply_damage(amt, None, monster)
+		
+		if self.combat_round == 7 and self.has_relic("Stone Calendar"):
+			available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+			for monster in available_monsters:
+				self.apply_damage(52, None, monster)
+				
+		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+		for monster in available_monsters:
+			if monster.has_power("Poison"):
+				self.apply_damage(monster.get_power_amount("Poison"), None, monster, ignores_block=True)
+				monster.decrement_power("Poison")
+			
+		
+		if self.player.block == 0 and self.has_relic("Orichalcum"):
+			self.player.block += 6 # note, this happens before all other end of turn block gaining effects like frost orbs, metallicize, etc
+			
+		if not self.has_relic("Ice Cream"):
+			self.player.energy = 0
+			
+		# Hand discarded
+		for card in self.hand:
+			for effect in card.effects:
+				if effect["effect"] == "Regret":
+					self.lose_hp(self.player, len(self.hand), from_card=True)
+				if effect["effect"] == "Ethereal":
+					self.hand.remove(card)
+					self.exhaust_card(card)
+					continue
+				elif effect["effect"] == "SelfWeakened":
+					self.apply_debuff(self.player, "Weakened", effect["amount"])
+				elif effect["effect"] == "SelfFrail":
+					self.apply_debuff(self.player, "Frail", effect["amount"])
+				elif effect["effect"] == "SelfDamage":
+					self.apply_damage(effect["amount"], None, self.player)
+					
+		if not self.has_relic("Runic Pyramid"):
+			self.discard_pile += self.hand
+			self.hand = []
+			
+		if self.has_relic("Nilry's Codex"):
+			pass # TODO discovery
+		
+		for power in self.player.powers:
+			if power.power_name == "Strength Down":
+				self.apply_debuff(self.player, "Strength", -1 * power.amount)
+				self.player.remove_power("Strength Down")
+			elif power.power_name == "Dexterity Down":
+				self.apply_debuff(self.player, "Dexterity", -1 * power.amount)
+				self.player.remove_power("Dexterity Down")
+			elif power.power_name == "Focus Down":
+				self.apply_debuff(self.player, "Focus", -1 * power.amount)
+				self.player.remove_power("Focus Down")
+			elif power.power_name == "Plated Armor":
+				self.add_block(self.player, power.amount)
+			elif power.power_name == "Metallicize":
+				self.add_block(self.player, power.amount)
+			elif power.power_name == "Combust":
+				self.lose_hp(self.player, 1, from_card=True)
+				available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+				for monster in available_monsters:
+					monster.current_hp = max(monster.current_hp - power.amount, 0)
+			elif power.power_name == "Regen":
+				self.player.current_hp = min(self.player.current_hp + power.amount, self.player.max_hp)
+				self.player.decrement_power(power.power_name)
+			elif power.power_name == "DemonForm":
+				character.add_power("Strength", power.amount)
+				
+			
+
+# MAIN SIMULATION FUNCTIONS
+			
+	# a test bed for checking our surroundings
+	def debug_game_state(self):
+		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+		for monster in available_monsters:
+			if monster.monster_id == "Lagavulin":
+				self.debug_log.append("Lagavulin's powers: " + str([str(power) for power in monster.powers]))
+
+	# logs the game state
+	def print_state(self):
+		if self.debug_file:
+			with open(self.debug_file, 'a+') as d:
+				d.write(str(self))
+				
+				
+	# logs a list of contents one line at a time with a newline at end
+	# if a divider is specified, prints a line of this char before and after
+	def print_to_log(self, contents, divider=""):
+		if contents == "" or contents == []:
+			return
+		if not isinstance(contents, list):
+			contents = [contents]
+		if self.debug_file:
+			with open(self.debug_file, 'a+') as d:
+				if divider != "":
+					d.write(divider * 30 + "\n")
+				d.write("\n".join([str(c) for c in contents]) + "\n")		
+				if divider != "":
+					d.write(divider * 30 + "\n")				
+				
+	def getPossibleActions(self):
+		if self.tracked_state["possible_actions"] == None:
+		
+			possible_actions = [EndTurnAction()]
+			available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
+			for monster in available_monsters:
+				pass
+				#monster.recognize_intents() # FIXME
+			
+			for potion in self.get_real_potions():
+				if potion.requires_target:
+					for monster in available_monsters:
+						possible_actions.append(PotionAction(True, potion=potion, target_monster=monster))
+				else:
+					possible_actions.append(PotionAction(True, potion=potion))
+					
+			for card in self.hand:
+				if len(available_monsters) == 0 and card.type != spirecomm.spire.card.CardType.POWER:
+					continue
+				if card.cost > self.player.energy:
+					continue
+				if card.has_target:
+					for monster in available_monsters:
+						possible_actions.append(PlayCardAction(card=card, target_monster=monster))
+				else:
+					possible_actions.append(PlayCardAction(card=card))
+			
+			self.print_to_log(["Possible Actions:"] + possible_actions, divider=" ")
+
+			self.tracked_state["possible_actions"] = possible_actions
+				
+		return self.tracked_state["possible_actions"]
+		
+
+
+	# Handler that calls the appropriate simulate_action function and returns a new state
+	def takeAction(self, action, from_real=False):
+
+		if self.in_combat and not self.tracked_state["registered_start_of_combat"]:
+			self.apply_start_of_combat_effects()
+			self.tracked_state["registered_start_of_combat"] = True
+
+		if from_real:
+			self.tracked_state["is_simulation"] = False
+
+		self.debug_game_state()
+
+		self.debug_log.append("Simulating taking action: " + str(action))
+		#self.debug_log.append("Combat round: " + str(self.combat_round))
+
+		self.print_to_log("Simulating taking action: " + str(action))
+		
+		new_state = copy.deepcopy(self)
+		new_state.tracked_state["possible_actions"] = None
+		new_state.original_state = self
+		new_state.state_id += 1
+		
+		new_state.tracked_state["just_reshuffled"] = False
+		
+		if action.command.startswith("end") and not self.screen_up:
+			return new_state.simulate_end_turn(action)
+		elif action.command.startswith("potion") and not self.screen_up:
+			# assumes we have this potion, will throw an error if we don't I think
+			return new_state.simulate_potion(action)
+		elif action.command.startswith("play") and not self.screen_up:
+			return new_state.simulate_play(action)
+		elif action.command.startswith("state"):
+			return new_state
+		elif action.command.startswith("choose") and self.screen_up and new_state.current_action == "DiscoveryAction":
+			return new_state.simulate_discovery(action)
+		elif action.command.startswith("choose") and self.screen_up and new_state.current_action == "ExhaustAction":
+			return new_state.simulate_exhaust(action)
+		elif action.command.startswith("choose") and self.screen_up and new_state.current_action == "DiscardPileToTopOfDeckAction":
+			return new_state.simulate_headbutt(action)
+		elif action.command.startswith("choose") and self.screen_up and new_state.current_action == "PutOnDeckAction":
+			return new_state.simulate_hand_to_topdeck(action)
+		elif action.command.startswith("choose") and self.screen_up and new_state.current_action == "ArmamentsAction":
+			return new_state.simulate_upgrade(action)
+		elif action.command.startswith("choose") and self.screen_up and new_state.current_action == "DualWieldAction": # FIXME?
+			return new_state.simulate_dual_wield(action)
+		elif action.command.startswith("choose") and self.screen_up and new_state.current_action == "ExhumeAction": # FIXME?
+			return new_state.simulate_exhume(action)
+		elif action.command.startswith("choose") and self.screen_up and new_state.current_action == "ForethoughtAction": # FIXME?
+			return new_state.simulate_forethought(action)
+		else:
+			raise Exception("Chosen simulated action is not a valid combat action in the current state: " + str(action) + ", " + str(self.screen) + " (" + str(self.screen_type) + ") " + ("[UP]" if self.screen_up else ""))
+
+
 	# Returns a new state
 	def simulate_end_turn(self, action):
 		
@@ -1434,164 +1216,9 @@ class Game:
 			if monster is None:
 				self.debug_log.append("WARN: Monster is None")
 				continue
-							
-			self.apply_start_of_turn_effects(monster)
 				
-			if monster.intents != {}: # we have correctly loaded intents JSON
-			
-				if monster.current_move is None:		
-					if self.combat_round == 1 and "startswith" in monster.intents:
-						monster.current_move = monster.intents["startswith"]
-						if monster.monster_id == "Sentry" and monster.monster_index == 1:
-							# The second Sentry starts with an attack rather than debuff
-							monster.current_move = "Beam"
-						self.debug_log.append("Known initial intent for " + str(monster) + " is " + str(monster.current_move))
-
-					elif self.tracked_state["is_simulation"]: # generate random move
-						monster.current_move = self.choose_move(monster)
-						self.debug_log.append("Simulated intent for " + str(monster) + " is " + str(monster.current_move))
-					else: # figure out move from what we know about it
-					
-						timeout = 100 # assume trying 100 times will be enough unless there's a problem
-						while timeout > 0:
-							# continue to randomly sample moves until we find one that fits
-							move = self.choose_move(monster)
-							details = monster.intents["moveset"][move]
-							intent_str = details["intent_type"]
-							if spirecomm.spire.character.Intent[intent_str] == monster.intent or self.has_relic("Runic Dome"):
-								# if it's an attack, check the number of hits also
-								if monster.intent.is_attack():
-									hits = 0
-									effects = details["effects"]
-									for effect in effects:
-										if effect["name"] == "Damage":
-											amt, h = self.read_damage(effect["amount"])
-											hits += h
-									if hits == monster.move_hits:
-										monster.current_move = move
-										self.debug_log.append("DEBUG: counted hits " + str(hits) + " is " + str(hits)) # TODO remove
-									else: 
-										self.debug_log.append("DEBUG: counted hits " + str(hits) + " is not " + str(hits)) # TODO remove
-								else:
-									monster.current_move = move
-									
-							if monster.current_move is not None:
-								if self.has_relic("Runic Dome"):
-									self.debug_log.append("Guessed intent for " + str(monster) + " is " + str(monster.current_move))
-								else:
-									self.debug_log.append("Recognized intent for " + str(monster) + " is " + str(monster.current_move))
-								break
-							timeout -= 1
-							
-								
-				if monster.current_move is None:
-					self.debug_log.append("ERROR: Could not determine " + monster.name + "\'s intent of " + str(monster.intent))
-				else:
-					if monster.intent == spirecomm.spire.character.Intent.ATTACK and (monster.monster_id == "FuzzyLouseNormal" or monster.monster_id == "FuzzyLouseDefensive"):
-						# louses have a variable base attack
-						effs = monster.intents["moveset"][monster.current_move]["effects"]
-						json_base = None
-						for eff in effs:
-							if eff["name"] == "Damage":
-								json_base = eff["amount"]
-						if not json_base:
-							raise Exception("Malformed Louse JSON when calculating base damage for " + str(monster.current_move))
-						attack_adjustment = monster.move_base_damage - json_base
-						monster.misc = attack_adjustment
-						self.debug_log.append("Adjusted damage for louse: " + str(monster.misc))
-								
-					# Finally, apply the intended move
-					effects = monster.intents["moveset"][monster.current_move]["effects"]
-					for effect in effects:
-						
-						if effect["name"] == "Damage":
-							amount, hits = self.read_damage(effect["amount"])
-							base_damage = amount
-							if monster.monster_id == "FuzzyLouseNormal" or monster.monster_id == "FuzzyLouseDefensive":
-								base_damage += monster.misc # adjustment because louses are variable
-								self.debug_log.append("Adjusted damage for louse: " + str(monster.misc))
-							for _ in range(hits):
-								unblocked_damage = self.use_attack(base_damage, monster, self.player)
-								self.debug_log.append("Taking " + str(unblocked_damage) + " damage from " + str(monster))
-								
-						elif effect["name"] == "Block":
-							self.add_block(monster, effect["amount"])
-							
-						elif effect["name"] == "BlockOtherRandom":
-							selected_ally = None
-							while selected_ally is None or selected_ally is monster:
-								selected_ally = random.choice(available_monsters)
-							self.add_block(selected_ally, effect["amount"])
-							
-						elif effect["name"] in BUFFS:
-							monster.add_power(effect["name"], effect["amount"])
-							
-						elif effect["name"] in DEBUFFS:
-							self.apply_debuff(self.player, effect["name"], effect["amount"])
-														
-						elif effect["name"] == "AddSlimedToDiscard":
-							for __ in range(effect["amount"]):
-								slimed = spirecomm.spire.card.Card("Slimed", "Slimed", spirecomm.spire.card.CardType.STATUS, spirecomm.spire.card.CardRarity.SPECIAL)
-								self.discard_pile.append(slimed)
-								
-						elif effect["name"] == "AddDazedToDiscard":
-							for __ in range(effect["amount"]):
-								slimed = spirecomm.spire.card.Card("Dazed", "Dazed", spirecomm.spire.card.CardType.STATUS, spirecomm.spire.card.CardRarity.SPECIAL)
-								self.discard_pile.append(slimed)
-								
-						elif effect["name"] == "GainBurnToDiscard" or effect["name"] == "AddBurnToDiscard":
-							for _ in range(effect["amount"]):
-								self.discard_pile.append(spirecomm.spire.card.Card("Burn", "Burn", spirecomm.spire.card.CardType.STATUS, spirecomm.spire.card.CardRarity.SPECIAL))
-							1	
-						elif effect["name"] == "GainBurn+ToDiscard" or effect["name"] == "AddBurn+ToDiscard":
-							for _ in range(effect["amount"]):
-								self.discard_pile.append(spirecomm.spire.card.Card("Burn+", "Burn+", spirecomm.spire.card.CardType.STATUS, spirecomm.spire.card.CardRarity.SPECIAL, upgrades=1))
-								
-						elif effect["name"] == "GainBurnToDeck" or effect["name"] == "AddBurnToDeck":
-							for _ in range(effect["amount"]):
-								self.draw_pile.append(spirecomm.spire.card.Card("Burn", "Burn", spirecomm.spire.card.CardType.STATUS, spirecomm.spire.card.CardRarity.SPECIAL))	
-						
-						elif effect["name"] == "Sleep":
-							pass # take one (1) snoozle
-							
-						elif effect["name"] == "Charge":
-							pass # i'ma chargin' mah fireball!
-							
-						elif effect["name"] == "Split":
-							for new_monster in effect["amount"]:
-								m = spirecomm.spire.character.Monster(new_monster, new_monster, monster.current_hp,  monster.current_hp, 0, None, False, False)
-								self.monsters.append(m)
-								self.monsters.remove(monster)
-						
-						elif effect["name"] == "Escape":
-							monster.is_gone = True
-							
-						elif effect["name"] == "Offensive Mode":
-							monster.add_power("Mode Shift", 30 + monster.misc) # TODO account for ascension_level
-							monster.misc += 10
-						
-						elif effect["name"] not in PASSIVE_EFFECTS:
-							self.debug_log.append("WARN: Unknown effect " + effect["name"])
-						
-					# increment count of moves in a row
-					if str(monster) in self.tracked_state["monsters_last_attacks"] and self.tracked_state["monsters_last_attacks"][str(monster)][0] == monster.current_move:
-						self.tracked_state["monsters_last_attacks"][str(monster)][1] += 1
-					else:
-						self.tracked_state["monsters_last_attacks"][str(monster)] = [monster.current_move, 1]
-
-			
-			if monster.intents == {} or monster.current_move is None:
-				self.debug_log.append("WARN: unable to get intent for " + str(monster))
-				# default behaviour: just assume the same move as the first turn of simulation
-				if monster.intent.is_attack():
-					if monster.move_adjusted_damage is not None:
-						# are weak and vulnerable accounted for in default logic?
-						for _ in range(monster.move_hits):
-							unblocked_damage = self.use_attack(monster.move_base_damage, monster, self.player)
-							self.debug_log.append("Taking " + str(unblocked_damage) + " damage from " + str(monster))
-							
-			monster.current_move = None # now that we used the move, clear it
-							
+			self.apply_monsters_turn(monster)
+				
 		for monster in available_monsters:
 			self.apply_end_of_turn_effects(monster)
 
@@ -1613,13 +1240,7 @@ class Game:
 		while len(self.hand) < hand_size:
 			self.draw_card()
 			
-		if self.debug_file and self.debug_log != []:
-			with open(self.debug_file, 'a+') as d:
-				d.write('\n')
-				d.write('\n'.join(self.debug_log))
-				d.write('\n')
-				#d.write("\nNew State:\n")
-				#d.write(str(self))
+		self.print_to_log(self.debug_log)
 			
 		self.tracked_state["is_simulation"] = True
 		
@@ -1627,11 +1248,7 @@ class Game:
 				
 		
 	def simulate_discovery(self, action):
-		self.choice_list = []
-		self.current_action = None
-		
-		# TODO actually discover the card
-	
+		CARD_DATABASE.discover(self, self.tracked_state["player_class"])
 		return self
 		
 	def simulate_exhaust(self, action):
@@ -1663,19 +1280,19 @@ class Game:
 	def simulate_dual_wield(self, action):
 		# TODO how to know whether it's dualwield+?
 		
-	
+
 		return self
 		
 	def simulate_forethought(self, action):
 		# TODO
 		
-	
+
 		return self
 		
 		
 	# Returns a new state
 	def simulate_potion(self, action):
-	
+
 		self.potions.remove(action.potion) # fixme? might need to match on name rather than ID
 		self.potions.append(spirecomm.spire.potion.Potion("Potion Slot", "Potion Slot", False, False, False))
 		
@@ -1683,8 +1300,7 @@ class Game:
 			self.player.add_power("Artifact", 1)
 		
 		elif action.potion.name == "Attack Potion":
-			# TODO
-			pass
+			CARD_DATABASE.discover(self, self.tracked_state["player_class"], card_type="ATTACK")
 		
 		elif action.potion.name == "Block Potion":
 			self.add_block(self.player, 12)
@@ -1703,7 +1319,7 @@ class Game:
 		elif action.potion.name == "Entropic Brew":
 			for i in range(len(self.potions)):
 				if self.potions[i].potion_id == "Potion Slot":
-					self.potions[i] = self.generate_random_potion()
+					self.potions[i] = CARD_DATABASE.generate_random_potion()
 		
 		elif action.potion.name == "Essence of Steel":
 			self.player.add_power("Plated Armor", 4)
@@ -1751,15 +1367,13 @@ class Game:
 					monster.add_power("Poison", 6)
 		
 		elif action.potion.name == "Power Potion":
-			# TODO
-			pass
+			CARD_DATABASE.discover(self, self.tracked_state["player_class"], card_type="POWER")
 			
 		elif action.potion.name == "Regen Potion":
 			self.player.add_power("Regen", 5)
 		
 		elif action.potion.name == "Skill Potion":
-			# TODO
-			pass
+			CARD_DATABASE.discover(self, self.tracked_state["player_class"], card_type="SKILL")
 		
 		elif action.potion.name == "Smoke Bomb":
 			if self.blackboard.game.room_type != "MonsterRoomBoss":
@@ -1793,34 +1407,16 @@ class Game:
 			self.debug_log.append("ERROR: No handler for potion: " + str(action.potion))
 			
 			
-		if self.debug_file and self.debug_log != []:
-			with open(self.debug_file, 'a+') as d:
-				d.write('\n')
-				d.write('\n'.join(self.debug_log))
-				d.write('\n')
-				#d.write("\nNew State:\n")
-				#d.write(str(self))
+		self.print_to_log(self.debug_log)
 		
 		self.tracked_state["is_simulation"] = True
 		
 		return self
-		
 	
-	def get_random_play(self, card):
-		# randomly play the card
-		play_action = PlayCardAction(card)
-		if card.has_target:
-			available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
-			selected_monster = random.choice(available_monsters)
-			play_action.target_index = selected_monster.monster_index
-			play_action.target_monster = selected_monster
-		return play_action
-		
-		
-		
+	
 	# Returns a new state
 	def simulate_play(self, action, free_play=False, from_deck=False):
-	
+
 		if not action.card.loadedFromJSON:
 			raise Exception("Card not loaded from JSON: " + str(action.card.name))
 			
@@ -1988,10 +1584,10 @@ class Game:
 						self.current_action = "ExhumeAction"
 					
 					
-				elif effect["effect"] in BUFFS:
+				elif effect["effect"] in spirecomm.spire.power.BUFFS:
 					self.player.add_power(effect["effect"], effect["amount"])
 						
-				elif effect["effect"] in DEBUFFS:
+				elif effect["effect"] in spirecomm.spire.power.DEBUFFS:
 					self.apply_debuff(target, effect["effect"], effect["amount"])
 					
 				elif effect["effect"] == "Block as Damage":
@@ -2157,7 +1753,7 @@ class Game:
 					
 					
 		if action.card.type == spirecomm.spire.card.CardType.ATTACK:
-	
+
 			self.tracked_state["attacks_played_this_turn"] += 1
 			if self.tracked_state["attacks_played_this_turn"] == 1 and self.tracked_state["skills_played_this_turn"] > 0 and self.tracked_state["powers_played_this_turn"] > 0 and self.has_relic("Orange Pellets"):
 				self.remove_all_debuffs()
@@ -2210,7 +1806,7 @@ class Game:
 			self.tracked_state["skills_played_this_turn"] += 1
 			if self.tracked_state["skills_played_this_turn"] == 1 and self.tracked_state["attacks_played_this_turn"] > 0 and self.tracked_state["powers_played_this_turn"] > 0 and self.has_relic("Orange Pellets"):
 				self.remove_all_debuffs()
-	
+
 			letter = self.get_relic("Letter Opener")
 			if letter:
 				letter.counter += 1
@@ -2252,18 +1848,41 @@ class Game:
 		self.check_intents()
 					
 			
-		if self.debug_file and self.debug_log != []:
-			with open(self.debug_file, 'a+') as d:
-				d.write('\n')
-				d.write('\n'.join(self.debug_log))
-				d.write('\n')
-				#d.write("\nNew State:\n")
-				#d.write(str(self))
+		self.print_to_log(self.debug_log)
 			
 		self.tracked_state["is_simulation"] = True
 			
 		return self
 		
 		
+
+			
+	# return value of terminal state
+	def getReward(self):
+			
+		# Trace back to where we started
+		original_game_state = self
+		while original_game_state.original_state is not None:
+			original_game_state = original_game_state.original_state
+			
+		delta_hp = self.player.current_hp - original_game_state.player.current_hp
+		delta_max_hp = self.player.max_hp - original_game_state.player.max_hp
+		orig_potions = 0
+		for p in original_game_state.potions:
+			if p.name != "Potion Slot":
+				orig_potions += 1
+		delta_potions = -1 * orig_potions
+		for p in original_game_state.potions:
+			if p.name != "Potion Slot":
+				delta_potions += 1
 		
+		r = {}
+		r["HP"] = delta_hp * MCTS_HP_VALUE
+		r["max HP"] = delta_max_hp * MCTS_MAX_HP_VALUE
+		#r["potions"] = delta_potions * MCTS_POTION_VALUE
+		#r -= self.combat_round * MCTS_ROUND_COST
+		reward = Reward(r)
 		
+		self.print_to_log("Terminal state reached, reward: " + str(reward.getTotalItemized()), divider="~")
+		
+		return reward

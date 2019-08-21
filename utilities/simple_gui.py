@@ -215,6 +215,7 @@ class Base(BoxLayout):
 				monte_carlo = mcts(iterationLimit=mcts_iterations)  #timeLimit=mcts_timeout)
 
 				
+				# FIXME game should have the takeAction though...
 				while game_state.player.current_hp > 0 and game_state.monsters[0].current_hp > 0:
 					action = monte_carlo.search(initialState=game_state)
 					print("MCTS choosing: " + str(action))
@@ -360,7 +361,7 @@ def verifyJSONFolder(directory,kind):
 		try:
 			loaded = json.load(open(os.path.join(directory,f),"r"))
 			if kind == "card":
-				spirecomm.spire.card.Card(f[:-5], f[:-5], -1, -1, test_only=True) # try loading card as a test
+				spirecomm.spire.card.Card(f[:-5], f[:-5], -1, -1, compare_to_real=False) # try loading card as a test
 		except Exception as e:
 			lineNum = re.search("line (\d+) ",str(e),0).group(1)
 			error += "\nWARN: Malformed %s JSON in %s at line %s"%(kind,f,lineNum)

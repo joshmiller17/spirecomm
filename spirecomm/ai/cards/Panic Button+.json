@@ -13,7 +13,7 @@
 		},
 		{
 		"target" : "self",
-		"effect" : "NoBlock",
+		"effect" : "No Block",
 		"amount" : 2
 		},
 		{
