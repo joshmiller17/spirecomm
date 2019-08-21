@@ -5,8 +5,10 @@ import math
 import os
 import spirecomm
 
+from spirecomm.ai.statediff import *
 
 # The State Comparer returns a StateDiff object between two Game states
+# aka "The Diff Differ"
 
 class StateComparer:
 
@@ -17,12 +19,14 @@ class StateComparer:
 		simulated_state = original_state.takeAction(action, from_real=True)
 		while len(simulated_state.debug_log):
 			self.log(simulated_state.debug_log.pop(0))
-		real_diff = self.state_diff(original_state, self.blackboard.game, ignore_randomness=True)
+		real_differ = StateDiff(original_state, self.blackboard.game, ignore_randomness=True)
+		real_diff = real_differ.get_diff()
 		if real_diff == {}:
 			self.log("WARN: real diff is null", debug=3)
 			self.note(str(original_state))
 			self.note(str(self.blackboard.game))
-		sim_diff = self.state_diff(original_state, simulated_state, ignore_randomness=True)
+		sim_differ = StateDiff(original_state, simulated_state, ignore_randomness=True)
+		sim_diff = sim_differ.get_diff()
 		diff_diff = {}
 		skip_warn = False
 		for key, value in real_diff.items():
