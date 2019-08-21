@@ -2,6 +2,7 @@ import json
 import os
 import random
 
+from spirecomm.spire.character import *
 from spirecomm.spire.power import Power
 import spirecomm.config as config
 
