@@ -264,7 +264,7 @@ class StateDiff:
 					continue
 				elif card.get_base_name() in choice_then_discard and card in self.state2.discard_pile: # these cards are weird since they get played and there's a state of change before it's discarded
 					self.diff["made_choice_then_discarded"].append(card.get_id_str())
-				elif card.get_base_name() in choice_then_exhaust and card in self.state2.exhaust:  # these cards are weird since they get played and there's a state of change before it's exhausted
+				elif card.get_base_name() in choice_then_exhaust and card in self.state2.exhaust_pile:  # these cards are weird since they get played and there's a state of change before it's exhausted
 					self.diff["made_choice_then_exhausted"].append(card.get_id_str())
 				else:
 					self.agent.log("WARN: unknown card change " + card.get_id_str(), debug=3)
