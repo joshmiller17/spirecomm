@@ -38,7 +38,6 @@ class SimpleAgent:
 		self.paused = False
 		self.step = False
 		self.combat_round = 1
-		self.state_id = 0 # debugging guide for tracking state
 		self.root = SelectorBehaviour("Root Context Selector")
 		self.init_behaviour_tree(self.root) # Warning: uses British spelling
 		self.behaviour_tree = py_trees.trees.BehaviourTree(self.root)
@@ -228,6 +227,7 @@ class SimpleAgent:
 			self.log("> " + str(action), debug=3)
 		else:
 			self.log("> " + str(action), debug=5)
+		self.log("Taking action " + str(action.get_uuid()) + " for state " + self.blackboard.game.get_state_id()) # TODO remove after debugging
 		return action
 		
 		
@@ -298,8 +298,8 @@ class SimpleAgent:
 				self.blackboard.game.player = self.last_game_state.player # persist the player
 			else:
 				raise Exception("Previous game state did not have a Player")
-		self.state_id += 1
-		self.blackboard.game.state_id = self.state_id
+		self.blackboard.game.tracked_state["real_id"] = self.last_game_state.tracked_state["real_id"] + 1
+		self.blackboard.game.tracked_state["sim_id"] = 0
 		self.blackboard.game.tracked_state["player_class"] = self.chosen_class
 		self.blackboard.game.combat_round = self.combat_round
 		self.blackboard.game = self.blackboard.game

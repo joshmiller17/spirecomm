@@ -1,5 +1,5 @@
 from spirecomm.spire.screen import ScreenType, RewardType
-
+import uuid
 
 class Action:
 	"""A base class for an action to take in Slay the Spire"""
@@ -7,6 +7,10 @@ class Action:
 	def __init__(self, command="state", requires_game_ready=True):
 		self.command = command
 		self.requires_game_ready = requires_game_ready
+		self.uuid = uuid.uuid1()
+		
+	def get_uuid(self): # used for debugging
+		return self.uuid
 
 	def can_be_executed(self, coordinator):
 		"""Indicates whether the given action can currently be executed, given the coordinator's state

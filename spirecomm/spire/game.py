@@ -90,13 +90,14 @@ class Game:
 		
 		# Added state info
 		self.debug_file = "game.log"
-		self.state_id = -1
 		self.debug_log = []
 		self.original_state = None # For MCTS simulations; FIXME might be a huge memory storage for in-depth simulations? Consider only storing values important for reward func
 		
 		
 		# Tracked state info
 		self.tracked_state = {
+		"real_id" : 0,
+		"sim_id" : 0,
 		"player_class" : None,
 		"visited_shop" : False,
 		"previous_floor" : 0,  # used to recognize floor changes, i.e. when floor != previous_floor
@@ -178,9 +179,12 @@ class Game:
 			if card.upgrades == 0 or card.get_base_name() == "Searing Blow":
 				upgradable.append(card)
 		return upgradable
+		
+	def get_state_id(self):
+		return str(self.tracked_state["real_id"]) + "." + str(self.tracked_state["sim_id"])
 	
 	def __str__(self):
-		string = "\n\n<---- Game State " + str(self.state_id) + " ----"
+		string = "\n\n<---- Game State " + self.get_state_id() + " ----"
 		string += "\nScreen: " + str(self.screen) + " (" + str(self.screen_type) + ") " + ("[UP]" if self.screen_up else "")
 		#string += "\nRoom: " + str(self.room_type)
 		string += "\nCurrent action: " + str(self.current_action)
@@ -215,7 +219,7 @@ class Game:
 		if self.cancel_available:
 			available_commands.append("cancel")
 		string += "\n\nAvailable commands: " + ", ".join(available_commands) + "\n"
-		string += "---- Game State " + str(self.state_id) + " ---->\n\n"
+		string += "---- Game State " + self.get_state_id() + " ---->\n\n"
 		return string
 
 
@@ -332,8 +336,12 @@ class Game:
 		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
 		
 		for monster in available_monsters:
-			if monster.monster_id == "Lagavulin" and monster.move_base_damage == 0:
-				self.tracked_state["lagavulin_is_asleep"] = True
+			if monster.monster_id == "Lagavulin":
+				if monster.move_base_damage == 0:
+					self.tracked_state["lagavulin_is_asleep"] = True
+					self.debug_log.append("lagavulin_is_asleep")
+				else:
+					self.debug_log.append("lagavulin is not asleep")
 				
 			# if "powers" in monster.intents:
 				# for power in monster.intents["powers"]:
@@ -471,15 +479,7 @@ class Game:
 					if not exceeds_limit:
 						break
 		
-		# Check if Lagavulin should still be sleeping
-		moveset = monster.intents["moveset"]
-		if monster.monster_id == "Lagavulin":
-			if monster.current_hp != monster.max_hp and self.tracked_state["lagavulin_is_asleep"]:
-				# wake up
-				selected_move = "Stunned"
-				monster.add_power("Metallicize", -8)
-				#monster.remove_power("Asleep") # I think this doesn't actually exist in the code
-				self.tracked_state["lagavulin_is_asleep"] = False
+		self.check_intents()
 		
 		return selected_move
 
@@ -499,8 +499,13 @@ class Game:
 					# wake up
 					selected_move = "Stunned"
 					monster.add_power("Metallicize", -8)
-					monster.remove_power("Asleep") # I think this doesn't actually exist in the code
+					#monster.remove_power("Asleep") # I think this doesn't actually exist in the code
 					self.tracked_state["lagavulin_is_asleep"] = False
+				else:
+					self.debug_log.append("Lagavulin is not waking up")
+					self.debug_log.append(monster.current_hp)
+					self.debug_log.append(monster.max_hp)
+					self.debug_log.append(self.tracked_state["lagavulin_is_asleep"])
 		
 			if "half_health" in monster.intents and not monster.used_half_health_ability:
 				monster.used_half_health_ability = True
@@ -775,15 +780,18 @@ class Game:
 			self.reshuffle_deck()
 		card = self.draw_pile.pop(0)
 		return card
+		
+	def add_to_hand(self, card):
+		if len(self.hand) >= 10:
+			self.discard_pile.append(card)
+		else:
+			self.hand.append(card)
 
 	def draw_card(self, draw=1):
 		if self.player.has_power("No Draw"):
 			return
 		card = self.draw_top_card()
-		if len(self.hand) >= 10:
-			self.discard_pile.append(card)
-		else:
-			self.hand.append(card)
+		self.add_to_hand(card)
 		if card.type == spirecomm.spire.card.CardType.STATUS and self.player.has_power("Evolve"):
 			for _ in range(self.player.get_power_amount("Evolve")):
 				self.draw_card()
@@ -820,7 +828,7 @@ class Game:
 		return play_action
 		
 	def find_monsters_move_deductively(self, monster):
-		timeout = 100 # assume trying 100 times will be enough unless there's a problem
+		timeout = 30 # assume trying a lot of times will be enough unless there's a problem
 		while timeout > 0:
 			# continue to randomly sample moves until we find one that fits
 			move = self.choose_move(monster)
@@ -1167,7 +1175,7 @@ class Game:
 		new_state = copy.deepcopy(self)
 		new_state.tracked_state["possible_actions"] = None
 		new_state.original_state = self
-		new_state.state_id += 1
+		new_state.tracked_state["sim_id"] += 1
 		
 		new_state.tracked_state["just_reshuffled"] = False
 		
@@ -1190,6 +1198,8 @@ class Game:
 			return new_state.simulate_hand_to_topdeck(action)
 		elif action.command.startswith("choose") and self.screen_up and new_state.current_action == "ArmamentsAction":
 			return new_state.simulate_upgrade(action)
+		elif action.command.startswith("choose") and self.screen_up and new_state.current_action == "GamblingAction":
+			return new_state.simulate_gambling(action)
 		elif action.command.startswith("choose") and self.screen_up and new_state.current_action == "DualWieldAction": # FIXME?
 			return new_state.simulate_dual_wield(action)
 		elif action.command.startswith("choose") and self.screen_up and new_state.current_action == "ExhumeAction": # FIXME?
@@ -1248,7 +1258,9 @@ class Game:
 				
 		
 	def simulate_discovery(self, action):
-		CARD_DATABASE.discover(self, self.tracked_state["player_class"])
+		card = CARD_DATABASE.load_by_name(action.name)
+		card.cost = 0 # FIXME only for this turn
+		self.add_to_hand(card)
 		return self
 		
 	def simulate_exhaust(self, action):
@@ -1270,6 +1282,15 @@ class Game:
 	def simulate_upgrade(self, action):
 		action.card.upgrade()
 		return self
+		
+	def simulate_gambling(self, action):
+		cards_to_draw = 0
+		for card in action.selected_cards:
+			self.hand.remove(card)
+			self.discard_pile.append(card)
+			cards_to_draw += 1
+		self.draw_card(cards_to_draw)
+		return self
 
 	def simulate_exhume(self, action):
 		card = action.cards[0]
@@ -1279,7 +1300,9 @@ class Game:
 		
 	def simulate_dual_wield(self, action):
 		# TODO how to know whether it's dualwield+?
+		self.debug_log.append("DUAL WIELD FIXME: " + str(action)) # FIXME copy card somehow, not sure what info we get from action
 		
+		#self.add_to_hand(card)
 
 		return self
 		
@@ -1351,8 +1374,11 @@ class Game:
 			self.player.current_hp += 5
 		
 		elif action.potion.name == "Gambler's Brew":
-			# TODO
-			pass
+			self.screen = spirecomm.spire.screen.HandSelectScreen(cards=self.hand, selected=[], num_cards=1, can_pick_zero=True)
+			self.screen_up = True
+			self.screen_type = spirecomm.spire.screen.ScreenType.HAND_SELECT
+			self.current_action = "GamblingAction" # FIXME
+			self.choice_list = [card.get_choice_str() for card in self.hand]
 			
 		elif action.potion.name == "Ghost In A Jar":
 			self.player.add_power("Intangible", 1)
@@ -1376,7 +1402,7 @@ class Game:
 			CARD_DATABASE.discover(self, self.tracked_state["player_class"], card_type="SKILL")
 		
 		elif action.potion.name == "Smoke Bomb":
-			if self.blackboard.game.room_type != "MonsterRoomBoss":
+			if self.room_type != "MonsterRoomBoss":
 				self.in_combat = False
 		
 		elif action.potion.name == "Snecko Oil":
@@ -1692,6 +1718,9 @@ class Game:
 					if no_attacks:
 						self.draw_card(2)
 						
+				elif effect["effect"] == "Discover":
+					CARD_DATABASE.discover(self, self.tracked_state["player_class"])
+						
 				elif effect["effect"] == "Greed":
 					if monster.current_hp <= 0 and not monster.half_dead and not monster.has_power("Minion"):
 						self.player.gain_gold(20)
@@ -1820,7 +1849,7 @@ class Game:
 					monster.add_power("Strength", monster.get_power_amount("Enrage"))
 
 			if self.player.has_power("Corruption"):
-				self.discard_pile.remove(exhausted_card) # FIXME if might not have gone to discard
+				self.discard_pile.remove(action.card)
 				self.exhaust_card(action.card)
 			
 		if action.card.type == spirecomm.spire.card.CardType.POWER:

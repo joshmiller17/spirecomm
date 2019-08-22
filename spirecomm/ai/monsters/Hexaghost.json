@@ -5,6 +5,7 @@
 			{
 			"intent_type": "UNKNOWN",
 			"probability" : 0.0,
+			"effects": [],
 			"next_move" :[
 				{
 					"name" : "Divider_1",

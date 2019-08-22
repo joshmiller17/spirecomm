@@ -10,7 +10,7 @@ import spirecomm.config as config
 
 # This helper file contains a static database loaded from JSONs of Card metadata for Game state change simulations and discoveries
 VALID_CLASSES = ["COLORLESS", "IRONCLAD", "THE_SILENT", "DEFECT"]
-
+CARDS_PATH = os.path.join(config.SPIRECOMM_PATH, "spirecomm", "ai", "cards")
 DEBUG_FILE = "game.log"
 
 class CardDatabase:
@@ -25,7 +25,6 @@ class CardDatabase:
 		
 		
 	def load_cards_from_json(self):
-		CARDS_PATH = os.path.join(config.SPIRECOMM_PATH, "spirecomm", "ai", "cards")
 		d = open(DEBUG_FILE, 'a+')
 		for root, dirs, files in os.walk(CARDS_PATH):
 			for f in files:
@@ -43,6 +42,10 @@ class CardDatabase:
 				if not err:
 					print("Success: " + f, file=d, flush=True)
 		d.close()
+		
+	def load_by_name(self, name):
+		card = spirecomm.spire.card.Card(f, f, -1, -1, compare_to_real=False)
+		return card
 		
 		
 	def get_cards(self, player_class="ANY", type="ALL", rarity="ALL"):
