@@ -337,7 +337,7 @@ class Game:
 		
 		for monster in available_monsters:
 			if monster.monster_id == "Lagavulin":
-				if monster.move_base_damage == 0:
+				if not monster.intent.is_attack():
 					self.tracked_state["lagavulin_is_asleep"] = True
 					self.debug_log.append("lagavulin_is_asleep")
 				else:
@@ -1465,11 +1465,10 @@ class Game:
 			raise Exception("Could not find action card " + action.card.get_id_str() + " in hand " + str([card.get_id_str() for card in possible_cards]))
 		
 		if not free_play:
-			# move card to discard
+			# move card to "play space"
 			self.player.energy -= action.card.cost
 			self.hand.remove(action.card)
-			if action.card.type != spirecomm.spire.card.CardType.POWER: # powers just get removed from play
-				self.discard_pile.append(action.card)
+			
 		
 		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
 
@@ -1872,6 +1871,10 @@ class Game:
 						
 		if self.hand == [] and self.has_relic("Unceasing Top"):
 			self.draw_card()
+			
+		# move card to discard from "play space"
+		if not free_play and action.card.type != spirecomm.spire.card.CardType.POWER: # powers just get removed from play
+			self.discard_pile.append(action.card)
 						
 		
 		self.check_intents()

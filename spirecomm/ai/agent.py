@@ -102,10 +102,10 @@ class SimpleAgent:
 	"""
 	def log(self, msg, debug=4):
 		if self.debug_level >= 0 and debug >= 0:
-			print(str(time.time()) + ": " + msg, file=self.logfile, flush=True)
+			print(str(time.time()) + ": " + str(msg), file=self.logfile, flush=True)
 		if self.debug_level >= debug:
 			self.debug_queue.append(msg)
-		if ("WARN" in msg or "ERR" in msg) and self.auto_pause:
+		if ("WARN" in msg or "ERR" in str(msg)) and self.auto_pause:
 			self.paused = True
 			
 	# a note is a log that isn't shown to the Kivy window
