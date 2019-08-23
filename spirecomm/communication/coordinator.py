@@ -65,6 +65,7 @@ class Coordinator:
 		self.last_error = None
 		self.last_msg = ""
 		self.last_action = None
+		self.state_counter = 0
 		self.logfile = open("ai_comm.log","w")
 		print("Communicator: Init ", file=self.logfile, flush=True)
 
@@ -184,7 +185,8 @@ class Coordinator:
 		
 		message = self.get_next_raw_message(block)
 		if len(self.action_queue) > 0:
-			print("WARN: action queue is non-empty: " + str(self.action_queue), file=self.logfile, flush=True)
+			print("WARN: action queue is non-empty: " + str([str(a) for a in self.action_queue]), file=self.logfile, flush=True)
+			print("Comm state " + str(self.state_counter), file=self.logfile, flush=True)
 		
 		if message is not None:
 			communication_state = json.loads(message)
@@ -194,6 +196,8 @@ class Coordinator:
 				self.in_game = communication_state.get("in_game")
 				if self.in_game:
 					self.last_game_state = Game.from_json(communication_state.get("game_state"), communication_state.get("available_commands"))
+					print("Communicator: last game state updated " + str(self.state_counter), file=self.logfile, flush=True)
+					self.state_counter += 1
 			else:
 				print("Communicator detected error: " + str(self.last_error), file=self.logfile, flush=True)
 			if perform_callbacks:
@@ -203,7 +207,6 @@ class Coordinator:
 					self.add_action_to_queue(new_action)
 				elif self.in_game:
 					if len(self.action_queue) == 0 and perform_callbacks:
-						print(str(self.last_game_state), file=self.logfile, flush=True)
 						new_action = self.state_change_callback(self.last_game_state)
 						self.add_action_to_queue(new_action)
 				elif self.stop_after_run:

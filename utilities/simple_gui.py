@@ -93,7 +93,7 @@ class Base(BoxLayout):
 	
 		try:
 			new_msg = self.agent.debug_queue.pop(0)
-		except:
+		except Exception as e:
 			new_msg = ""
 		if new_msg != "":
 			if new_msg == 'z':

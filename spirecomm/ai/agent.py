@@ -43,7 +43,6 @@ class SimpleAgent:
 		self.behaviour_tree = py_trees.trees.BehaviourTree(self.root)
 		self.blackboard = py_trees.blackboard.Blackboard()
 		self.blackboard.game = Game()
-		self.blackboard.tracked_state = {} # game state info that the agent chooses to track
 		self.blackboard.game.player = spirecomm.spire.character.Player(0)
 		self.last_game_state = None
 		# call behaviour_tree.tick() for one tick
@@ -105,7 +104,7 @@ class SimpleAgent:
 			print(str(time.time()) + ": " + str(msg), file=self.logfile, flush=True)
 		if self.debug_level >= debug:
 			self.debug_queue.append(msg)
-		if ("WARN" in msg or "ERR" in str(msg)) and self.auto_pause:
+		if ("WARN" in str(msg) or "ERR" in str(msg)) and self.auto_pause:
 			self.paused = True
 			
 	# a note is a log that isn't shown to the Kivy window
@@ -292,17 +291,18 @@ class SimpleAgent:
 	def get_next_action_in_game(self, game_state):
 		self.last_game_state = self.blackboard.game
 		self.blackboard.game = game_state
+		self.log("get next action called")
 		
 		if self.blackboard.game.player is None:
 			if self.last_game_state.player is not None:
 				self.blackboard.game.player = self.last_game_state.player # persist the player
 			else:
 				raise Exception("Previous game state did not have a Player")
-		self.blackboard.game.tracked_state["real_id"] = self.last_game_state.tracked_state["real_id"] + 1
+		self.blackboard.game.tracked_state = self.last_game_state.tracked_state
+		self.blackboard.game.tracked_state["real_id"] += 1
 		self.blackboard.game.tracked_state["sim_id"] = 0
-		self.blackboard.game.tracked_state["player_class"] = self.chosen_class
+		self.blackboard.game.tracked_state["player_class"] = self.chosen_class # FIXME this really only needs to happen once, move to init process
 		self.blackboard.game.combat_round = self.combat_round
-		self.blackboard.game = self.blackboard.game
 				
 		# Check difference from last state
 		differ = StateDiff(self.last_game_state, self.blackboard.game, agent=self)
@@ -310,8 +310,7 @@ class SimpleAgent:
 		if self.blackboard.game.in_combat and self.last_game_state.in_combat and self.last_action is not None:
 			state_comper = StateComparer(self.last_game_state, self.last_action, self)
 			simulated_state = state_comper.compare() # check if we predicted this
-			self.blackboard.tracked_state = simulated_state.tracked_state # FIXME this assumes we always simulate well, we'll need a fallback option for a way to figure out the correct tracked state when our simulation is wrong due to random chance
-			self.blackboard.game.tracked_state = self.blackboard.tracked_state
+			self.blackboard.game.tracked_state = simulated_state.tracked_state # FIXME this assumes we always simulate well, we'll need a fallback option for a way to figure out the correct tracked state when our simulation is wrong due to random chance etc
 		
 		# Sleep if needed
 		time.sleep(self.action_delay)

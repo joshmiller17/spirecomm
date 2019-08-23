@@ -2,6 +2,7 @@ from enum import Enum
 import copy
 import random
 import math
+import traceback
 
 
 import spirecomm.spire.relic
@@ -329,9 +330,11 @@ class Game:
 		self.decrement_duration_powers(monster)
 				
 				
-	# DEPRECATED - we already get this information when we see the first state of combat
+	# mostly deprecated - we already get this information when we see the first state of combat
 	# tracking it again here creates duplicates
 	def apply_start_of_combat_effects(self):
+	
+		self.debug_log.append("Applying start of combat effects")
 
 		available_monsters = [monster for monster in self.monsters if monster.current_hp > 0 and not monster.half_dead and not monster.is_gone]
 		
@@ -503,9 +506,7 @@ class Game:
 					self.tracked_state["lagavulin_is_asleep"] = False
 				else:
 					self.debug_log.append("Lagavulin is not waking up")
-					self.debug_log.append(monster.current_hp)
-					self.debug_log.append(monster.max_hp)
-					self.debug_log.append(self.tracked_state["lagavulin_is_asleep"])
+					self.debug_log.append("asleep?: " + str(self.tracked_state["lagavulin_is_asleep"]))
 		
 			if "half_health" in monster.intents and not monster.used_half_health_ability:
 				monster.used_half_health_ability = True
@@ -1157,6 +1158,10 @@ class Game:
 
 	# Handler that calls the appropriate simulate_action function and returns a new state
 	def takeAction(self, action, from_real=False):
+	
+		self.print_to_log("takeAction traceback for " + str(self.get_state_id()))
+		for line in traceback.format_stack():
+			self.print_to_log(line.strip())
 
 		if self.in_combat and not self.tracked_state["registered_start_of_combat"]:
 			self.apply_start_of_combat_effects()
@@ -1280,7 +1285,8 @@ class Game:
 		return self
 		
 	def simulate_upgrade(self, action):
-		action.card.upgrade()
+		for card in action.cards:
+			card.upgrade()
 		return self
 		
 	def simulate_gambling(self, action):
@@ -1402,8 +1408,10 @@ class Game:
 			CARD_DATABASE.discover(self, self.tracked_state["player_class"], card_type="SKILL")
 		
 		elif action.potion.name == "Smoke Bomb":
-			if self.room_type != "MonsterRoomBoss":
-				self.in_combat = False
+			# FIXME somehow express to the agent that this will end the combat, but the real state change is actually nothing - maybe use a tracked_state var
+			#if self.room_type != "MonsterRoomBoss":
+			#	self.in_combat = False
+			pass 
 		
 		elif action.potion.name == "Snecko Oil":
 			self.player.add_power("Confused")
