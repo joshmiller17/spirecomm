@@ -16,6 +16,8 @@ from spirecomm.ai.priorities import *
 from spirecomm.ai.statediff import *
 from spirecomm.ai.state_comparer import *
 
+import spirecomm.config as config
+
 import py_trees
 
 
@@ -115,7 +117,7 @@ class SimpleAgent:
 	def init_behaviour_tree(self, root):
 	
 		self.log("Loading initial tree...")
-		self.json_to_tree("tree.json")
+		self.json_to_tree(os.path.join(config.SPIRECOMM_PATH, "tree.json"))
 		self.log("Behaviour tree initialized.")
 		#self.note(py_trees.display.ascii_tree(root))
 		#py_trees.display.render_dot_tree(root) # FIXME can't render dot tree: FileNotFoundError: [WinError 2] "dot" not found in path.
