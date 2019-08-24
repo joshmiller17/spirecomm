@@ -80,6 +80,9 @@ class Game:
 		self.room_type = None
 		self.choice_list = []
 		self.choice_available = False
+		
+		if self.screen_type == spirecomm.spire.screen.ScreenType.EVENT:
+			self.tracked_state["event_id"] = self.screen.event_id
 
 		# Available Commands
 
@@ -97,8 +100,9 @@ class Game:
 		
 		# Tracked state info
 		self.tracked_state = {
-		"real_id" : 0,
-		"sim_id" : 0,
+		"real_id" : 0, # state number for debugging
+		"sim_id" : 0, # state number for debugging
+		"event_id" : None,
 		"player_class" : None,
 		"visited_shop" : False,
 		"previous_floor" : 0,  # used to recognize floor changes, i.e. when floor != previous_floor
@@ -120,6 +124,9 @@ class Game:
 		"skills_played_this_turn" : 0,
 		"powers_played_this_turn" : 0,
 		"registered_start_of_combat" : False,
+		# "card_in_play_space": None, # For example, if we play Armaments, while we select a card it's in the imaginary play zone
+		# "discard_after_play": None,
+		# "exhaust_after_play": None,
 		}
 	
 	# for some reason, pausing the game invalidates the state
@@ -146,6 +153,9 @@ class Game:
 		self.tracked_state["skills_played_this_turn"] = 0
 		self.tracked_state["powers_played_this_turn"] = 0
 		self.tracked_state["registered_start_of_combat"] = False
+		# self.tracked_state["card_in_play_space"] = None
+		# self.tracked_state["discard_after_play"] = None
+		# self.tracked_state["exhaust_after_play"] = None
 
 		
 	# returns relic or None
@@ -1169,6 +1179,9 @@ class Game:
 
 		if from_real:
 			self.tracked_state["is_simulation"] = False
+			
+		# if self.tracked_state["card_in_play_space"] is not None:
+			# pass # TODO exhaust or discard after playing
 
 		self.debug_game_state()
 
@@ -1598,7 +1611,7 @@ class Game:
 						action = CardSelectAction(cards=self.discard_pile)
 						self.simulate_headbutt(action)
 					else:
-						self.screen = spirecomm.spire.screen.GridSelectScreen(cards=self.discard_pile, selected_cards=[], num_cards=1, can_pick_zero=False)
+						self.screen = spirecomm.spire.screen.GridSelectScreen(cards=self.discard_pile, selected_cards=[], num_cards=1)
 						self.screen_up = True
 						self.screen_type = spirecomm.spire.screen.ScreenType.GRID_SELECT
 						self.current_action = "PutOnDeckAction"
@@ -1611,7 +1624,7 @@ class Game:
 						action = CardSelectAction(cards=self.exhaust_pile)
 						self.simulate_exhume(action)
 					else:
-						self.screen = spirecomm.spire.screen.GridSelectScreen(cards=self.hand, selected_cards=[], num_cards=1, can_pick_zero=False)
+						self.screen = spirecomm.spire.screen.GridSelectScreen(cards=self.hand, selected_cards=[], num_cards=1)
 						self.screen_up = True
 						self.screen_type = spirecomm.spire.screen.ScreenType.GRID_SELECT
 						self.current_action = "ExhumeAction"
@@ -1756,8 +1769,9 @@ class Game:
 					self.reshuffle_deck()
 					
 				elif effect["effect"] == "Exhaust":
-					self.discard_pile.remove(action.card)
+					self.discard_pile.remove(action.card) # FIXME
 					self.exhaust_card(action.card)
+					
 				elif effect["effect"] == "ExhaustRandom":
 					exhausted_card = random.choice(self.hand)
 					self.hand.remove(exhausted_card)

@@ -30,13 +30,44 @@
 									"children": []
 								},
 								{
-									"name": "Default Choose",
-									"class": "ActionBehaviour",
-									"action": "ChooseAction",
-									"params": [
-										0
-									],
-									"children": []
+									"name": "Type of Event Selector",
+									"class": "SelectorBehaviour",
+									"children": [
+										
+										{
+											"name": "Neow Context",
+											"class": "SequenceBehaviour",
+											"children": [
+												{
+													"name": "Neow Available",
+													"class": "CompareToConstBehaviour",
+													"attr": "event_id",
+													"static": "Neow Event",
+													"success": true,
+													"children": []
+												},
+												{
+													"name": "Default Neow Choice",
+													"class": "ActionBehaviour",
+													"action": "ChooseAction",
+													"params": [
+														1
+													],
+													"children": []
+												}
+											]
+										},
+										
+										{
+										"name": "Default Choose",
+										"class": "ActionBehaviour",
+										"action": "ChooseAction",
+										"params": [
+											0
+										],
+										"children": []
+										}
+									]
 								}
 							]
 						},

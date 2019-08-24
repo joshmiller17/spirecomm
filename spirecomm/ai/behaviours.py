@@ -327,4 +327,5 @@ classMap = {"SequenceBehaviour":SequenceBehaviour, \
 			"EqualityCheckBehaviour":EqualityCheckBehaviour, \
 			"EqualityCheckBehaviour":EqualityCheckBehaviour, \
 			"CompareToConstBehaviour":CompareToConstBehaviour, \
+			"CustomBehaviour":CustomBehaviour, \
 			"ActionBehaviour":ActionBehaviour}

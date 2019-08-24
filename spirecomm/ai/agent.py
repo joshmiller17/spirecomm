@@ -74,14 +74,15 @@ class SimpleAgent:
 		f.write(json.dumps(self.root.to_json(),indent="\t"))
 		f.close()
 
-	def json_to_tree(self,filename):
+	def json_to_tree(self,filename, show=False):
 		f = open(filename,"r")
 		jsonTree = json.load(f)
 		f.close()
 		
 		self.root = SelectorBehaviour.fromDict(jsonTree,self)
 		self.log(filename + " loaded successfully")
-		self.log(py_trees.display.ascii_tree(self.root), debug=6)
+		if show:
+			self.log(py_trees.display.ascii_tree(self.root), debug=5)
 		
 	def print_tree(self):
 		self.log(py_trees.display.ascii_tree(self.root))
@@ -112,94 +113,11 @@ class SimpleAgent:
 		print(str(time.time()) + ": " + msg, file=self.logfile, flush=True)
 		
 	def init_behaviour_tree(self, root):
-		choiceContext = SequenceBehaviour("Choice Context")
-		proceedContext = SequenceBehaviour("Proceed Context")
-		combatContext = SequenceBehaviour("Combat Context")
-		cancelContext = SequenceBehaviour("Cancel Context")
-		choiceAvail = BoolCheckBehaviour("Choice Available", agent=self, boolean="choice_available")
-		proceedAvail = BoolCheckBehaviour("Proceed Available", agent=self, boolean="proceed_available")
-		combatAvail = SelectorBehaviour("Combat Choice Available")
-		playAvail = BoolCheckBehaviour("Play Available", agent=self, boolean="play_available")
-		endAvail = BoolCheckBehaviour("End Available", agent=self, boolean="end_available")
-		combatAvail.add_children([playAvail, endAvail])
-		cancelAvail = BoolCheckBehaviour("Cancel Available", agent=self, boolean="cancel_available")
-		testBehaviour = TestBehaviour("Test", agent=self)
-		
-		choiceSelector = SelectorBehaviour("Type of Choice Selector")
-		eventContext = SequenceBehaviour("Event Context")
-		eventAvail = CompareToConstBehaviour("Event Available", agent=self, attr="screen_type", static=ScreenType.EVENT)
-		eventDecision = ActionBehaviour("Default Choose", agent=self, action="ChooseAction",params=[0])
-		eventContext.add_children([eventAvail, eventDecision])
-		
-		chestContext = SequenceBehaviour("Chest Context")
-		chestAvail = CompareToConstBehaviour("Chest Available", agent=self, attr="screen_type", static=ScreenType.CHEST)
-		chestDecision = ActionBehaviour("Default Chest Open", agent=self, action="OpenChestAction")
-		chestContext.add_children([chestAvail, chestDecision])
-		
-		shopContext = SequenceBehaviour("Shop Context")
-		shopAvail = CompareToConstBehaviour("Shop Available", agent=self, attr="screen_type", static=ScreenType.SHOP_ROOM)
-		doShop = SelectorBehaviour("Check Shop")
-		tryVisitingShop = SequenceBehaviour("Try Visiting Shop")
-		visitedShop = BoolCheckBehaviour("Is Shop Visited", agent=self, boolean="visited_shop")
-		visitShop = ActionBehaviour("Visit Shop", agent=self, action="ChooseShopkeeperAction")
-		tryVisitingShop.add_children([visitedShop, visitShop])
-		dontVisitShop = ActionBehaviour("Leave Shop", agent=self, action="ProceedAction")
-		doShop.add_children([tryVisitingShop, dontVisitShop])
-		shopContext.add_children([shopAvail, doShop])
-		
-		restContext = SequenceBehaviour("Rest Context")
-		restAvail = CompareToConstBehaviour("Rest Available", agent=self, attr="screen_type", static=ScreenType.REST)
-		doRest = CustomBehaviour("Choose Rest Option", agent=self, function="choose_rest_option")
-		restContext.add_children([restAvail, doRest])
-
-		cardRewardContext = SequenceBehaviour("Card Reward Context")
-		cardRewardAvail = CompareToConstBehaviour("Card Reward Available", agent=self, attr="screen_type", static=ScreenType.CARD_REWARD)
-		chooseCard = CustomBehaviour("Choose a Card", agent=self, function="choose_card_reward")
-		cardRewardContext.add_children([cardRewardAvail, chooseCard])
-		
-		
-		combatRewardContext = SequenceBehaviour("Combat Reward Context")
-		combatRewardAvail = CompareToConstBehaviour("Combat Reward Available", agent=self, attr="screen_type", static=ScreenType.COMBAT_REWARD)
-		handleRewards = CustomBehaviour("Handle Rewards", agent=self, function="handle_rewards")
-		combatRewardContext.add_children([combatRewardAvail, handleRewards])
-		
-		mapContext = SequenceBehaviour("Map Context")
-		mapAvail = CompareToConstBehaviour("Map Available", agent=self, attr="screen_type", static=ScreenType.MAP)
-		mapChoice = CustomBehaviour("Handle Map", agent=self, function="make_map_choice")
-		mapContext.add_children([mapAvail, mapChoice])
-		
-		bossRewardContext = SequenceBehaviour("Boss Reward Context")
-		bossAvail = CompareToConstBehaviour("Boss Reward Available", agent=self, attr="screen_type", static=ScreenType.BOSS_REWARD)
-		bossChoice = CustomBehaviour("Handle Boss Reward", agent=self, function="handle_boss_reward")
-		bossRewardContext.add_children([bossAvail, bossChoice])
-		
-		shopScreenContext = SequenceBehaviour("Shop Screen Context")
-		shopScreenAvail = CompareToConstBehaviour("Shop Screen Available", agent=self, attr="screen_type", static=ScreenType.SHOP_SCREEN)
-		shopScreenChoice = CustomBehaviour("Handle Shop Screen", agent=self, function="handle_shop_screen")
-		shopScreenContext.add_children([shopScreenAvail, shopScreenChoice])
-		
-		
-		gridContext = SequenceBehaviour("Grid Context")
-		gridAvail = CompareToConstBehaviour("Grid Available", agent=self, attr="screen_type", static=ScreenType.GRID)
-		gridChoice = CustomBehaviour("Handle Grid", agent=self, function="handle_grid")
-		gridContext.add_children([gridAvail, gridChoice])
-		
-		selectFromHandContext = SequenceBehaviour("Select From Hand Context")
-		selectFromHandAvail = CompareToConstBehaviour("Hand Select Available", agent=self, attr="screen_type", static=ScreenType.HAND_SELECT)
-		selectFromHandChoice = CustomBehaviour("Handle Hand Select", agent=self, function="handle_hand_select")
-		selectFromHandContext.add_children([selectFromHandAvail, selectFromHandChoice])		
-		
-		choiceSelector.add_children([eventContext, chestContext, shopContext, restContext, cardRewardContext, combatRewardContext,
-		mapContext, bossRewardContext, shopScreenContext, gridContext, selectFromHandContext])
-
-		choiceContext.add_children([choiceAvail, choiceSelector])
-		proceedContext.add_children([proceedAvail, ActionBehaviour("Proceed", agent=self, action="ProceedAction")])
-		combatContext.add_children([combatAvail, testBehaviour])
-		cancelContext.add_children([cancelAvail, ActionBehaviour("Cancel", agent=self, action="CancelAction")])
-		
-		root.add_children([choiceContext, proceedContext, combatContext, cancelContext])
+	
+		self.log("Loading initial tree...")
+		self.json_to_tree("tree.json")
 		self.log("Behaviour tree initialized.")
-		self.note(py_trees.display.ascii_tree(root))
+		#self.note(py_trees.display.ascii_tree(root))
 		#py_trees.display.render_dot_tree(root) # FIXME can't render dot tree: FileNotFoundError: [WinError 2] "dot" not found in path.
 		
 	# For this to get plugged in, need to set pre_tick_handler = this func at some point
