@@ -98,16 +98,27 @@ class DefaultBehaviour(py_trees.behaviour.Behaviour):
 #like Sequence, but with a to_json method
 class SequenceBehaviour(py_trees.composites.Sequence):
 
+	def __init__(self, name, agent):
+		super(SequenceBehaviour, self).__init__(name)
+		self.agent = agent
+		
+	def log(self, msg, debug=4):
+		self.agent.log(str(self.name) + " [" + str(self.__class__.__name__) + "]: " + msg, debug=debug)
+
 	def to_json(self):
 		attrDict = {}
 		attrDict["name"] = self.name
 		attrDict["class"] = "SequenceBehaviour"
 		attrDict["children"] = [c.to_json() for c in self.iterate(direct_descendants=True) if c != self]
 		return attrDict
+		
+	def update(self):
+		self.log("[Sequence] " + self.name, debug=7)
+		super().update()
 
 	@classmethod
 	def fromDict(cls,d,agent):
-		ret = cls(d["name"])
+		ret = cls(d["name"],agent)
 		for child in d["children"]:
 			childClass = child["class"]
 			ret.add_child(classMap[childClass].fromDict(child,agent))
@@ -116,16 +127,27 @@ class SequenceBehaviour(py_trees.composites.Sequence):
 #like Selector, but with a to_json method
 class SelectorBehaviour(py_trees.composites.Selector):
 
+	def __init__(self, name, agent):
+		super(SelectorBehaviour, self).__init__(name)
+		self.agent = agent
+		
+	def log(self, msg, debug=4):
+		self.agent.log(str(self.name) + " [" + str(self.__class__.__name__) + "]: " + msg, debug=debug)
+
 	def to_json(self):
 		attrDict = {}
 		attrDict["name"] = self.name
 		attrDict["class"] = "SelectorBehaviour"
 		attrDict["children"] = [c.to_json() for c in self.iterate(direct_descendants=True) if c != self]
 		return attrDict
+		
+	def update(self):
+		self.log("[Selector] " + self.name, debug=7)
+		super().update()
 
 	@classmethod
 	def fromDict(cls,d,agent):
-		ret = cls(d["name"])
+		ret = cls(d["name"],agent)
 		for child in d["children"]:
 			childClass = child["class"]
 			ret.add_child(classMap[childClass].fromDict(child,agent))
@@ -225,7 +247,7 @@ class EqualityCheckBehaviour(BoolCheckBehaviour):
 		self.second = second
 	
 	def update(self):
-		value = True if self.first == self.second else False
+		value = True if str(self.first) == str(self.second) else False # need to convert to strs because these can come in as different types
 		ret = value if self.success else not value # invert bool if that's what we want to check
 		retStr = "SUCCESS" if ret else "FAILURE"
 		logStr = str(self.first) + " "
@@ -299,6 +321,7 @@ class ActionBehaviour(DefaultBehaviour):
 		action_class = globals()[self.action]
 		command = action_class(*self.params)
 		self.agent.cmd_queue.append(command)
+		self.log("[CMD] " + str(command), debug=7)
 		return py_trees.common.Status.SUCCESS
 
 	def to_json(self):

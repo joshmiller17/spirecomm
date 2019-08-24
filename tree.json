@@ -51,7 +51,7 @@
 													"class": "ActionBehaviour",
 													"action": "ChooseAction",
 													"params": [
-														1
+														0
 													],
 													"children": []
 												}

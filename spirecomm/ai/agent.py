@@ -40,7 +40,7 @@ class SimpleAgent:
 		self.paused = False
 		self.step = False
 		self.combat_round = 1
-		self.root = SelectorBehaviour("Root Context Selector")
+		self.root = SelectorBehaviour("Root Context Selector", self)
 		self.init_behaviour_tree(self.root) # Warning: uses British spelling
 		self.behaviour_tree = py_trees.trees.BehaviourTree(self.root)
 		self.blackboard = py_trees.blackboard.Blackboard()
@@ -135,6 +135,7 @@ class SimpleAgent:
 		try:
 			return self.cmd_queue.pop()
 		except:
+			self.log("WARN: Agent did not generate a command", debug=2)
 			return StateAction()
 			
 	def decide(self, action):
