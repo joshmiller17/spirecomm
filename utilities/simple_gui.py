@@ -380,10 +380,15 @@ if __name__ == "__main__":
 		print(err_msg)
 		exit(1)
 
-	#checks integrity of json files for cards and monsters
-	err_msg = ""
-	err_msg += verifyJSONFolder(os.path.join(config.SPIRECOMM_PATH,"spirecomm","ai","cards"),"card")
-	err_msg += verifyJSONFolder(os.path.join(config.SPIRECOMM_PATH,"spirecomm","ai","monsters"),"monster")
+	try:
+		#checks integrity of json files for cards and monsters
+		err_msg = ""
+		err_msg += verifyJSONFolder(os.path.join(config.SPIRECOMM_PATH,"spirecomm","ai","cards"),"card")
+		err_msg += verifyJSONFolder(os.path.join(config.SPIRECOMM_PATH,"spirecomm","ai","monsters"),"monster")
+	except Exception as e:
+		print(e, file=lf, flush=True)
+		print(e)
+		exit(1)
 
 	if err_msg != "":
 		print(err_msg, file=lf, flush=True)

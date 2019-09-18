@@ -15,10 +15,7 @@ import spirecomm.spire.screen
 import spirecomm.spire.power
 
 from spirecomm.communication.action import *
-from spirecomm.ai.simulator import *
-from spirecomm.ai.sim_helper_funcs import *
 from spirecomm.ai.rewards import *
-from spirecomm.ai.state_manip import *
 from spirecomm.ai.card_database import *
 
 
