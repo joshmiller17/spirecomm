@@ -49,6 +49,7 @@ Because CommunicationMod eats all print statements when the program is running, 
 #### Kivy window won't open
 Symptoms: when running `python utilities/simple_gui.py` from the terminal, it prints ready but doesn't open a Kivy window
 
+- For some setups, `python` will need to be `py -3`
 - Make sure you followed all installation instructions from [here](https://kivy.org/doc/stable/installation/installation-windows.html)
 - Make sure that you are using Python 3 and check the log files for errors.
 - Try running the Kivy test provided in the kivy_test folder.
